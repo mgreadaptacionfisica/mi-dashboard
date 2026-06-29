@@ -4,6 +4,7 @@ import {
   Tooltip, ResponsiveContainer, Cell
 } from 'recharts'
 import KPICard from './KPICard'
+import Logo from '../assets/mg-logo.svg'
 import {
   fetchKPIs,
   fetchVentasMensuales,
@@ -65,9 +66,12 @@ export default function Dashboard() {
   return (
     <>
       <header className="topbar">
-        <div>
-          <div className="topbar-title">Dashboard ejecutivo</div>
-          <div className="topbar-subtitle">{today}</div>
+        <div className="topbar-brand">
+          <img src={Logo} alt="MG Group logo" className="topbar-logo" />
+          <div>
+            <div className="topbar-title">Dashboard ejecutivo</div>
+            <div className="topbar-subtitle">{today}</div>
+          </div>
         </div>
         <div className="topbar-right">
           <div className="topbar-pill">Live • Actualizado hoy</div>

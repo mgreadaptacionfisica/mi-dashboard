@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 import Clientes from './components/Clientes'
+import Equipo from './components/Equipo'
 
 // Aquí puedes añadir más vistas/páginas
 function PlaceholderView({ name }) {
@@ -28,6 +29,7 @@ export default function App() {
       case 'dashboard':    return <Dashboard />
       case 'ventas':       return <PlaceholderView name="Ventas" />
       case 'clientes':     return <Clientes />
+      case 'equipo':       return <Equipo />
       case 'operaciones':  return <PlaceholderView name="Operaciones" />
       default:             return <Dashboard />
     }

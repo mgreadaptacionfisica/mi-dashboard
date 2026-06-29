@@ -1,15 +1,18 @@
+import Logo from '../assets/mg-logo.svg'
+
 export default function Sidebar({ activeView, onNavigate }) {
   const navItems = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
     { id: 'ventas', icon: '💰', label: 'Ventas' },
     { id: 'clientes', icon: '👥', label: 'Clientes' },
+    { id: 'equipo', icon: '👔', label: 'Equipo' },
     { id: 'operaciones', icon: '⚙️', label: 'Operaciones' },
   ]
 
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <div className="brand-mark">MG</div>
+        <img src={Logo} alt="MG Group logo" className="brand-mark" />
         <div>
           <h1>MG Group</h1>
           <p>Panel de control</p>
