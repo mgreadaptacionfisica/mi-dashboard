@@ -9,8 +9,11 @@ export default function Sidebar({ activeView, onNavigate }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <h1>MG Group</h1>
-        <p>Panel de control</p>
+        <div className="brand-mark">MG</div>
+        <div>
+          <h1>MG Group</h1>
+          <p>Panel de control</p>
+        </div>
       </div>
 
       <nav className="sidebar-nav">
