@@ -3,6 +3,8 @@ import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 import Clientes from './components/Clientes'
 import Equipo from './components/Equipo'
+import clientesData from './data/clientes'
+import teamData from './data/team'
 
 // Aquí puedes añadir más vistas/páginas
 function PlaceholderView({ name }) {
@@ -23,13 +25,15 @@ function PlaceholderView({ name }) {
 
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard')
+  const [clientes, setClientes] = useState(clientesData)
+  const [team, setTeam] = useState(teamData)
 
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':    return <Dashboard />
       case 'ventas':       return <PlaceholderView name="Ventas" />
-      case 'clientes':     return <Clientes />
-      case 'equipo':       return <Equipo />
+      case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} />
+      case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} />
       case 'operaciones':  return <PlaceholderView name="Operaciones" />
       default:             return <Dashboard />
     }

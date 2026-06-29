@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react'
-import clientes from '../data/clientes'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
 const tipoOptions = ['Todos', 'HIGH TICKET', 'LOW TICKET']
 const servicioOptions = ['Todos', 'Mensual', 'Trimestral', 'Cuatrimestral', 'Semestral', 'Anual']
-const workerNames = ['Laura', 'Mateo', 'Sofía', 'Javier', 'Clara']
 
 const initialForm = {
   nombre: '',
@@ -13,7 +11,7 @@ const initialForm = {
   servicio: 'Trimestral',
   estado: 'ACTIVO',
   formaPago: 'Stripe',
-  trabajador: 'Laura',
+  trabajador: '',
   fechaInicio: '',
   fechaFin: '',
 }
@@ -29,48 +27,60 @@ function StatusPill({ estado }) {
   return <span className={`status-pill ${className}`}>{estado || 'Sin estado'}</span>
 }
 
-export default function Clientes() {
-  const [clientesData, setClientesData] = useState(clientes)
+export default function Clientes({ clientes, setClientes, team }) {
   const [search, setSearch] = useState('')
   const [estado, setEstado] = useState('Todos')
   const [tipo, setTipo] = useState('Todos')
   const [servicio, setServicio] = useState('Todos')
   const [trabajador, setTrabajador] = useState('Todos')
   const [showModal, setShowModal] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingIndex, setEditingIndex] = useState(null)
   const [formData, setFormData] = useState(initialForm)
 
+  const tecnicoNames = useMemo(
+    () => team?.tecnico.map(persona => persona.nombre) ?? [],
+    [team]
+  )
+
   const clientesConTrabajador = useMemo(() =>
-    clientesData.map((cliente, index) => ({
+    clientes.map(cliente => ({
       ...cliente,
-      Trabajador: cliente.Trabajador || workerNames[index % workerNames.length],
+      Trabajador: cliente.Trabajador || 'Sin asignar',
     })),
-    [clientesData]
+    [clientes]
   )
 
   const trabajadorOptions = useMemo(() => {
-    const opciones = Array.from(new Set(clientesConTrabajador.map(cliente => cliente.Trabajador).filter(Boolean)))
-    return ['Todos', ...opciones]
-  }, [clientesConTrabajador])
+    const opciones = new Set([
+      'Sin asignar',
+      ...tecnicoNames,
+      ...clientesConTrabajador.map(cliente => cliente.Trabajador).filter(Boolean),
+    ])
+    return ['Todos', ...Array.from(opciones)]
+  }, [clientesConTrabajador, tecnicoNames])
 
   const filteredClientes = useMemo(() => {
     const term = search.toLowerCase().trim()
-    return clientesConTrabajador.filter(cliente => {
-      const matchesSearch = !term || [
-        cliente.Nombre,
-        cliente.Email,
-        cliente['Tipo de cliente'],
-        cliente['Servicio contratado'],
-        cliente['Forma de pago'],
-        cliente.Trabajador,
-      ].some(value => (value || '').toLowerCase().includes(term))
+    return clientesConTrabajador
+      .map((cliente, index) => ({ ...cliente, originalIndex: index }))
+      .filter(cliente => {
+        const matchesSearch = !term || [
+          cliente.Nombre,
+          cliente.Email,
+          cliente['Tipo de cliente'],
+          cliente['Servicio contratado'],
+          cliente['Forma de pago'],
+          cliente.Trabajador,
+        ].some(value => (value || '').toLowerCase().includes(term))
 
-      const matchesEstado = estado === 'Todos' || (cliente['Estado del cliente'] || '').toUpperCase() === estado
-      const matchesTipo = tipo === 'Todos' || (cliente['Tipo de cliente'] || '').toUpperCase() === tipo
-      const matchesServicio = servicio === 'Todos' || (cliente['Servicio contratado'] || '').toUpperCase() === servicio.toUpperCase()
-      const matchesTrabajador = trabajador === 'Todos' || cliente.Trabajador === trabajador
+        const matchesEstado = estado === 'Todos' || (cliente['Estado del cliente'] || '').toUpperCase() === estado
+        const matchesTipo = tipo === 'Todos' || (cliente['Tipo de cliente'] || '').toUpperCase() === tipo
+        const matchesServicio = servicio === 'Todos' || (cliente['Servicio contratado'] || '').toUpperCase() === servicio.toUpperCase()
+        const matchesTrabajador = trabajador === 'Todos' || cliente.Trabajador === trabajador
 
-      return matchesSearch && matchesEstado && matchesTipo && matchesServicio && matchesTrabajador
-    })
+        return matchesSearch && matchesEstado && matchesTipo && matchesServicio && matchesTrabajador
+      })
   }, [search, estado, tipo, servicio, trabajador, clientesConTrabajador])
 
   const stats = useMemo(() => {
@@ -82,21 +92,53 @@ export default function Clientes() {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    const nuevoCliente = {
+    const clienteActualizado = {
       Nombre: formData.nombre,
       Email: formData.email,
       'Tipo de cliente': formData.tipo,
       'Servicio contratado': formData.servicio,
       'Estado del cliente': formData.estado,
       'Forma de pago': formData.formaPago,
-      Trabajador: formData.trabajador,
+      Trabajador: formData.trabajador || '',
       'Fecha inicio': formData.fechaInicio,
       'Fecha fin': formData.fechaFin,
     }
 
-    setClientesData(prev => [nuevoCliente, ...prev])
+    if (isEditing && editingIndex !== null) {
+      setClientes(prev => prev.map((item, index) => index === editingIndex ? clienteActualizado : item))
+    } else {
+      setClientes(prev => [clienteActualizado, ...prev])
+    }
+
     setFormData(initialForm)
     setShowModal(false)
+    setIsEditing(false)
+    setEditingIndex(null)
+  }
+
+  const openNewClientModal = () => {
+    setFormData(initialForm)
+    setIsEditing(false)
+    setEditingIndex(null)
+    setShowModal(true)
+  }
+
+  const startEditCliente = (index) => {
+    const cliente = clientes[index]
+    setFormData({
+      nombre: cliente.Nombre || '',
+      email: cliente.Email || '',
+      tipo: cliente['Tipo de cliente'] || 'HIGH TICKET',
+      servicio: cliente['Servicio contratado'] || 'Trimestral',
+      estado: cliente['Estado del cliente'] || 'ACTIVO',
+      formaPago: cliente['Forma de pago'] || 'Stripe',
+      trabajador: cliente.Trabajador || '',
+      fechaInicio: cliente['Fecha inicio'] || '',
+      fechaFin: cliente['Fecha fin'] || '',
+    })
+    setIsEditing(true)
+    setEditingIndex(index)
+    setShowModal(true)
   }
 
   return (
@@ -165,7 +207,7 @@ export default function Clientes() {
               <div className="card-title">Vista rápida</div>
               <div className="card-subtitle">Distribuye y visualiza clientes por prioridad</div>
             </div>
-            <button className="add-client-btn" onClick={() => setShowModal(true)}>＋ Añadir cliente</button>
+            <button className="add-client-btn" onClick={openNewClientModal}>＋ Añadir cliente</button>
           </div>
 
           <div className="quick-view-grid">
@@ -234,6 +276,7 @@ export default function Clientes() {
                   <th>Fin</th>
                   <th>Forma de pago</th>
                   <th>Email</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -243,11 +286,33 @@ export default function Clientes() {
                     <td>{cliente['Tipo de cliente'] || '—'}</td>
                     <td>{cliente['Servicio contratado'] || '—'}</td>
                     <td><StatusPill estado={cliente['Estado del cliente']} /></td>
-                    <td><span className="worker-badge">{cliente.Trabajador || 'Sin asignar'}</span></td>
+                    <td>
+                    <select
+                      className="worker-select"
+                      value={cliente.Trabajador}
+                      onChange={event => {
+                        const nuevoTrabajador = event.target.value === 'Sin asignar' ? '' : event.target.value
+                        setClientes(prev => prev.map((item, i) => i === cliente.originalIndex ? { ...item, Trabajador: nuevoTrabajador } : item))
+                      }}
+                    >
+                      {trabajadorOptions.filter(option => option !== 'Todos').map(option => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </td>
                     <td>{formatDate(cliente['Fecha inicio'])}</td>
                     <td>{formatDate(cliente['Fecha fin'])}</td>
                     <td>{cliente['Forma de pago'] || '—'}</td>
                     <td style={{ color: 'var(--color-text-secondary)' }}>{cliente.Email || '—'}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="row-action-btn"
+                        onClick={() => startEditCliente(cliente.originalIndex)}
+                      >
+                        Editar
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -261,10 +326,10 @@ export default function Clientes() {
           <div className="client-modal" onClick={event => event.stopPropagation()}>
             <div className="card-header">
               <div>
-                <div className="card-title">Añadir cliente</div>
-                <div className="card-subtitle">Registra un nuevo cliente desde aquí</div>
+                <div className="card-title">{isEditing ? 'Editar cliente' : 'Añadir cliente'}</div>
+                <div className="card-subtitle">{isEditing ? 'Actualiza los datos del cliente' : 'Registra un nuevo cliente desde aquí'}</div>
               </div>
-              <button className="close-modal-btn" onClick={() => setShowModal(false)}>✕</button>
+              <button className="close-modal-btn" onClick={() => { setShowModal(false); setIsEditing(false); setEditingIndex(null) }}>✕</button>
             </div>
 
             <form className="modal-form" onSubmit={handleSubmit}>
@@ -298,11 +363,12 @@ export default function Clientes() {
                 <option value="Bizum">Bizum</option>
                 <option value="Transferencia">Transferencia</option>
               </select>
-              <input
-                placeholder="Trabajador asignado"
-                value={formData.trabajador}
-                onChange={event => setFormData({ ...formData, trabajador: event.target.value })}
-              />
+              <select value={formData.trabajador} onChange={event => setFormData({ ...formData, trabajador: event.target.value })}>
+                <option value="">Sin asignar</option>
+                {tecnicoNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
               <input
                 placeholder="Fecha inicio"
                 value={formData.fechaInicio}
