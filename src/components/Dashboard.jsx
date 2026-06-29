@@ -1,80 +1,75 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  AreaChart, Area, PieChart, Pie, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from 'recharts'
 import KPICard from './KPICard'
-import Logo from '../assets/mg-logo.svg'
 import {
   fetchKPIs,
-  fetchVentasMensuales,
-  fetchClientesPorSegmento,
-  fetchClientesRecientes,
+  fetchClientesPorServicio,
+  fetchClientesPorFormaPago,
+  fetchProximasRenovaciones,
 } from '../api/index'
 
-const SEGMENT_COLORS = ['#4f46e5', '#14b8a6', '#f59e0b']
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444']
+const PAGO_COLORS = { 'Stripe': '#635BFF', 'Bizum': '#00ADEF', 'Transferencia': '#10b981' }
 
-function StatusPill({ estado }) {
-  return (
-    <span className={`status-pill status-${estado}`}>
-      {estado.charAt(0).toUpperCase() + estado.slice(1)}
-    </span>
-  )
+function diasLabel(dias) {
+  if (dias < 0) return `Venció hace ${Math.abs(dias)}d`
+  if (dias === 0) return 'Vence hoy'
+  return `${dias}d restantes`
+}
+
+function diasColor(dias) {
+  if (dias < 0) return '#ef4444'
+  if (dias <= 15) return '#f59e0b'
+  return '#10b981'
 }
 
 export default function Dashboard() {
-  const [kpis, setKpis] = useState(null)
-  const [ventas, setVentas] = useState([])
-  const [segmentos, setSegmentos] = useState([])
-  const [clientes, setClientes] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [periodo, setPeriodo] = useState('6m')
+  const [kpis, setKpis]           = useState(null)
+  const [servicios, setServicios] = useState([])
+  const [formas, setFormas]       = useState([])
+  const [renovaciones, setRenovaciones] = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState(null)
+  const [vistaClientes, setVistaClientes] = useState('renovaciones')
 
   const loadData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [kpisData, ventasData, segData, cliData] = await Promise.all([
+      const [k, s, f, r] = await Promise.all([
         fetchKPIs(),
-        fetchVentasMensuales(periodo),
-        fetchClientesPorSegmento(),
-        fetchClientesRecientes(),
+        fetchClientesPorServicio(),
+        fetchClientesPorFormaPago(),
+        fetchProximasRenovaciones(),
       ])
-      setKpis(kpisData)
-      setVentas(ventasData)
-      setSegmentos(segData)
-      setClientes(cliData)
+      setKpis(k)
+      setServicios(s)
+      setFormas(f)
+      setRenovaciones(r)
     } catch (e) {
       setError(e.message)
     } finally {
       setLoading(false)
     }
-  }, [periodo])
+  }, [])
 
   useEffect(() => { loadData() }, [loadData])
 
-  const today = new Date().toLocaleDateString('es-MX', {
+  const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   })
-
-  const totalSegmentos = segmentos.reduce((sum, item) => sum + item.cantidad, 0)
-  const topSegment = segmentos.reduce((best, item) => (
-    item.cantidad > best.cantidad ? item : best
-  ), segmentos[0] || { segmento: 'Sin datos', cantidad: 0 })
 
   return (
     <>
       <header className="topbar">
-        <div className="topbar-brand">
-          <img src={Logo} alt="MG Group logo" className="topbar-logo" />
-          <div>
-            <div className="topbar-title">Dashboard ejecutivo</div>
-            <div className="topbar-subtitle">{today}</div>
-          </div>
+        <div>
+          <div className="topbar-title">Dashboard</div>
+          <div className="topbar-subtitle">{today}</div>
         </div>
         <div className="topbar-right">
-          <div className="topbar-pill">Live • Actualizado hoy</div>
           <button className="refresh-btn" onClick={loadData} disabled={loading}>
             {loading ? '⏳ Cargando...' : '↻ Actualizar'}
           </button>
@@ -82,222 +77,148 @@ export default function Dashboard() {
       </header>
 
       <main className="page-content">
-        {error && (
-          <div className="error-state">
-            ⚠️ Error al cargar los datos: {error}
-          </div>
-        )}
+        {error && <div className="error-state">⚠️ {error}</div>}
 
         {loading && !kpis ? (
           <div className="loading-state">
             <div className="spinner" />
             <span>Cargando datos...</span>
           </div>
-        ) : (
+        ) : kpis && (
           <>
-            {kpis && (
-              <div className="hero-card">
-                <div className="hero-copy">
-                  <span className="hero-eyebrow">Resumen ejecutivo</span>
-                  <h2>Tu negocio está creciendo con fuerza</h2>
-                  <p>
-                    Las ventas acumuladas alcanzan <strong>${kpis.ventas_totales.toLocaleString('es-MX')}</strong> y
-                    la retención se mantiene en <strong>{kpis.tasa_retencion}%</strong>.
-                    El crecimiento de clientes sigue mostrando una tendencia sólida.
-                  </p>
-                  <div className="hero-actions">
-                    <button className="primary-action">Exportar reporte</button>
-                    <span className="hero-chip">Meta del mes: 87%</span>
-                  </div>
-                </div>
-                <div className="hero-highlights">
-                  <div className="mini-stat">
-                    <span>Clientes activos</span>
-                    <strong>{kpis.clientes_activos.toLocaleString('es-MX')}</strong>
-                  </div>
-                  <div className="mini-stat">
-                    <span>Ticket promedio</span>
-                    <strong>${kpis.ticket_promedio.toLocaleString('es-MX')}</strong>
-                  </div>
-                  <div className="mini-stat">
-                    <span>Segmento líder</span>
-                    <strong>{topSegment.segmento}</strong>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* KPIs */}
+            <div className="kpi-grid">
+              <KPICard
+                label="Clientes Activos"
+                value={kpis.clientes_activos}
+                subtext={`de ${kpis.total_clientes} totales`}
+                type="number"
+                icon="✅"
+                iconBg="#d1fae5"
+              />
+              <KPICard
+                label="High Ticket (Activos)"
+                value={kpis.high_ticket}
+                subtext={`${kpis.low_ticket} Low Ticket activos`}
+                type="number"
+                icon="⭐"
+                iconBg="#fef3c7"
+              />
+              <KPICard
+                label="Ingresos Registrados"
+                value={kpis.ingresos_registrados}
+                subtext="pagos recogidos en Notion"
+                type="currency"
+                icon="💰"
+                iconBg="#dbeafe"
+              />
+              <KPICard
+                label="Tasa de Retención"
+                value={kpis.tasa_retencion}
+                subtext={`${kpis.clientes_no_activos} clientes no activos`}
+                type="percent"
+                icon="🔄"
+                iconBg="#ede9fe"
+              />
+            </div>
 
-            {kpis && (
-              <div className="kpi-grid">
-                <KPICard
-                  label="Ventas Totales"
-                  value={kpis.ventas_totales}
-                  change={kpis.ventas_cambio}
-                  type="currency"
-                  icon="💰"
-                  iconBg="linear-gradient(135deg, #dbeafe, #bfdbfe)"
-                />
-                <KPICard
-                  label="Clientes Activos"
-                  value={kpis.clientes_activos}
-                  change={kpis.clientes_cambio}
-                  type="number"
-                  icon="👥"
-                  iconBg="linear-gradient(135deg, #d1fae5, #a7f3d0)"
-                />
-                <KPICard
-                  label="Ticket Promedio"
-                  value={kpis.ticket_promedio}
-                  change={kpis.ticket_cambio}
-                  type="currency"
-                  icon="🧾"
-                  iconBg="linear-gradient(135deg, #fef3c7, #fde68a)"
-                />
-                <KPICard
-                  label="Tasa de Retención"
-                  value={kpis.tasa_retencion}
-                  change={kpis.retencion_cambio}
-                  type="percent"
-                  icon="🔄"
-                  iconBg="linear-gradient(135deg, #ede9fe, #ddd6fe)"
-                />
-              </div>
-            )}
-
+            {/* Gráficos */}
             <div className="charts-grid">
-              <div className="card chart-card">
+              {/* Clientes por servicio */}
+              <div className="card">
                 <div className="card-header">
                   <div>
-                    <div className="card-title">Crecimiento de ventas</div>
-                    <div className="card-subtitle">Comparación mensual entre ventas reales y meta</div>
-                  </div>
-                  <div className="period-selector">
-                    {['3m', '6m', '12m'].map(p => (
-                      <button
-                        key={p}
-                        className={`period-btn ${periodo === p ? 'active' : ''}`}
-                        onClick={() => setPeriodo(p)}
-                      >
-                        {p}
-                      </button>
-                    ))}
+                    <div className="card-title">Clientes Activos por Servicio</div>
+                    <div className="card-subtitle">Distribución por tipo de contrato</div>
                   </div>
                 </div>
-                <ResponsiveContainer width="100%" height={280}>
-                  <AreaChart data={ventas} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={value => [`$${Number(value).toLocaleString('es-MX')}`, '']} />
-                    <Area type="monotone" dataKey="ventas" stroke="#4f46e5" strokeWidth={3} fill="url(#salesFill)" />
-                    <Area type="monotone" dataKey="meta" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" fill="none" />
-                  </AreaChart>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={servicios} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="servicio" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="cantidad" name="Clientes" radius={[6,6,0,0]}>
+                      {servicios.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              <div className="card chart-card">
+              {/* Formas de pago */}
+              <div className="card">
                 <div className="card-header">
                   <div>
-                    <div className="card-title">Distribución por segmento</div>
-                    <div className="card-subtitle">Participación de clientes</div>
+                    <div className="card-title">Forma de Pago</div>
+                    <div className="card-subtitle">Todos los clientes</div>
                   </div>
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie
-                      data={segmentos}
+                      data={formas}
                       dataKey="cantidad"
-                      nameKey="segmento"
-                      innerRadius={58}
-                      outerRadius={90}
-                      paddingAngle={3}
+                      nameKey="forma"
+                      cx="50%" cy="50%"
+                      outerRadius={80}
+                      label={({ forma, percent }) => `${forma} ${(percent*100).toFixed(0)}%`}
+                      labelLine={false}
                     >
-                      {segmentos.map((_, i) => (
-                        <Cell key={i} fill={SEGMENT_COLORS[i % SEGMENT_COLORS.length]} />
+                      {formas.map((entry, i) => (
+                        <Cell key={i} fill={PAGO_COLORS[entry.forma] || COLORS[i]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={value => [value, 'Clientes']} />
+                    <Tooltip formatter={(v, n) => [v, n]} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="legend-list">
-                  {segmentos.map((item, index) => (
-                    <div key={item.segmento} className="legend-item">
-                      <span className="legend-dot" style={{ background: SEGMENT_COLORS[index % SEGMENT_COLORS.length] }} />
-                      <span>{item.segmento}</span>
-                      <strong>{item.cantidad}</strong>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
 
-            <div className="bottom-grid">
-              <div className="card insight-card">
-                <div className="card-header">
-                  <div>
-                    <div className="card-title">Indicadores clave</div>
-                    <div className="card-subtitle">Lo más relevante de la semana</div>
-                  </div>
+            {/* Tabla renovaciones */}
+            <div className="table-card">
+              <div className="card-header">
+                <div>
+                  <div className="card-title">Próximas Renovaciones</div>
+                  <div className="card-subtitle">Clientes activos ordenados por fecha de fin</div>
                 </div>
-                <ul className="insight-list">
-                  <li>
-                    <span className="insight-badge positive">+12.4%</span>
-                    <div>
-                      <strong>Ventas mejoradas</strong>
-                      <p>El crecimiento del último periodo supera la media histórica.</p>
-                    </div>
-                  </li>
-                  <li>
-                    <span className="insight-badge neutral">{Math.round(totalSegmentos / Math.max(segmentos.length, 1))}</span>
-                    <div>
-                      <strong>Promedio de clientes</strong>
-                      <p>El mix de segmentos está bien balanceado y estable.</p>
-                    </div>
-                  </li>
-                  <li>
-                    <span className="insight-badge positive">Alta</span>
-                    <div>
-                      <strong>Retención</strong>
-                      <p>La tasa de permanencia sigue sosteniendo el negocio.</p>
-                    </div>
-                  </li>
-                </ul>
               </div>
-
-              <div className="table-card">
-                <div className="card-header">
-                  <div>
-                    <div className="card-title">Clientes recientes</div>
-                    <div className="card-subtitle">Últimas incorporaciones</div>
-                  </div>
-                </div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Nombre</th>
-                      <th>Plan</th>
-                      <th>Estado</th>
-                      <th>Valor</th>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Tipo</th>
+                    <th>Servicio</th>
+                    <th>Fecha fin</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {renovaciones.map(c => (
+                    <tr key={c.id}>
+                      <td style={{ fontWeight: 500 }}>{c.nombre}</td>
+                      <td>
+                        <span className={`status-pill ${c.tipo === 'HIGH TICKET' ? 'status-activo' : 'status-pendiente'}`}>
+                          {c.tipo === 'HIGH TICKET' ? '⭐ High' : '🔵 Low'}
+                        </span>
+                      </td>
+                      <td>{c.servicio}</td>
+                      <td style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
+                        {c.fecha_fin ? new Date(c.fecha_fin + 'T00:00:00').toLocaleDateString('es-ES') : '—'}
+                      </td>
+                      <td>
+                        <span style={{
+                          fontSize: 12, fontWeight: 600,
+                          color: diasColor(c.dias_restantes)
+                        }}>
+                          {diasLabel(c.dias_restantes)}
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {clientes.map(c => (
-                      <tr key={c.id}>
-                        <td style={{ fontWeight: 600 }}>{c.nombre}</td>
-                        <td>{c.plan}</td>
-                        <td><StatusPill estado={c.estado} /></td>
-                        <td style={{ fontWeight: 600 }}>${c.valor.toLocaleString('es-MX')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </>
         )}
