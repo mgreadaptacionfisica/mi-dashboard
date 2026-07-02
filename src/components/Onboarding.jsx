@@ -100,6 +100,15 @@ const fases = [
   },
 ]
 
+const deberes = [
+  { title: 'Cumple el plan', desc: 'Tu mejora depende directamente de tu adherencia al programa.' },
+  { title: 'Registra tus datos correctamente', desc: 'Dolor, cargas, sensaciones, formularios y feedback.' },
+  { title: 'Comunicación honesta', desc: 'Avísame de molestias, cambios, lesiones o limitaciones apenas ocurran.' },
+  { title: 'Ten paciencia con el proceso', desc: 'No buscamos soluciones mágicas; la readaptación requiere tiempo.' },
+  { title: 'No modifiques el programa sin avisar', desc: 'Ni volumen, ni intensidad, ni ejercicios nuevos, sin comentármelo antes.' },
+  { title: 'Responsabilidad compartida', desc: 'El equipo guía. Tú ejecutas.' },
+]
+
 export default function Onboarding() {
   const [completed, setCompleted] = useState([])
   const [loaded, setLoaded] = useState(false)
@@ -129,6 +138,8 @@ export default function Onboarding() {
     return Math.round((completed.length / steps.length) * 100)
   }, [completed])
 
+  const checklistSteps = steps.filter((s) => s.id !== 'verificacion')
+  const finalStep = steps.find((s) => s.id === 'verificacion')
   const nextStep = steps.find((step) => !completed.includes(step.id))
 
   return (
@@ -176,8 +187,49 @@ export default function Onboarding() {
           </div>
         </section>
 
+        <section className="plan-section">
+          <div className="plan-section-header">
+            <span className="hero-eyebrow" style={{ color: 'var(--color-blue)' }}>Tu plan de acción</span>
+            <h2>Qué vas a conseguir y qué necesito de ti</h2>
+            <p>
+              Antes de nada, quiero que sepas exactamente qué vas a conseguir, cómo son las fases del
+              proceso y cuál es tu compromiso conmigo. Aquí tienes el resumen — y también puedes
+              descargarlo completo en PDF para leerlo con calma.
+            </p>
+            <a
+              className="plan-pdf-btn"
+              href="/guia-onboarding-mg.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              📄 Descargar guía completa en PDF
+            </a>
+          </div>
+
+          <h3 className="plan-subtitle">Las 4 fases de tu proceso</h3>
+          <div className="plan-grid">
+            {fases.map((f) => (
+              <div key={f.tag} className="plan-fase-card">
+                <span className="plan-fase-tag">{f.tag}</span>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="plan-subtitle">Tu compromiso y tus deberes</h3>
+          <div className="plan-deberes-list">
+            {deberes.map((d) => (
+              <div key={d.title} className="plan-deber-card">
+                <p className="plan-deber-title">{d.title}</p>
+                <p className="plan-deber-desc">{d.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section className="onboarding-steps">
-          {steps.map((step) => {
+          {checklistSteps.map((step) => {
             const done = completed.includes(step.id)
             return (
               <article key={step.id} className={`onboarding-step ${done ? 'done' : ''}`}>
@@ -213,25 +265,44 @@ export default function Onboarding() {
           })}
         </section>
 
-        <section className="plan-section">
-          <div className="plan-section-header">
-            <span className="hero-eyebrow" style={{ color: 'var(--color-blue)' }}>Tu plan de acción</span>
-            <h2>Así es tu progreso, fase a fase</h2>
-            <p>
-              No siempre es lineal, pero esta es la secuencia que seguimos contigo desde el primer día
-              hasta que vuelves a rendir al máximo.
-            </p>
-          </div>
-          <div className="plan-grid">
-            {fases.map((f) => (
-              <div key={f.tag} className="plan-fase-card">
-                <span className="plan-fase-tag">{f.tag}</span>
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {finalStep && (
+          <section className="onboarding-final">
+            {(() => {
+              const done = completed.includes(finalStep.id)
+              return (
+                <article className={`onboarding-step onboarding-final-step ${done ? 'done' : ''}`}>
+                  <div className="onboarding-step-number">{finalStep.number}</div>
+                  <div className="onboarding-step-body">
+                    <div className="onboarding-step-head">
+                      <div className="onboarding-step-icon">{finalStep.icon}</div>
+                      <div>
+                        <h3>{finalStep.title}</h3>
+                        <p>{finalStep.description}</p>
+                      </div>
+                    </div>
+                    <div className="onboarding-step-footer">
+                      <a
+                        className="onboarding-step-cta"
+                        href={finalStep.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {finalStep.cta} ↗
+                      </a>
+                      <button
+                        type="button"
+                        className={`onboarding-toggle-btn ${done ? 'done' : ''}`}
+                        onClick={() => toggleStep(finalStep.id)}
+                      >
+                        {done ? '✓ Hecho' : 'Marcar como hecho'}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              )
+            })()}
+          </section>
+        )}
       </main>
     </>
   )
