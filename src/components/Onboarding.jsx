@@ -77,6 +77,29 @@ const steps = [
   },
 ]
 
+const fases = [
+  {
+    tag: 'Fase 1',
+    title: 'Reducción de irritabilidad',
+    desc: 'Tolerar el movimiento, reducir la amenaza percibida por tu cuerpo y recuperar la capacidad básica.',
+  },
+  {
+    tag: 'Fase 2',
+    title: 'Desarrollo de capacidad',
+    desc: 'Construir fuerza, control motor y tolerancia progresiva a la carga.',
+  },
+  {
+    tag: 'Fase 3',
+    title: 'Exposición deportiva',
+    desc: 'Trabajar velocidad, potencia y las demandas reales de tu deporte.',
+  },
+  {
+    tag: 'Fase 4',
+    title: 'Rendimiento y prevención',
+    desc: 'Consolidar lo ganado, mantenerlo en el tiempo y prevenir recaídas.',
+  },
+]
+
 export default function Onboarding() {
   const [completed, setCompleted] = useState([])
   const [loaded, setLoaded] = useState(false)
@@ -188,6 +211,26 @@ export default function Onboarding() {
               </article>
             )
           })}
+        </section>
+
+        <section className="plan-section">
+          <div className="plan-section-header">
+            <span className="hero-eyebrow" style={{ color: 'var(--color-blue)' }}>Tu plan de acción</span>
+            <h2>Así es tu progreso, fase a fase</h2>
+            <p>
+              No siempre es lineal, pero esta es la secuencia que seguimos contigo desde el primer día
+              hasta que vuelves a rendir al máximo.
+            </p>
+          </div>
+          <div className="plan-grid">
+            {fases.map((f) => (
+              <div key={f.tag} className="plan-fase-card">
+                <span className="plan-fase-tag">{f.tag}</span>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            ))}
+          </div>
         </section>
       </main>
     </>

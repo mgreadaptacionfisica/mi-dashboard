@@ -578,6 +578,59 @@ button {
   border-color: #a7f3d0;
 }
 
+.plan-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.plan-section-header h2 {
+  font-size: 22px;
+  margin: 6px 0 6px;
+  color: var(--color-text-primary);
+}
+
+.plan-section-header p {
+  color: var(--color-text-secondary);
+  max-width: 640px;
+  line-height: 1.6;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.plan-fase-card {
+  background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+.plan-fase-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a5b4fc;
+  margin-bottom: 8px;
+}
+
+.plan-fase-card h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.plan-fase-card p {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.55;
+}
+
 .hero-highlights {
   display: flex;
   flex-direction: column;
