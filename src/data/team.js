@@ -1,0 +1,44 @@
+const team = {
+  tecnico: [
+    {
+      nombre: 'Lucía Martínez',
+      rol: 'Entrenador',
+      email: 'lucia.martinez@mg-group.com',
+      telefono: '+34 600 123 456',
+    },
+    {
+      nombre: 'Carlos Herrera',
+      rol: 'Nutricionista',
+      email: 'carlos.herrera@mg-group.com',
+      telefono: '+34 600 234 567',
+    },
+    {
+      nombre: 'Marta López',
+      rol: 'Psicólogo',
+      email: 'marta.lopez@mg-group.com',
+      telefono: '+34 600 345 678',
+    },
+    {
+      nombre: 'Raúl García',
+      rol: 'Fisioterapeuta',
+      email: 'raul.garcia@mg-group.com',
+      telefono: '+34 600 456 789',
+    },
+  ],
+  ventas: [
+    {
+      nombre: 'Daniel Soto',
+      rol: 'Closer',
+      email: 'daniel.soto@mg-group.com',
+      telefono: '+34 600 567 890',
+    },
+    {
+      nombre: 'Sara Vidal',
+      rol: 'Setter',
+      email: 'sara.vidal@mg-group.com',
+      telefono: '+34 600 678 901',
+    },
+  ],
+}
+
+export default team;
