@@ -1,13 +1,23 @@
-import { useState } from 'react'
-import Sidebar from './components/Sidebar'
-import Dashboard from './components/Dashboard'
-import Clientes from './components/Clientes'
-import Equipo from './components/Equipo'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import Onboarding from './components/Onboarding'
-import clientesData from './data/clientes'
-import teamData from './data/team'
 
-// Aquí puedes añadir más vistas/páginas
+// Rutas públicas: se sirven solas, sin sidebar ni el resto del panel interno,
+// y sin cargar los módulos que contienen datos de clientes.
+const PUBLIC_PATHS = {
+  '/onboarding': 'onboarding',
+}
+
+const isPublicRoute = Object.keys(PUBLIC_PATHS).includes(window.location.pathname)
+
+// Componentes internos cargados solo bajo demanda (code-splitting),
+// para que la vista pública /onboarding no incluya sus datos en el bundle descargado.
+const Sidebar = lazy(() => import('./components/Sidebar'))
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const Clientes = lazy(() => import('./components/Clientes'))
+const Equipo = lazy(() => import('./components/Equipo'))
+const clientesDataPromise = () => import('./data/clientes')
+const teamDataPromise = () => import('./data/team')
+
 function PlaceholderView({ name }) {
   return (
     <>
@@ -24,10 +34,32 @@ function PlaceholderView({ name }) {
   )
 }
 
-export default function App() {
+function PublicOnboardingPage() {
+  return (
+    <div className="app-layout app-layout-public">
+      <div className="main-content main-content-public">
+        <Onboarding />
+      </div>
+    </div>
+  )
+}
+
+function InternalApp() {
   const [activeView, setActiveView] = useState('dashboard')
-  const [clientes, setClientes] = useState(clientesData)
-  const [team, setTeam] = useState(teamData)
+  const [clientes, setClientes] = useState([])
+  const [team, setTeam] = useState([])
+  const [dataLoaded, setDataLoaded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([clientesDataPromise(), teamDataPromise()]).then(([c, t]) => {
+      if (cancelled) return
+      setClientes(c.default)
+      setTeam(t.default)
+      setDataLoaded(true)
+    })
+    return () => { cancelled = true }
+  }, [])
 
   const renderView = () => {
     switch (activeView) {
@@ -48,5 +80,22 @@ export default function App() {
         {renderView()}
       </div>
     </div>
+  )
+}
+
+export default function App() {
+  if (isPublicRoute) {
+    // Ruta pública: /onboarding. Sin Sidebar, sin datos de clientes cargados.
+    return (
+      <Suspense fallback={null}>
+        <PublicOnboardingPage />
+      </Suspense>
+    )
+  }
+
+  return (
+    <Suspense fallback={<div className="loading-state">Cargando…</div>}>
+      <InternalApp />
+    </Suspense>
   )
 }

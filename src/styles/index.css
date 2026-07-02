@@ -147,6 +147,14 @@ button {
   min-height: 100vh;
 }
 
+.app-layout-public {
+  display: block;
+}
+
+.main-content-public {
+  margin-left: 0;
+}
+
 .topbar {
   background: rgba(255,255,255,0.82);
   backdrop-filter: blur(16px);
