@@ -413,6 +413,23 @@ button {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  background: #363636;
+  margin: -28px;
+  padding: 28px;
+  min-height: 100vh;
+}
+
+.onboarding-topbar {
+  background: #363636;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.onboarding-topbar .topbar-title {
+  color: #ffffff;
+}
+
+.onboarding-topbar .topbar-subtitle {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .onboarding-hero {
@@ -600,11 +617,11 @@ button {
 .plan-section-header h2 {
   font-size: 22px;
   margin: 6px 0 6px;
-  color: var(--color-text-primary);
+  color: #ffffff;
 }
 
 .plan-section-header p {
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.72);
   max-width: 640px;
   line-height: 1.6;
 }
@@ -616,11 +633,11 @@ button {
 }
 
 .plan-fase-card {
-  background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  background: linear-gradient(135deg, #008A41 0%, #00602D 100%);
   color: #fff;
   border-radius: var(--radius);
   padding: 18px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
 }
 
 .plan-fase-tag {
@@ -629,7 +646,7 @@ button {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6ee0a3;
+  color: rgba(255, 255, 255, 0.85);
   margin-bottom: 8px;
 }
 
@@ -663,7 +680,7 @@ button {
 .plan-subtitle {
   font-size: 15px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: #ffffff;
   margin-top: 6px;
 }
 

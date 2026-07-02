@@ -145,7 +145,7 @@ export default function Onboarding() {
 
   return (
     <>
-      <header className="topbar">
+      <header className="topbar onboarding-topbar">
         <div>
           <div className="topbar-title">Onboarding</div>
           <div className="topbar-subtitle">Tu camino de arranque con MG Readaptación Física</div>
