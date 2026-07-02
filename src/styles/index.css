@@ -691,22 +691,23 @@ button {
 }
 
 .plan-deber-card {
-  background: rgba(0, 138, 65, 0.07);
-  border-left: 3px solid #008A41;
+  background: #ffffff;
+  border-left: 4px solid #008A41;
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 14px 16px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
 .plan-deber-title {
   font-weight: 700;
-  font-size: 13px;
-  color: var(--color-text-primary);
-  margin-bottom: 3px;
+  font-size: 13.5px;
+  color: #1a1a1a;
+  margin-bottom: 4px;
 }
 
 .plan-deber-desc {
   font-size: 12.5px;
-  color: var(--color-text-secondary);
+  color: #5b5b5b;
   line-height: 1.5;
 }
 
@@ -1238,6 +1239,17 @@ tbody td {
 
   .page-content {
     padding: 16px;
+  }
+
+  .onboarding-page {
+    margin: -16px;
+    padding: 16px;
+  }
+
+  .onboarding-hero,
+  .plan-grid,
+  .plan-deberes-list {
+    grid-template-columns: 1fr;
   }
 
   .hero-card {
