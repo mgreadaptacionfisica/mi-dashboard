@@ -426,6 +426,14 @@ button {
   box-shadow: var(--shadow-md);
 }
 
+.onboarding-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  margin-bottom: 12px;
+  display: block;
+}
+
 .onboarding-hero-copy h2 {
   font-size: 30px;
   margin-bottom: 10px;

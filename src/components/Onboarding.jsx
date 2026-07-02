@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import Logo from '../assets/mg-logo.png'
 
 const STORAGE_KEY = 'mg-onboarding-progress'
 
@@ -157,6 +158,7 @@ export default function Onboarding() {
       <main className="page-content onboarding-page">
         <section className="onboarding-hero">
           <div className="onboarding-hero-copy">
+            <img src={Logo} alt="MG Readaptación Física" className="onboarding-logo" />
             <span className="hero-eyebrow">MG Readaptación Física • onboarding</span>
             <h2>Bienvenido/a a MG Readaptación Física</h2>
             <p>
