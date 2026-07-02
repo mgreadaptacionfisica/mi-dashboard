@@ -454,7 +454,7 @@ button {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: conic-gradient(#8b5cf6 0deg, #8b5cf6 180deg, rgba(255,255,255,0.16) 180deg);
+  background: conic-gradient(#008A41 0deg, #008A41 180deg, rgba(255,255,255,0.16) 180deg);
   position: relative;
 }
 
@@ -511,8 +511,8 @@ button {
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
-  color: var(--color-blue);
+  background: linear-gradient(135deg, #e6f6ec, #d1f0dd);
+  color: #008A41;
   font-weight: 700;
 }
 
@@ -560,7 +560,7 @@ button {
 .onboarding-step-cta {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-blue);
+  color: #008A41;
 }
 
 .onboarding-toggle-btn {
@@ -573,9 +573,14 @@ button {
 }
 
 .onboarding-toggle-btn.done {
-  background: #ecfdf5;
-  color: #047857;
-  border-color: #a7f3d0;
+  background: #e6f6ec;
+  color: #008A41;
+  border-color: #9adfba;
+}
+
+.topbar-pill {
+  color: #008A41;
+  background: rgba(0, 138, 65, 0.1);
 }
 
 .plan-section {
@@ -616,7 +621,7 @@ button {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #a5b4fc;
+  color: #6ee0a3;
   margin-bottom: 8px;
 }
 
@@ -638,13 +643,13 @@ button {
   margin-top: 12px;
   padding: 10px 16px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  background: linear-gradient(135deg, #008A41, #00A84E);
   color: #fff;
   font-weight: 600;
   font-size: 13px;
   text-decoration: none;
   width: fit-content;
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.24);
+  box-shadow: 0 8px 20px rgba(0, 138, 65, 0.28);
 }
 
 .plan-subtitle {
@@ -661,9 +666,8 @@ button {
 }
 
 .plan-deber-card {
-  background: var(--color-tint, #eef2ff);
-  background: rgba(79, 70, 229, 0.08);
-  border-left: 3px solid var(--color-blue);
+  background: rgba(0, 138, 65, 0.07);
+  border-left: 3px solid #008A41;
   border-radius: 12px;
   padding: 12px 14px;
 }
@@ -682,8 +686,8 @@ button {
 }
 
 .onboarding-final-step {
-  border-color: rgba(79, 70, 229, 0.35);
-  box-shadow: 0 10px 24px rgba(79, 70, 229, 0.12);
+  border-color: rgba(0, 138, 65, 0.35);
+  box-shadow: 0 10px 24px rgba(0, 138, 65, 0.12);
 }
 
 .hero-highlights {

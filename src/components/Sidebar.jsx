@@ -1,4 +1,4 @@
-import Logo from '../assets/mg-logo.svg'
+import Logo from '../assets/mg-logo.png'
 
 export default function Sidebar({ activeView, onNavigate }) {
   const navItems = [
@@ -13,9 +13,9 @@ export default function Sidebar({ activeView, onNavigate }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <img src={Logo} alt="MG Group logo" className="brand-mark" />
+        <img src={Logo} alt="MG Readaptación Física logo" className="brand-mark" />
         <div>
-          <h1>MG Group</h1>
+          <h1>MG Readaptación Física</h1>
           <p>Panel de control</p>
         </div>
       </div>

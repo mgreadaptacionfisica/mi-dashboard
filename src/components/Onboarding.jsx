@@ -189,7 +189,7 @@ export default function Onboarding() {
 
         <section className="plan-section">
           <div className="plan-section-header">
-            <span className="hero-eyebrow" style={{ color: 'var(--color-blue)' }}>Tu plan de acción</span>
+            <span className="hero-eyebrow" style={{ color: '#6ee0a3' }}>Tu plan de acción</span>
             <h2>Qué vas a conseguir y qué necesito de ti</h2>
             <p>
               Antes de nada, quiero que sepas exactamente qué vas a conseguir, cómo son las fases del
