@@ -1,17 +1,16 @@
 import { useMemo, useState } from 'react'
+import SERVICIOS from '../data/servicios'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
-const tipoOptions = ['Todos', 'HIGH TICKET', 'LOW TICKET']
-const servicioOptions = ['Todos', 'Mensual', 'Trimestral', 'Cuatrimestral', 'Semestral', 'Anual']
 
 const initialForm = {
   nombre: '',
   email: '',
-  tipo: 'HIGH TICKET',
-  servicio: 'Trimestral',
+  servicioId: SERVICIOS[0].id,
+  otroServicio: '',
   estado: 'ACTIVO',
   formaPago: 'Stripe',
-  trabajador: '',
+  trabajadores: [],
   fechaInicio: '',
   fechaFin: '',
 }
@@ -21,17 +20,61 @@ function formatDate(value) {
   return value
 }
 
+// Ya no se pide "HIGH TICKET / LOW TICKET" a mano: la categoría se deduce
+// del propio programa contratado (Readáptate = alto valor, Previene = low ticket).
+function categoriaPrograma(nombreServicio) {
+  const s = (nombreServicio || '').toUpperCase()
+  if (s.includes('PREVIENE')) return 'Programa Previene'
+  if (s.includes('READAPTATE')) return 'Programa Readáptate'
+  return 'Otro'
+}
+
 function StatusPill({ estado }) {
   const normalized = (estado || '').toLowerCase()
   const className = normalized === 'activo' ? 'status-activo' : 'status-inactivo'
   return <span className={`status-pill ${className}`}>{estado || 'Sin estado'}</span>
 }
 
+// Permite asignar varios profesionales a un mismo cliente
+// (ej. fisioterapeuta + entrenador, o fisioterapeuta + nutricionista).
+function MultiTrabajadorSelect({ options, selected, onChange }) {
+  const [open, setOpen] = useState(false)
+  const lista = selected || []
+
+  const toggle = (name) => {
+    if (lista.includes(name)) {
+      onChange(lista.filter(n => n !== name))
+    } else {
+      onChange([...lista, name])
+    }
+  }
+
+  return (
+    <div className="multi-worker-select">
+      <button type="button" className="multi-worker-trigger" onClick={() => setOpen(o => !o)}>
+        <span>{lista.length === 0 ? 'Sin asignar' : lista.join(', ')}</span>
+        <span className="multi-worker-caret">▾</span>
+      </button>
+      {open && (
+        <div className="multi-worker-dropdown" onMouseLeave={() => setOpen(false)}>
+          {options.length === 0 && <p className="lead-log-empty" style={{ padding: '6px 10px' }}>Sin técnicos en el equipo.</p>}
+          {options.map(name => (
+            <label key={name} className="multi-worker-option">
+              <input type="checkbox" checked={lista.includes(name)} onChange={() => toggle(name)} />
+              {name}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Clientes({ clientes, setClientes, team }) {
   const [search, setSearch] = useState('')
   const [estado, setEstado] = useState('Todos')
-  const [tipo, setTipo] = useState('Todos')
   const [servicio, setServicio] = useState('Todos')
+  const [categoria, setCategoria] = useState('Todos')
   const [trabajador, setTrabajador] = useState('Todos')
   const [showModal, setShowModal] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -43,22 +86,32 @@ export default function Clientes({ clientes, setClientes, team }) {
     [team]
   )
 
+  // Compatibilidad: clientes antiguos guardaban un único "Trabajador" (string);
+  // los nuevos guardan "Trabajadores" (array), para poder asignar varios.
   const clientesConTrabajador = useMemo(() =>
     clientes.map(cliente => ({
       ...cliente,
-      Trabajador: cliente.Trabajador || 'Sin asignar',
+      Trabajadores: cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : []),
     })),
     [clientes]
   )
 
   const trabajadorOptions = useMemo(() => {
     const opciones = new Set([
-      'Sin asignar',
       ...tecnicoNames,
-      ...clientesConTrabajador.map(cliente => cliente.Trabajador).filter(Boolean),
+      ...clientesConTrabajador.flatMap(cliente => cliente.Trabajadores),
     ])
-    return ['Todos', ...Array.from(opciones)]
+    return ['Todos', 'Sin asignar', ...Array.from(opciones)]
   }, [clientesConTrabajador, tecnicoNames])
+
+  const servicioCounts = useMemo(() => {
+    const counts = {}
+    clientesConTrabajador.forEach(cliente => {
+      const nombreServicio = cliente['Servicio contratado'] || 'Sin servicio'
+      counts[nombreServicio] = (counts[nombreServicio] || 0) + 1
+    })
+    return counts
+  }, [clientesConTrabajador])
 
   const filteredClientes = useMemo(() => {
     const term = search.toLowerCase().trim()
@@ -68,38 +121,43 @@ export default function Clientes({ clientes, setClientes, team }) {
         const matchesSearch = !term || [
           cliente.Nombre,
           cliente.Email,
-          cliente['Tipo de cliente'],
           cliente['Servicio contratado'],
           cliente['Forma de pago'],
-          cliente.Trabajador,
+          cliente.Trabajadores.join(' '),
         ].some(value => (value || '').toLowerCase().includes(term))
 
         const matchesEstado = estado === 'Todos' || (cliente['Estado del cliente'] || '').toUpperCase() === estado
-        const matchesTipo = tipo === 'Todos' || (cliente['Tipo de cliente'] || '').toUpperCase() === tipo
         const matchesServicio = servicio === 'Todos' || (cliente['Servicio contratado'] || '').toUpperCase() === servicio.toUpperCase()
-        const matchesTrabajador = trabajador === 'Todos' || cliente.Trabajador === trabajador
+        const matchesCategoria = categoria === 'Todos' || categoriaPrograma(cliente['Servicio contratado']) === categoria
+        const matchesTrabajador = trabajador === 'Todos' ||
+          (trabajador === 'Sin asignar' ? cliente.Trabajadores.length === 0 : cliente.Trabajadores.includes(trabajador))
 
-        return matchesSearch && matchesEstado && matchesTipo && matchesServicio && matchesTrabajador
+        return matchesSearch && matchesEstado && matchesServicio && matchesCategoria && matchesTrabajador
       })
-  }, [search, estado, tipo, servicio, trabajador, clientesConTrabajador])
+  }, [search, estado, servicio, categoria, trabajador, clientesConTrabajador])
 
   const stats = useMemo(() => {
     const activos = clientesConTrabajador.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO').length
     const noActivos = clientesConTrabajador.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'NO ACTIVO').length
-    const highTicket = clientesConTrabajador.filter(c => (c['Tipo de cliente'] || '').toUpperCase() === 'HIGH TICKET').length
-    return { activos, noActivos, highTicket }
+    const readaptate = clientesConTrabajador.filter(c => categoriaPrograma(c['Servicio contratado']) === 'Programa Readáptate').length
+    const previene = clientesConTrabajador.filter(c => categoriaPrograma(c['Servicio contratado']) === 'Programa Previene').length
+    return { activos, noActivos, readaptate, previene }
   }, [clientesConTrabajador])
 
   const handleSubmit = (event) => {
     event.preventDefault()
+    const servicioSeleccionado = SERVICIOS.find(s => s.id === formData.servicioId)
+    const nombreServicio = formData.servicioId === 'otro'
+      ? (formData.otroServicio.trim() || 'Servicio personalizado')
+      : (servicioSeleccionado?.nombre || '')
+
     const clienteActualizado = {
       Nombre: formData.nombre,
       Email: formData.email,
-      'Tipo de cliente': formData.tipo,
-      'Servicio contratado': formData.servicio,
+      'Servicio contratado': nombreServicio,
       'Estado del cliente': formData.estado,
       'Forma de pago': formData.formaPago,
-      Trabajador: formData.trabajador || '',
+      Trabajadores: formData.trabajadores || [],
       'Fecha inicio': formData.fechaInicio,
       'Fecha fin': formData.fechaFin,
     }
@@ -125,14 +183,16 @@ export default function Clientes({ clientes, setClientes, team }) {
 
   const startEditCliente = (index) => {
     const cliente = clientes[index]
+    const servicioActual = cliente['Servicio contratado'] || ''
+    const servicioEncontrado = SERVICIOS.find(s => s.nombre === servicioActual)
     setFormData({
       nombre: cliente.Nombre || '',
       email: cliente.Email || '',
-      tipo: cliente['Tipo de cliente'] || 'HIGH TICKET',
-      servicio: cliente['Servicio contratado'] || 'Trimestral',
+      servicioId: servicioEncontrado ? servicioEncontrado.id : 'otro',
+      otroServicio: servicioEncontrado ? '' : servicioActual,
       estado: cliente['Estado del cliente'] || 'ACTIVO',
       formaPago: cliente['Forma de pago'] || 'Stripe',
-      trabajador: cliente.Trabajador || '',
+      trabajadores: cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : []),
       fechaInicio: cliente['Fecha inicio'] || '',
       fechaFin: cliente['Fecha fin'] || '',
     })
@@ -190,13 +250,25 @@ export default function Clientes({ clientes, setClientes, team }) {
 
           <div className="kpi-card">
             <div className="kpi-card-header">
-              <span className="kpi-card-label">High Ticket</span>
+              <span className="kpi-card-label">Programa Readáptate</span>
               <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)' }}>⭐</div>
             </div>
-            <div className="kpi-card-value">{stats.highTicket}</div>
+            <div className="kpi-card-value">{stats.readaptate}</div>
             <div className="kpi-card-footer">
-              <span className="badge-up">▲ {Math.round((stats.highTicket / Math.max(clientes.length, 1)) * 100)}%</span>
-              <span className="badge-text">clientes premium</span>
+              <span className="badge-up">▲ {Math.round((stats.readaptate / Math.max(clientes.length, 1)) * 100)}%</span>
+              <span className="badge-text">del total</span>
+            </div>
+          </div>
+
+          <div className="kpi-card">
+            <div className="kpi-card-header">
+              <span className="kpi-card-label">Programa Previene</span>
+              <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>🛡️</div>
+            </div>
+            <div className="kpi-card-value">{stats.previene}</div>
+            <div className="kpi-card-footer">
+              <span className="badge-up">▲ {Math.round((stats.previene / Math.max(clientes.length, 1)) * 100)}%</span>
+              <span className="badge-text">del total</span>
             </div>
           </div>
         </div>
@@ -205,32 +277,32 @@ export default function Clientes({ clientes, setClientes, team }) {
           <div className="card-header">
             <div>
               <div className="card-title">Vista rápida</div>
-              <div className="card-subtitle">Distribuye y visualiza clientes por prioridad</div>
+              <div className="card-subtitle">Distribuye y visualiza clientes por servicio contratado</div>
             </div>
             <button className="add-client-btn" onClick={openNewClientModal}>＋ Añadir cliente</button>
           </div>
 
           <div className="quick-view-grid">
             <button
-              className={`quick-view-pill ${tipo === 'Todos' ? 'active' : ''}`}
-              onClick={() => setTipo('Todos')}
+              className={`quick-view-pill ${categoria === 'Todos' ? 'active' : ''}`}
+              onClick={() => setCategoria('Todos')}
             >
               <span>Todos</span>
               <strong>{clientesConTrabajador.length}</strong>
             </button>
             <button
-              className={`quick-view-pill ${tipo === 'HIGH TICKET' ? 'active' : ''}`}
-              onClick={() => setTipo('HIGH TICKET')}
+              className={`quick-view-pill ${categoria === 'Programa Readáptate' ? 'active' : ''}`}
+              onClick={() => setCategoria('Programa Readáptate')}
             >
-              <span>High Ticket</span>
-              <strong>{stats.highTicket}</strong>
+              <span>Programa Readáptate</span>
+              <strong>{stats.readaptate}</strong>
             </button>
             <button
-              className={`quick-view-pill ${tipo === 'LOW TICKET' ? 'active' : ''}`}
-              onClick={() => setTipo('LOW TICKET')}
+              className={`quick-view-pill ${categoria === 'Programa Previene' ? 'active' : ''}`}
+              onClick={() => setCategoria('Programa Previene')}
             >
-              <span>Low Ticket</span>
-              <strong>{clientesConTrabajador.length - stats.highTicket}</strong>
+              <span>Programa Previene</span>
+              <strong>{stats.previene}</strong>
             </button>
           </div>
 
@@ -244,11 +316,12 @@ export default function Clientes({ clientes, setClientes, team }) {
             <select className="filter-select" value={estado} onChange={e => setEstado(e.target.value)}>
               {estadoOptions.map(option => <option key={option} value={option}>{option}</option>)}
             </select>
-            <select className="filter-select" value={tipo} onChange={e => setTipo(e.target.value)}>
-              {tipoOptions.map(option => <option key={option} value={option}>{option}</option>)}
-            </select>
             <select className="filter-select" value={servicio} onChange={e => setServicio(e.target.value)}>
-              {servicioOptions.map(option => <option key={option} value={option}>{option}</option>)}
+              <option value="Todos">Todos los programas</option>
+              {SERVICIOS.map(s => <option key={s.id} value={s.nombre}>{s.nombre}</option>)}
+              {Object.keys(servicioCounts).filter(nombre => !SERVICIOS.some(s => s.nombre === nombre)).map(nombre => (
+                <option key={nombre} value={nombre}>{nombre}</option>
+              ))}
             </select>
             <select className="filter-select" value={trabajador} onChange={e => setTrabajador(e.target.value)}>
               {trabajadorOptions.map(option => <option key={option} value={option}>{option}</option>)}
@@ -268,10 +341,10 @@ export default function Clientes({ clientes, setClientes, team }) {
               <thead>
                 <tr>
                   <th>Nombre</th>
-                  <th>Tipo</th>
+                  <th>Categoría</th>
                   <th>Servicio</th>
                   <th>Estado</th>
-                  <th>Trabajador</th>
+                  <th>Profesionales</th>
                   <th>Inicio</th>
                   <th>Fin</th>
                   <th>Forma de pago</th>
@@ -283,23 +356,16 @@ export default function Clientes({ clientes, setClientes, team }) {
                 {filteredClientes.map((cliente, index) => (
                   <tr key={`${cliente.Nombre}-${index}`}>
                     <td style={{ fontWeight: 600 }}>{cliente.Nombre || '—'}</td>
-                    <td>{cliente['Tipo de cliente'] || '—'}</td>
+                    <td>{categoriaPrograma(cliente['Servicio contratado'])}</td>
                     <td>{cliente['Servicio contratado'] || '—'}</td>
                     <td><StatusPill estado={cliente['Estado del cliente']} /></td>
                     <td>
-                    <select
-                      className="worker-select"
-                      value={cliente.Trabajador}
-                      onChange={event => {
-                        const nuevoTrabajador = event.target.value === 'Sin asignar' ? '' : event.target.value
-                        setClientes(prev => prev.map((item, i) => i === cliente.originalIndex ? { ...item, Trabajador: nuevoTrabajador } : item))
-                      }}
-                    >
-                      {trabajadorOptions.filter(option => option !== 'Todos').map(option => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  </td>
+                      <MultiTrabajadorSelect
+                        options={tecnicoNames}
+                        selected={cliente.Trabajadores}
+                        onChange={(nuevos) => setClientes(prev => prev.map((item, i) => i === cliente.originalIndex ? { ...item, Trabajadores: nuevos } : item))}
+                      />
+                    </td>
                     <td>{formatDate(cliente['Fecha inicio'])}</td>
                     <td>{formatDate(cliente['Fecha fin'])}</td>
                     <td>{cliente['Forma de pago'] || '—'}</td>
@@ -345,15 +411,20 @@ export default function Clientes({ clientes, setClientes, team }) {
                 value={formData.email}
                 onChange={event => setFormData({ ...formData, email: event.target.value })}
               />
-              <select value={formData.tipo} onChange={event => setFormData({ ...formData, tipo: event.target.value })}>
-                <option value="HIGH TICKET">HIGH TICKET</option>
-                <option value="LOW TICKET">LOW TICKET</option>
-              </select>
-              <select value={formData.servicio} onChange={event => setFormData({ ...formData, servicio: event.target.value })}>
-                {servicioOptions.filter(option => option !== 'Todos').map(option => (
-                  <option key={option} value={option}>{option}</option>
+              <label className="lead-detail-label">Programa contratado</label>
+              <select value={formData.servicioId} onChange={event => setFormData({ ...formData, servicioId: event.target.value })}>
+                {SERVICIOS.map(s => (
+                  <option key={s.id} value={s.id}>{s.nombre} — {s.precio}€</option>
                 ))}
+                <option value="otro">Otro (personalizado)</option>
               </select>
+              {formData.servicioId === 'otro' && (
+                <input
+                  placeholder="Nombre del servicio"
+                  value={formData.otroServicio}
+                  onChange={event => setFormData({ ...formData, otroServicio: event.target.value })}
+                />
+              )}
               <select value={formData.estado} onChange={event => setFormData({ ...formData, estado: event.target.value })}>
                 <option value="ACTIVO">ACTIVO</option>
                 <option value="NO ACTIVO">NO ACTIVO</option>
@@ -364,12 +435,14 @@ export default function Clientes({ clientes, setClientes, team }) {
                 <option value="Transferencia">Transferencia</option>
                 <option value="HOTMART">HOTMART</option>
               </select>
-              <select value={formData.trabajador} onChange={event => setFormData({ ...formData, trabajador: event.target.value })}>
-                <option value="">Sin asignar</option>
-                {tecnicoNames.map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
+              <div>
+                <label className="lead-detail-label">Profesionales asignados</label>
+                <MultiTrabajadorSelect
+                  options={tecnicoNames}
+                  selected={formData.trabajadores}
+                  onChange={(nuevos) => setFormData({ ...formData, trabajadores: nuevos })}
+                />
+              </div>
               <input
                 placeholder="Fecha inicio"
                 value={formData.fechaInicio}

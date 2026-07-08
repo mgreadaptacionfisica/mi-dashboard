@@ -90,7 +90,10 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
 
   const clienteCount = useMemo(() => {
     return team.tecnico.reduce((acc, persona) => {
-      acc[persona.nombre] = clientes.filter(cliente => cliente.Trabajador === persona.nombre).length
+      acc[persona.nombre] = clientes.filter(cliente => {
+        const asignados = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
+        return asignados.includes(persona.nombre)
+      }).length
       return acc
     }, {})
   }, [team, clientes])

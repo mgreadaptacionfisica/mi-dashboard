@@ -256,7 +256,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
       'Fecha tercer pago': ventaForm.tipoPago === 'plazos' && numPlazosNum >= 3 ? addMonthsISO(fechaInicio, 2) : '',
       Renueva: 'No',
       Drive: '',
-      Trabajador: '',
+      Trabajadores: [],
       'Fecha inicio': fechaInicio,
       'Fecha fin': fechaFin,
       Teléfono: activeLead.telefono,
