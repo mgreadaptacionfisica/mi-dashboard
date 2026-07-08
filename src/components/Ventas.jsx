@@ -20,7 +20,6 @@ const initialLeadForm = {
   telefono: '',
   email: '',
   closer: '',
-  interes: 'HIGH TICKET',
   fechaAgenda: '',
   horaAgenda: '',
 }
@@ -44,9 +43,6 @@ function LeadCard({ lead, onOpen }) {
   return (
     <button type="button" className="lead-card" onClick={onOpen}>
       <div className="lead-card-top">
-        <span className={`lead-tag ${lead.interes === 'HIGH TICKET' ? 'lead-tag-high' : 'lead-tag-low'}`}>
-          {lead.interes === 'HIGH TICKET' ? 'High' : 'Low'}
-        </span>
         {lead.fechaAgenda && <span className="lead-date">{lead.fechaAgenda}{lead.horaAgenda ? ` · ${lead.horaAgenda}` : ''}</span>}
       </div>
       <p className="lead-name">{lead.nombre}</p>
@@ -120,7 +116,6 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
       telefono: leadForm.telefono,
       email: leadForm.email,
       closer: leadForm.closer,
-      interes: leadForm.interes,
       fechaAgenda: leadForm.fechaAgenda,
       horaAgenda: leadForm.horaAgenda,
       preLlamada: { whatsapp: false, prellamada: false, recordatorio: false },
@@ -359,10 +354,6 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
               <select value={leadForm.closer} onChange={(e) => setLeadForm({ ...leadForm, closer: e.target.value })}>
                 <option value="">Closer sin asignar</option>
                 {closers.map((c) => <option key={c.nombre} value={c.nombre}>{c.nombre}</option>)}
-              </select>
-              <select value={leadForm.interes} onChange={(e) => setLeadForm({ ...leadForm, interes: e.target.value })}>
-                <option value="HIGH TICKET">HIGH TICKET</option>
-                <option value="LOW TICKET">LOW TICKET</option>
               </select>
               <div className="lead-detail-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <input type="date" value={leadForm.fechaAgenda}
