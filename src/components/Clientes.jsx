@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import SERVICIOS from '../data/servicios'
+import RENOVACIONES from '../data/renovaciones'
 import SeguimientoCliente from './SeguimientoCliente'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
@@ -15,8 +16,9 @@ const initialForm = {
   fechaInicio: '',
   fechaFin: '',
   renueva: 'No',
-  formaRenovacion: '',
-  importeRenovacion: '',
+  renovacionId: RENOVACIONES[0].id,
+  otraRenovacion: '',
+  importeRenovacion: RENOVACIONES[0].precio,
   fechaRenovacion: '',
 }
 
@@ -168,6 +170,11 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
       ? (formData.otroServicio.trim() || 'Servicio personalizado')
       : (servicioSeleccionado?.nombre || '')
 
+    const renovacionSeleccionada = RENOVACIONES.find(r => r.id === formData.renovacionId)
+    const nombreRenovacion = formData.renovacionId === 'otro'
+      ? (formData.otraRenovacion.trim() || 'Renovación personalizada')
+      : (renovacionSeleccionada?.nombre || '')
+
     // Si el cliente pasa a NO ACTIVO, se le quita automáticamente
     // la asignación de profesionales del equipo técnico.
     const trabajadoresFinal = formData.estado === 'NO ACTIVO' ? [] : (formData.trabajadores || [])
@@ -182,7 +189,7 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
       'Fecha inicio': formData.fechaInicio,
       'Fecha fin': formData.fechaFin,
       Renueva: formData.renueva,
-      'Forma de renovación': formData.renueva === 'Sí' ? formData.formaRenovacion : '',
+      'Forma de renovación': formData.renueva === 'Sí' ? nombreRenovacion : '',
       'Importe renovación': formData.renueva === 'Sí' ? formData.importeRenovacion : '',
       'Fecha renovación': formData.renueva === 'Sí' ? formData.fechaRenovacion : '',
     }
@@ -210,6 +217,8 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
     const cliente = clientes[index]
     const servicioActual = cliente['Servicio contratado'] || ''
     const servicioEncontrado = SERVICIOS.find(s => s.nombre === servicioActual)
+    const renovacionActual = cliente['Forma de renovación'] || ''
+    const renovacionEncontrada = RENOVACIONES.find(r => r.nombre === renovacionActual)
     setFormData({
       nombre: cliente.Nombre || '',
       email: cliente.Email || '',
@@ -221,8 +230,9 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
       fechaInicio: cliente['Fecha inicio'] || '',
       fechaFin: cliente['Fecha fin'] || '',
       renueva: normalizaRenueva(cliente.Renueva),
-      formaRenovacion: cliente['Forma de renovación'] || '',
-      importeRenovacion: cliente['Importe renovación'] || '',
+      renovacionId: renovacionActual ? (renovacionEncontrada ? renovacionEncontrada.id : 'otro') : RENOVACIONES[0].id,
+      otraRenovacion: renovacionActual && !renovacionEncontrada ? renovacionActual : '',
+      importeRenovacion: cliente['Importe renovación'] || RENOVACIONES[0].precio,
       fechaRenovacion: cliente['Fecha renovación'] || '',
     })
     setIsEditing(true)
@@ -541,12 +551,30 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
               {formData.renueva === 'Sí' && (
                 <div className="lead-venta-form">
                   <p className="plan-subtitle-inline">Datos de la renovación</p>
-                  {/* TODO: sustituir por desplegable fijo cuando Raúl pase las formas de renovación reales */}
-                  <input
-                    placeholder="Forma de renovación (ej: renovación trimestral...)"
-                    value={formData.formaRenovacion}
-                    onChange={event => setFormData({ ...formData, formaRenovacion: event.target.value })}
-                  />
+                  <select
+                    value={formData.renovacionId}
+                    onChange={event => {
+                      const nuevoId = event.target.value
+                      const renovacionElegida = RENOVACIONES.find(r => r.id === nuevoId)
+                      setFormData({
+                        ...formData,
+                        renovacionId: nuevoId,
+                        importeRenovacion: renovacionElegida ? renovacionElegida.precio : formData.importeRenovacion,
+                      })
+                    }}
+                  >
+                    {RENOVACIONES.map(r => (
+                      <option key={r.id} value={r.id}>{r.nombre} — {r.precio}€</option>
+                    ))}
+                    <option value="otro">Otro (personalizado)</option>
+                  </select>
+                  {formData.renovacionId === 'otro' && (
+                    <input
+                      placeholder="Forma de renovación (personalizada)"
+                      value={formData.otraRenovacion}
+                      onChange={event => setFormData({ ...formData, otraRenovacion: event.target.value })}
+                    />
+                  )}
                   <input
                     type="number"
                     placeholder="Importe de la renovación (€)"
