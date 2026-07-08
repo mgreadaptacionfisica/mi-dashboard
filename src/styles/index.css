@@ -781,6 +781,38 @@ button {
   margin-bottom: 20px;
 }
 
+.closer-manual-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, #008A41 0%, #00602D 100%);
+  color: #fff;
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+}
+
+.closer-manual-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.closer-manual-desc {
+  font-size: 13px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 520px;
+}
+
+.closer-manual-banner .primary-action {
+  background: #fff;
+  color: #008A41;
+  white-space: nowrap;
+}
+
 .kpi-card {
   background: var(--color-card);
   border-radius: var(--radius);

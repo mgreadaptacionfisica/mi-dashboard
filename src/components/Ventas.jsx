@@ -309,6 +309,21 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
       </header>
 
       <main className="page-content">
+        <div className="closer-manual-banner">
+          <div>
+            <p className="closer-manual-title">📄 Manual del Closer</p>
+            <p className="closer-manual-desc">Protocolo pre-llamada, casos de éxito, guion de la llamada, tarifas y manejo de objeciones.</p>
+          </div>
+          <a
+            className="primary-action"
+            href="/manual-closer-mg.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Ver / descargar PDF
+          </a>
+        </div>
+
         <div className="kpi-grid">
           <div className="kpi-card">
             <div className="kpi-card-header">
