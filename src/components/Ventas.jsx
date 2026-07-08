@@ -1,27 +1,34 @@
 import { useMemo, useState } from 'react'
 
+// TODO: sustituir por la lista real de servicios cuando la definas.
+const SERVICIOS = ['Mensual', 'Trimestral', 'Cuatrimestral', 'Semestral', 'Anual']
+
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
-  { id: 'realizada', label: 'Llamada realizada', hint: 'Pendiente de seguimiento' },
-  { id: 'seguimiento', label: 'Seguimiento', hint: 'Objeciones / follow-up' },
+  { id: 'realizada', label: 'Llamada realizada', hint: '¿Compró o no?' },
+  { id: 'seguimiento', label: 'Seguimiento', hint: 'Objeciones / respuesta' },
   { id: 'ganada', label: 'Ganada', hint: 'Cerrada' },
   { id: 'perdida', label: 'Perdida', hint: 'Descartada' },
 ]
 
-const ETAPA_ORDER = ['agendada', 'realizada', 'seguimiento', 'ganada']
+const RESULTADO_NO_REALIZADA = [
+  { id: 'no_show', label: 'No show' },
+  { id: 'cancelada', label: 'Cancelada' },
+  { id: 'modificada', label: 'Modificada / reagendada' },
+]
 
 const initialLeadForm = {
   nombre: '',
   telefono: '',
   email: '',
   closer: '',
-  setter: '',
   interes: 'HIGH TICKET',
-  fechaLlamada: '',
+  fechaAgenda: '',
+  horaAgenda: '',
 }
 
 const initialVentaForm = {
-  servicio: 'Trimestral',
+  servicio: SERVICIOS[1],
   tipoCliente: 'HIGH TICKET',
   importe: '',
   formaPago: 'Stripe',
@@ -40,10 +47,15 @@ function LeadCard({ lead, onOpen }) {
         <span className={`lead-tag ${lead.interes === 'HIGH TICKET' ? 'lead-tag-high' : 'lead-tag-low'}`}>
           {lead.interes === 'HIGH TICKET' ? 'High' : 'Low'}
         </span>
-        {lead.fechaLlamada && <span className="lead-date">{lead.fechaLlamada}</span>}
+        {lead.fechaAgenda && <span className="lead-date">{lead.fechaAgenda}{lead.horaAgenda ? ` · ${lead.horaAgenda}` : ''}</span>}
       </div>
       <p className="lead-name">{lead.nombre}</p>
       <p className="lead-closer">👤 {lead.closer || 'Sin closer'}</p>
+      {lead.etapa === 'agendada' && (
+        <p className="lead-checks">
+          {lead.preLlamada?.whatsapp ? '✅' : '⬜'} WhatsApp · {lead.preLlamada?.prellamada ? '✅' : '⬜'} Prellamada · {lead.preLlamada?.recordatorio ? '✅' : '⬜'} Recordatorio
+        </p>
+      )}
       {lead.objeciones?.length > 0 && (
         <p className="lead-objections">⚠️ {lead.objeciones.length} objeción{lead.objeciones.length === 1 ? '' : 'es'}</p>
       )}
@@ -61,9 +73,12 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
   const [ventaForm, setVentaForm] = useState(initialVentaForm)
   const [showLostForm, setShowLostForm] = useState(false)
   const [lostReason, setLostReason] = useState('')
+  const [showReagendar, setShowReagendar] = useState(false)
+  const [reagendarForm, setReagendarForm] = useState({ fecha: '', hora: '' })
+  const [showResultadoNoRealizada, setShowResultadoNoRealizada] = useState(false)
+  const [resultadoDraft, setResultadoDraft] = useState('no_show')
 
   const closers = useMemo(() => (team?.ventas || []).filter((p) => p.rol === 'Closer'), [team])
-  const setters = useMemo(() => (team?.ventas || []).filter((p) => p.rol === 'Setter'), [team])
   const activeLead = useMemo(() => ventas.find((l) => l.id === activeLeadId) || null, [ventas, activeLeadId])
 
   const stats = useMemo(() => {
@@ -79,14 +94,22 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
     setVentas((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)))
   }
 
-  const closeDetail = () => {
-    setActiveLeadId(null)
+  const resetDetailUI = () => {
     setNoteDraft('')
     setObjectionDraft('')
     setShowVentaForm(false)
     setVentaForm(initialVentaForm)
     setShowLostForm(false)
     setLostReason('')
+    setShowReagendar(false)
+    setReagendarForm({ fecha: '', hora: '' })
+    setShowResultadoNoRealizada(false)
+    setResultadoDraft('no_show')
+  }
+
+  const closeDetail = () => {
+    setActiveLeadId(null)
+    resetDetailUI()
   }
 
   const handleCreateLead = (event) => {
@@ -97,12 +120,16 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
       telefono: leadForm.telefono,
       email: leadForm.email,
       closer: leadForm.closer,
-      setter: leadForm.setter,
       interes: leadForm.interes,
+      fechaAgenda: leadForm.fechaAgenda,
+      horaAgenda: leadForm.horaAgenda,
+      preLlamada: { whatsapp: false, prellamada: false, recordatorio: false },
+      resultadoLlamada: null,
+      compraEnLlamada: null,
       etapa: 'agendada',
-      fechaLlamada: leadForm.fechaLlamada,
       objeciones: [],
-      seguimientos: [],
+      seguimiento: { realizado: false, contesta: null, compraTrasSeguimiento: null },
+      notasSeguimiento: [],
       creadoEn: todayISO(),
     }
     setVentas((prev) => [nuevo, ...prev])
@@ -110,15 +137,45 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
     setShowNewLead(false)
   }
 
-  const avanzarEtapa = (lead) => {
-    const idx = ETAPA_ORDER.indexOf(lead.etapa)
-    if (idx === -1 || idx === ETAPA_ORDER.length - 1) return
-    if (lead.etapa === 'seguimiento') {
-      // avanzar desde seguimiento hacia "ganada" pasa por el formulario de venta
+  const toggleCheck = (key) => {
+    if (!activeLead) return
+    updateLead(activeLead.id, {
+      preLlamada: { ...activeLead.preLlamada, [key]: !activeLead.preLlamada?.[key] },
+    })
+  }
+
+  const marcarLlamadaRealizada = () => {
+    if (!activeLead) return
+    updateLead(activeLead.id, { etapa: 'realizada', resultadoLlamada: 'realizada' })
+  }
+
+  const confirmarNoRealizada = () => {
+    if (!activeLead) return
+    updateLead(activeLead.id, { resultadoLlamada: resultadoDraft })
+    setShowResultadoNoRealizada(false)
+    setShowReagendar(true)
+  }
+
+  const confirmarReagendar = (event) => {
+    event.preventDefault()
+    if (!activeLead) return
+    updateLead(activeLead.id, {
+      fechaAgenda: reagendarForm.fecha || activeLead.fechaAgenda,
+      horaAgenda: reagendarForm.hora || activeLead.horaAgenda,
+      resultadoLlamada: null,
+      etapa: 'agendada',
+    })
+    setShowReagendar(false)
+    setReagendarForm({ fecha: '', hora: '' })
+  }
+
+  const marcarCompraEnLlamada = (compro) => {
+    if (!activeLead) return
+    if (compro) {
       setShowVentaForm(true)
-      return
+    } else {
+      updateLead(activeLead.id, { compraEnLlamada: false, etapa: 'seguimiento' })
     }
-    updateLead(lead.id, { etapa: ETAPA_ORDER[idx + 1] })
   }
 
   const addObjection = () => {
@@ -132,9 +189,28 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
   const addSeguimiento = () => {
     if (!noteDraft.trim() || !activeLead) return
     updateLead(activeLead.id, {
-      seguimientos: [...(activeLead.seguimientos || []), { fecha: todayISO(), nota: noteDraft.trim() }],
+      notasSeguimiento: [...(activeLead.notasSeguimiento || []), { fecha: todayISO(), nota: noteDraft.trim() }],
+      seguimiento: { ...activeLead.seguimiento, realizado: true },
     })
     setNoteDraft('')
+  }
+
+  const setContesta = (valor) => {
+    if (!activeLead) return
+    updateLead(activeLead.id, { seguimiento: { ...activeLead.seguimiento, contesta: valor, compraTrasSeguimiento: valor ? activeLead.seguimiento?.compraTrasSeguimiento : null } })
+  }
+
+  const setCompraTrasSeguimiento = (compro) => {
+    if (!activeLead) return
+    if (compro) {
+      setShowVentaForm(true)
+    } else {
+      updateLead(activeLead.id, {
+        seguimiento: { ...activeLead.seguimiento, compraTrasSeguimiento: false },
+        etapa: 'perdida',
+        motivoPerdida: 'No compró tras seguimiento',
+      })
+    }
   }
 
   const confirmarVenta = (event) => {
@@ -162,6 +238,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
 
     updateLead(activeLead.id, {
       etapa: 'ganada',
+      compraEnLlamada: activeLead.etapa === 'realizada' ? true : activeLead.compraEnLlamada,
       venta: { ...ventaForm, fechaCierre: todayISO() },
     })
 
@@ -260,16 +337,16 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
                 <option value="">Closer sin asignar</option>
                 {closers.map((c) => <option key={c.nombre} value={c.nombre}>{c.nombre}</option>)}
               </select>
-              <select value={leadForm.setter} onChange={(e) => setLeadForm({ ...leadForm, setter: e.target.value })}>
-                <option value="">Setter sin asignar</option>
-                {setters.map((s) => <option key={s.nombre} value={s.nombre}>{s.nombre}</option>)}
-              </select>
               <select value={leadForm.interes} onChange={(e) => setLeadForm({ ...leadForm, interes: e.target.value })}>
                 <option value="HIGH TICKET">HIGH TICKET</option>
                 <option value="LOW TICKET">LOW TICKET</option>
               </select>
-              <input type="date" placeholder="Fecha de llamada" value={leadForm.fechaLlamada}
-                onChange={(e) => setLeadForm({ ...leadForm, fechaLlamada: e.target.value })} />
+              <div className="lead-detail-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <input type="date" value={leadForm.fechaAgenda}
+                  onChange={(e) => setLeadForm({ ...leadForm, fechaAgenda: e.target.value })} />
+                <input type="time" value={leadForm.horaAgenda}
+                  onChange={(e) => setLeadForm({ ...leadForm, horaAgenda: e.target.value })} />
+              </div>
               <div className="modal-actions">
                 <button type="button" className="secondary-action" onClick={() => setShowNewLead(false)}>Cancelar</button>
                 <button type="submit" className="primary-action">Crear lead</button>
@@ -302,24 +379,96 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
                   </select>
                 </div>
                 <div>
-                  <label className="lead-detail-label">Setter</label>
-                  <select value={activeLead.setter} onChange={(e) => updateLead(activeLead.id, { setter: e.target.value })}>
-                    <option value="">Sin asignar</option>
-                    {setters.map((s) => <option key={s.nombre} value={s.nombre}>{s.nombre}</option>)}
-                  </select>
+                  <label className="lead-detail-label">Día de agenda</label>
+                  <input type="date" value={activeLead.fechaAgenda || ''}
+                    onChange={(e) => updateLead(activeLead.id, { fechaAgenda: e.target.value })} />
                 </div>
                 <div>
-                  <label className="lead-detail-label">Etapa actual</label>
-                  <span className="status-pill status-activo">{ETAPAS.find((e) => e.id === activeLead.etapa)?.label}</span>
+                  <label className="lead-detail-label">Hora de agenda</label>
+                  <input type="time" value={activeLead.horaAgenda || ''}
+                    onChange={(e) => updateLead(activeLead.id, { horaAgenda: e.target.value })} />
                 </div>
               </div>
 
-              {activeLead.etapa !== 'ganada' && activeLead.etapa !== 'perdida' && !showVentaForm && !showLostForm && (
-                <div className="lead-detail-actions">
-                  <button type="button" className="primary-action" onClick={() => avanzarEtapa(activeLead)}>
-                    {activeLead.etapa === 'seguimiento' ? 'Marcar como ganada →' : 'Avanzar etapa →'}
-                  </button>
-                  <button type="button" className="danger-action" onClick={() => setShowLostForm(true)}>Marcar como perdida</button>
+              <div className="lead-detail-row" style={{ gridTemplateColumns: '1fr' }}>
+                <span className="status-pill status-activo">{ETAPAS.find((e) => e.id === activeLead.etapa)?.label}</span>
+              </div>
+
+              {/* ---- Etapa: Agendada ---- */}
+              {activeLead.etapa === 'agendada' && !showReagendar && !showResultadoNoRealizada && (
+                <>
+                  <div>
+                    <label className="lead-detail-label">Checklist pre-llamada</label>
+                    <div className="lead-checklist">
+                      <label><input type="checkbox" checked={!!activeLead.preLlamada?.whatsapp} onChange={() => toggleCheck('whatsapp')} /> Contacto por WhatsApp</label>
+                      <label><input type="checkbox" checked={!!activeLead.preLlamada?.prellamada} onChange={() => toggleCheck('prellamada')} /> Enviar prellamada</label>
+                      <label><input type="checkbox" checked={!!activeLead.preLlamada?.recordatorio} onChange={() => toggleCheck('recordatorio')} /> Recordatorio de llamada</label>
+                    </div>
+                  </div>
+                  <div className="lead-detail-actions">
+                    <button type="button" className="primary-action" onClick={marcarLlamadaRealizada}>Llamada realizada →</button>
+                    <button type="button" className="secondary-action" onClick={() => setShowResultadoNoRealizada(true)}>Llamada no realizada…</button>
+                  </div>
+                </>
+              )}
+
+              {showResultadoNoRealizada && (
+                <div className="lead-venta-form">
+                  <p className="plan-subtitle-inline">¿Qué pasó con la llamada?</p>
+                  <select value={resultadoDraft} onChange={(e) => setResultadoDraft(e.target.value)}>
+                    {RESULTADO_NO_REALIZADA.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                  </select>
+                  <div className="modal-actions">
+                    <button type="button" className="secondary-action" onClick={() => setShowResultadoNoRealizada(false)}>Cancelar</button>
+                    <button type="button" className="primary-action" onClick={confirmarNoRealizada}>Confirmar</button>
+                  </div>
+                </div>
+              )}
+
+              {showReagendar && (
+                <form className="lead-venta-form" onSubmit={confirmarReagendar}>
+                  <p className="plan-subtitle-inline">Reagendar llamada</p>
+                  <div className="lead-detail-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                    <input type="date" value={reagendarForm.fecha} onChange={(e) => setReagendarForm({ ...reagendarForm, fecha: e.target.value })} />
+                    <input type="time" value={reagendarForm.hora} onChange={(e) => setReagendarForm({ ...reagendarForm, hora: e.target.value })} />
+                  </div>
+                  <div className="modal-actions">
+                    <button type="button" className="secondary-action" onClick={() => setShowReagendar(false)}>Ahora no</button>
+                    <button type="submit" className="primary-action">Reagendar</button>
+                  </div>
+                </form>
+              )}
+
+              {/* ---- Etapa: Llamada realizada (pendiente de decisión) ---- */}
+              {activeLead.etapa === 'realizada' && !showVentaForm && (
+                <div>
+                  <p className="plan-subtitle-inline">¿Compró en la propia llamada?</p>
+                  <div className="lead-detail-actions">
+                    <button type="button" className="primary-action" onClick={() => marcarCompraEnLlamada(true)}>Sí, compró ✅</button>
+                    <button type="button" className="danger-action" onClick={() => marcarCompraEnLlamada(false)}>No compró</button>
+                  </div>
+                </div>
+              )}
+
+              {/* ---- Etapa: Seguimiento ---- */}
+              {activeLead.etapa === 'seguimiento' && !showVentaForm && !showLostForm && (
+                <div>
+                  <p className="plan-subtitle-inline">Seguimiento</p>
+                  <div className="lead-detail-actions" style={{ marginBottom: 8 }}>
+                    <button type="button"
+                      className={`secondary-action ${activeLead.seguimiento?.contesta === true ? 'active-toggle' : ''}`}
+                      onClick={() => setContesta(true)}>Contesta ✅</button>
+                    <button type="button"
+                      className={`secondary-action ${activeLead.seguimiento?.contesta === false ? 'active-toggle' : ''}`}
+                      onClick={() => setContesta(false)}>No contesta</button>
+                  </div>
+                  {activeLead.seguimiento?.contesta === true && (
+                    <div className="lead-detail-actions">
+                      <span className="lead-detail-label" style={{ alignSelf: 'center' }}>¿Compra?</span>
+                      <button type="button" className="primary-action" onClick={() => setCompraTrasSeguimiento(true)}>Sí ✅</button>
+                      <button type="button" className="danger-action" onClick={() => setCompraTrasSeguimiento(false)}>No</button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -331,11 +480,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
                     <option value="LOW TICKET">LOW TICKET</option>
                   </select>
                   <select value={ventaForm.servicio} onChange={(e) => setVentaForm({ ...ventaForm, servicio: e.target.value })}>
-                    <option>Mensual</option>
-                    <option>Trimestral</option>
-                    <option>Cuatrimestral</option>
-                    <option>Semestral</option>
-                    <option>Anual</option>
+                    {SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                   <input placeholder="Importe (€)" value={ventaForm.importe}
                     onChange={(e) => setVentaForm({ ...ventaForm, importe: e.target.value })} />
@@ -356,6 +501,12 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
                     <button type="submit" className="primary-action">Confirmar venta y crear cliente</button>
                   </div>
                 </form>
+              )}
+
+              {activeLead.etapa !== 'ganada' && activeLead.etapa !== 'perdida' && !showLostForm && (
+                <div className="lead-detail-actions">
+                  <button type="button" className="danger-action" onClick={() => setShowLostForm(true)}>Marcar como perdida</button>
+                </div>
               )}
 
               {showLostForm && (
@@ -396,12 +547,12 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
                   </div>
                 </div>
                 <div>
-                  <label className="lead-detail-label">Seguimiento</label>
+                  <label className="lead-detail-label">Notas de seguimiento</label>
                   <ul className="lead-log-list">
-                    {(activeLead.seguimientos || []).map((s, i) => (
+                    {(activeLead.notasSeguimiento || []).map((s, i) => (
                       <li key={i}><strong>{s.fecha}</strong> — {s.nota}</li>
                     ))}
-                    {(activeLead.seguimientos || []).length === 0 && <li className="lead-log-empty">Sin seguimiento registrado.</li>}
+                    {(activeLead.notasSeguimiento || []).length === 0 && <li className="lead-log-empty">Sin seguimiento registrado.</li>}
                   </ul>
                   <div className="lead-log-add">
                     <input placeholder="Añadir nota de seguimiento..." value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} />
