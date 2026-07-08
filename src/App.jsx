@@ -15,8 +15,10 @@ const Sidebar = lazy(() => import('./components/Sidebar'))
 const Dashboard = lazy(() => import('./components/Dashboard'))
 const Clientes = lazy(() => import('./components/Clientes'))
 const Equipo = lazy(() => import('./components/Equipo'))
+const Ventas = lazy(() => import('./components/Ventas'))
 const clientesDataPromise = () => import('./data/clientes')
 const teamDataPromise = () => import('./data/team')
+const ventasDataPromise = () => import('./data/ventas')
 
 function PlaceholderView({ name }) {
   return (
@@ -48,14 +50,16 @@ function InternalApp() {
   const [activeView, setActiveView] = useState('dashboard')
   const [clientes, setClientes] = useState([])
   const [team, setTeam] = useState([])
+  const [ventas, setVentas] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([clientesDataPromise(), teamDataPromise()]).then(([c, t]) => {
+    Promise.all([clientesDataPromise(), teamDataPromise(), ventasDataPromise()]).then(([c, t, v]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
+      setVentas(v.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -64,7 +68,7 @@ function InternalApp() {
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':    return <Dashboard />
-      case 'ventas':       return <PlaceholderView name="Ventas" />
+      case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} />
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} />
       case 'onboarding':   return <Onboarding />
