@@ -21,6 +21,9 @@ const teamDataPromise = () => import('./data/team')
 const ventasDataPromise = () => import('./data/ventas')
 const seguimientosDataPromise = () => import('./data/seguimientos')
 const settingDataPromise = () => import('./data/setting')
+const adsKpiDataPromise = () => import('./data/adsKpi')
+const adsNotasDataPromise = () => import('./data/adsNotasMensuales')
+const anunciosDataPromise = () => import('./data/anuncios')
 
 function PlaceholderView({ name }) {
   return (
@@ -55,17 +58,26 @@ function InternalApp() {
   const [ventas, setVentas] = useState([])
   const [seguimientos, setSeguimientos] = useState([])
   const [setting, setSetting] = useState([])
+  const [adsKpi, setAdsKpi] = useState([])
+  const [adsNotas, setAdsNotas] = useState([])
+  const [anuncios, setAnuncios] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([clientesDataPromise(), teamDataPromise(), ventasDataPromise(), seguimientosDataPromise(), settingDataPromise()]).then(([c, t, v, s, st]) => {
+    Promise.all([
+      clientesDataPromise(), teamDataPromise(), ventasDataPromise(), seguimientosDataPromise(),
+      settingDataPromise(), adsKpiDataPromise(), adsNotasDataPromise(), anunciosDataPromise(),
+    ]).then(([c, t, v, s, st, ak, an, anu]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
       setVentas(v.default)
       setSeguimientos(s.default)
       setSetting(st.default)
+      setAdsKpi(ak.default)
+      setAdsNotas(an.default)
+      setAnuncios(anu.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -74,7 +86,7 @@ function InternalApp() {
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':    return <Dashboard />
-      case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} />
+      case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} />
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
       case 'onboarding':   return <Onboarding />

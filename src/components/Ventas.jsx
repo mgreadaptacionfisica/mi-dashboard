@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import SERVICIOS from '../data/servicios'
 import SettingInstagram from './SettingInstagram'
+import AdsKpi from './AdsKpi'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -70,7 +71,7 @@ function LeadCard({ lead, onOpen }) {
   )
 }
 
-export default function Ventas({ ventas, setVentas, team, setClientes, setting, setSetting }) {
+export default function Ventas({ ventas, setVentas, team, setClientes, setting, setSetting, adsKpi, setAdsKpi, adsNotas, setAdsNotas, anuncios, setAnuncios }) {
   const [activeTab, setActiveTab] = useState('pipeline')
   const [showNewLead, setShowNewLead] = useState(false)
   const [leadForm, setLeadForm] = useState(initialLeadForm)
@@ -308,7 +309,9 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
         <div>
           <div className="topbar-title">Ventas</div>
           <div className="topbar-subtitle">
-            {activeTab === 'pipeline' ? 'Pipeline comercial: de la llamada al cliente' : 'Setting de Instagram: bienvenidas y follow-ups'}
+            {activeTab === 'pipeline' && 'Pipeline comercial: de la llamada al cliente'}
+            {activeTab === 'setting' && 'Setting de Instagram: bienvenidas y follow-ups'}
+            {activeTab === 'ads' && 'Inversión y resultados de Ads'}
           </div>
         </div>
         <div className="topbar-right">
@@ -334,11 +337,31 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
           >
             👋 Setting Instagram
           </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'ads' ? 'tab-btn-active' : ''}`}
+            onClick={() => setActiveTab('ads')}
+          >
+            📊 KPI Ads
+          </button>
         </div>
 
-        {activeTab === 'setting' ? (
+        {activeTab === 'setting' && (
           <SettingInstagram setting={setting} setSetting={setSetting} />
-        ) : (
+        )}
+
+        {activeTab === 'ads' && (
+          <AdsKpi
+            adsKpi={adsKpi}
+            setAdsKpi={setAdsKpi}
+            adsNotas={adsNotas}
+            setAdsNotas={setAdsNotas}
+            anuncios={anuncios}
+            setAnuncios={setAnuncios}
+          />
+        )}
+
+        {activeTab === 'pipeline' && (
           <>
         <div className="closer-manual-banner">
           <div>
