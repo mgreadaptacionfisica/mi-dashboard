@@ -62,6 +62,22 @@ function mesesEntreFechas(inicio, fin) {
   return meses
 }
 
+function mesActualISO() {
+  return new Date().toISOString().slice(0, 7)
+}
+
+const NOMBRES_MES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+function mesLabel(mesKey) {
+  const [y, m] = (mesKey || '').split('-')
+  const nombre = NOMBRES_MES[Number(m) - 1]
+  if (!nombre) return mesKey
+  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${y}`
+}
+
 function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, onDelete, onDetail }) {
   return (
     <div className="team-card">
@@ -141,7 +157,7 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, on
   )
 }
 
-export default function Equipo({ team, setTeam, clientes, ventas = [], seguimientos = [], setSeguimientos }) {
+export default function Equipo({ team, setTeam, clientes, ventas = [], seguimientos = [], setSeguimientos, gastosProfesionales = [], setGastosProfesionales }) {
   const [showModal, setShowModal] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [detailCloser, setDetailCloser] = useState(null)
@@ -171,6 +187,35 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
 
   const tecnicoCount = team.tecnico.length
   const ventasCount = team.ventas.length
+
+  // Pagos al equipo (comisión+fijo de closers, tarifa de técnicos) registrados
+  // como gasto profesional. Se identifican por persona + mes para poder marcar
+  // o deshacer el pago de un mes concreto sin duplicar registros.
+  const pagoRegistrado = (persona, mesKey) =>
+    gastosProfesionales.find((g) => g.origen === 'equipo' && g.personaNombre === persona.nombre && g.mes === mesKey)
+
+  const marcarPago = (persona, importe, mesKey) => {
+    if (typeof setGastosProfesionales !== 'function') return
+    setGastosProfesionales((prev) => [
+      {
+        id: `gasto-equipo-${persona.nombre}-${mesKey}`,
+        fecha: todayISO(),
+        concepto: `Pago equipo - ${persona.nombre} (${mesLabel(mesKey)})`,
+        importe: Number(importe) || 0,
+        categoria: esCloser(persona) ? 'Comisión closer' : 'Pago técnico',
+        notas: '',
+        origen: 'equipo',
+        personaNombre: persona.nombre,
+        mes: mesKey,
+      },
+      ...prev,
+    ])
+  }
+
+  const deshacerPago = (persona, mesKey) => {
+    if (typeof setGastosProfesionales !== 'function') return
+    setGastosProfesionales((prev) => prev.filter((g) => !(g.origen === 'equipo' && g.personaNombre === persona.nombre && g.mes === mesKey)))
+  }
 
   const comisionPorCloser = useMemo(() => {
     const mesActual = new Date().toISOString().slice(0, 7) // YYYY-MM
@@ -600,6 +645,30 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     <div className="team-activity-kpi"><span>Checklist completo</span><strong>{act.checklistCompleto}/{act.totalLeads}</strong></div>
                   </div>
 
+                  {(() => {
+                    const mesKey = mesActualISO()
+                    const importe = comisionPorCloser[detailCloser.nombre]?.totalMes || 0
+                    const pago = pagoRegistrado(detailCloser, mesKey)
+                    return (
+                      <div className="team-payment-box">
+                        <div>
+                          <p className="team-payment-label">Pago de {mesLabel(mesKey)}</p>
+                          <p className="team-payment-amount">{importe.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</p>
+                        </div>
+                        {pago ? (
+                          <div className="team-payment-actions">
+                            <span className="status-pill status-activo">✅ Pagado el {pago.fecha}</span>
+                            <button type="button" className="secondary-action" onClick={() => deshacerPago(detailCloser, mesKey)}>Deshacer</button>
+                          </div>
+                        ) : (
+                          <button type="button" className="primary-action" onClick={() => marcarPago(detailCloser, importe, mesKey)}>
+                            Marcar como pagado
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })()}
+
                   <h4 className="team-activity-subtitle">Historial mensual (comisión + fijo)</h4>
                   <div className="team-history-table">
                     <div className="team-history-row team-history-header">
@@ -663,6 +732,30 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     <div className="team-activity-kpi"><span>Progreso semana actual</span><strong>{seg?.porcentajeGeneral != null ? `${seg.porcentajeGeneral}%` : '—'}</strong></div>
                     <div className="team-activity-kpi"><span>Última revisión</span><strong style={{ fontSize: 13 }}>{seg?.ultimaRevisionGeneral || 'Sin revisiones'}</strong></div>
                   </div>
+
+                  {(() => {
+                    const mesKey = mesActualISO()
+                    const importe = act.totalMes || 0
+                    const pago = pagoRegistrado(detailTecnico, mesKey)
+                    return (
+                      <div className="team-payment-box">
+                        <div>
+                          <p className="team-payment-label">Pago de {mesLabel(mesKey)}</p>
+                          <p className="team-payment-amount">{importe.toLocaleString('es-ES')}€</p>
+                        </div>
+                        {pago ? (
+                          <div className="team-payment-actions">
+                            <span className="status-pill status-activo">✅ Pagado el {pago.fecha}</span>
+                            <button type="button" className="secondary-action" onClick={() => deshacerPago(detailTecnico, mesKey)}>Deshacer</button>
+                          </div>
+                        ) : (
+                          <button type="button" className="primary-action" onClick={() => marcarPago(detailTecnico, importe, mesKey)}>
+                            Marcar como pagado
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })()}
 
                   <h4 className="team-activity-subtitle">Historial mensual de pago</h4>
                   <div className="team-history-table">

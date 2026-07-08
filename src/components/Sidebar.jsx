@@ -6,6 +6,7 @@ export default function Sidebar({ activeView, onNavigate }) {
     { id: 'ventas', icon: '💰', label: 'Ventas' },
     { id: 'clientes', icon: '👥', label: 'Clientes' },
     { id: 'equipo', icon: '👔', label: 'Equipo' },
+    { id: 'finanzas', icon: '💶', label: 'Finanzas' },
     { id: 'onboarding', icon: '✨', label: 'Onboarding' },
     { id: 'operaciones', icon: '⚙️', label: 'Operaciones' },
   ]
