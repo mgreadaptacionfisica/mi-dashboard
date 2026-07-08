@@ -148,7 +148,7 @@ export default function Onboarding() {
       <header className="topbar onboarding-topbar">
         <div>
           <div className="topbar-title">Onboarding</div>
-          <div className="topbar-subtitle">Tu camino de arranque con MG Readaptación Física</div>
+          <div className="topbar-subtitle">Tu camino de arranque con MG Group</div>
         </div>
         <div className="topbar-right">
           <span className="topbar-pill">{progress}% completado</span>
@@ -158,9 +158,9 @@ export default function Onboarding() {
       <main className="page-content onboarding-page">
         <section className="onboarding-hero">
           <div className="onboarding-hero-copy">
-            <img src={Logo} alt="MG Readaptación Física" className="onboarding-logo" />
-            <span className="hero-eyebrow">MG Readaptación Física • onboarding</span>
-            <h2>Bienvenido/a a MG Readaptación Física</h2>
+            <img src={Logo} alt="MG Group" className="onboarding-logo" />
+            <span className="hero-eyebrow">MG Group • onboarding</span>
+            <h2>Bienvenido/a a MG Group</h2>
             <p>
               "De la lesión al rendimiento." Este no es solo un programa de ejercicios: es un
               proceso estructurado para que vuelvas a entrenar, competir y vivir con confianza.
