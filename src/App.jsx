@@ -20,6 +20,7 @@ const clientesDataPromise = () => import('./data/clientes')
 const teamDataPromise = () => import('./data/team')
 const ventasDataPromise = () => import('./data/ventas')
 const seguimientosDataPromise = () => import('./data/seguimientos')
+const settingDataPromise = () => import('./data/setting')
 
 function PlaceholderView({ name }) {
   return (
@@ -53,16 +54,18 @@ function InternalApp() {
   const [team, setTeam] = useState([])
   const [ventas, setVentas] = useState([])
   const [seguimientos, setSeguimientos] = useState([])
+  const [setting, setSetting] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([clientesDataPromise(), teamDataPromise(), ventasDataPromise(), seguimientosDataPromise()]).then(([c, t, v, s]) => {
+    Promise.all([clientesDataPromise(), teamDataPromise(), ventasDataPromise(), seguimientosDataPromise(), settingDataPromise()]).then(([c, t, v, s, st]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
       setVentas(v.default)
       setSeguimientos(s.default)
+      setSetting(st.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -71,7 +74,7 @@ function InternalApp() {
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':    return <Dashboard />
-      case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} />
+      case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} />
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
       case 'onboarding':   return <Onboarding />

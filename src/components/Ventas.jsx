@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import SERVICIOS from '../data/servicios'
+import SettingInstagram from './SettingInstagram'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -69,7 +70,8 @@ function LeadCard({ lead, onOpen }) {
   )
 }
 
-export default function Ventas({ ventas, setVentas, team, setClientes }) {
+export default function Ventas({ ventas, setVentas, team, setClientes, setting, setSetting }) {
+  const [activeTab, setActiveTab] = useState('pipeline')
   const [showNewLead, setShowNewLead] = useState(false)
   const [leadForm, setLeadForm] = useState(initialLeadForm)
   const [activeLeadId, setActiveLeadId] = useState(null)
@@ -305,14 +307,39 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
       <header className="topbar">
         <div>
           <div className="topbar-title">Ventas</div>
-          <div className="topbar-subtitle">Pipeline comercial: de la llamada al cliente</div>
+          <div className="topbar-subtitle">
+            {activeTab === 'pipeline' ? 'Pipeline comercial: de la llamada al cliente' : 'Setting de Instagram: bienvenidas y follow-ups'}
+          </div>
         </div>
         <div className="topbar-right">
-          <button className="add-client-btn" onClick={() => setShowNewLead(true)}>＋ Nuevo lead</button>
+          {activeTab === 'pipeline' && (
+            <button className="add-client-btn" onClick={() => setShowNewLead(true)}>＋ Nuevo lead</button>
+          )}
         </div>
       </header>
 
       <main className="page-content">
+        <div className="tabs-bar">
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'pipeline' ? 'tab-btn-active' : ''}`}
+            onClick={() => setActiveTab('pipeline')}
+          >
+            📞 Pipeline
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'setting' ? 'tab-btn-active' : ''}`}
+            onClick={() => setActiveTab('setting')}
+          >
+            👋 Setting Instagram
+          </button>
+        </div>
+
+        {activeTab === 'setting' ? (
+          <SettingInstagram setting={setting} setSetting={setSetting} />
+        ) : (
+          <>
         <div className="closer-manual-banner">
           <div>
             <p className="closer-manual-title">📄 Manual del Closer</p>
@@ -375,6 +402,8 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
             </div>
           ))}
         </div>
+        </>
+        )}
       </main>
 
       {showNewLead && (

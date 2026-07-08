@@ -1,0 +1,40 @@
+// Biblioteca de mensajes de setting de Instagram (LA SALA).
+// Migrado desde el Excel "LA_SALA_SETTING.xlsx" (hoja "Mensajes").
+// Son textos de referencia para el equipo: no se editan desde el dashboard,
+// solo sirven para saber qué dice cada plantilla N1/N2/N3 usada en el registro diario.
+
+export const MENSAJES_BIENVENIDA = [
+  {
+    id: 'N1',
+    descripcion: 'Probar unas 400 personas',
+    texto: 'Hola! Gracias por sumarte a la cuenta, y espero que te aporte tanto para aprender como para recuperarte de una lesión\n\nPor conocerte un poco mas, la lesión te limita, ¿entrenando o en tu día a día? ¿O ambos?',
+  },
+  {
+    id: 'N2',
+    descripcion: 'Empezar a testear',
+    texto: 'Hola [NOMBRE], soy [TU NOMBRE], encantado/a!\nPor simple curiosidad, y para poder enfocar mejor lo que comparto, ¿estás buscando mejorar en algún aspecto en concreto ahora mismo?',
+  },
+  {
+    id: 'N3',
+    descripcion: 'Tercera opción de testeo y ver datos',
+    texto: 'Buenas [NOMBRE], gracias por seguirme, espero que te esté gustando lo que comparto por aquí.\n¿Quería preguntarte si te interesa más la parte de alimentación o entrenamiento?',
+  },
+]
+
+export const MENSAJES_FUP = [
+  {
+    id: 'N1',
+    descripcion: 'Probar unas 400 personas',
+    texto: 'Buenas de nuevo, no sé si viste el mensaje o dijiste ya le respondo luego, ese luego que dura semanas 😅',
+  },
+  {
+    id: 'N2',
+    descripcion: 'Empezar a testear',
+    texto: 'Hola!! Vengo a resurgir entre los mensajes olvidados 👋 ¿Pudiste leer el último que te envié?',
+  },
+  {
+    id: 'N3',
+    descripcion: 'Tercera opción de testeo y ver datos',
+    texto: 'Buenaaas, ¿qué tal estás?, ¿has podido leer mi mensaje? Estoy por aquí atento, un saludo!',
+  },
+]
