@@ -14,6 +14,18 @@ const initialForm = {
   trabajadores: [],
   fechaInicio: '',
   fechaFin: '',
+  renueva: 'No',
+  formaRenovacion: '',
+  importeRenovacion: '',
+  fechaRenovacion: '',
+}
+
+// El valor "Renueva" de los clientes sincronizados de Notion venía en inglés
+// (Yes/No); lo normalizamos para no duplicar lógica por todo el componente.
+function normalizaRenueva(valor) {
+  const v = (valor || '').toString().trim().toLowerCase()
+  if (v === 'yes' || v === 'sí' || v === 'si' || v === 'true') return 'Sí'
+  return 'No'
 }
 
 function formatDate(value) {
@@ -77,6 +89,7 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
   const [servicio, setServicio] = useState('Todos')
   const [categoria, setCategoria] = useState('Todos')
   const [trabajador, setTrabajador] = useState('Todos')
+  const [renuevaFiltro, setRenuevaFiltro] = useState('Todos')
   const [showModal, setShowModal] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editingIndex, setEditingIndex] = useState(null)
@@ -133,17 +146,19 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
         const matchesCategoria = categoria === 'Todos' || categoriaPrograma(cliente['Servicio contratado']) === categoria
         const matchesTrabajador = trabajador === 'Todos' ||
           (trabajador === 'Sin asignar' ? cliente.Trabajadores.length === 0 : cliente.Trabajadores.includes(trabajador))
+        const matchesRenueva = renuevaFiltro === 'Todos' || normalizaRenueva(cliente.Renueva) === renuevaFiltro
 
-        return matchesSearch && matchesEstado && matchesServicio && matchesCategoria && matchesTrabajador
+        return matchesSearch && matchesEstado && matchesServicio && matchesCategoria && matchesTrabajador && matchesRenueva
       })
-  }, [search, estado, servicio, categoria, trabajador, clientesConTrabajador])
+  }, [search, estado, servicio, categoria, trabajador, renuevaFiltro, clientesConTrabajador])
 
   const stats = useMemo(() => {
     const activos = clientesConTrabajador.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO').length
     const noActivos = clientesConTrabajador.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'NO ACTIVO').length
     const readaptate = clientesConTrabajador.filter(c => categoriaPrograma(c['Servicio contratado']) === 'Programa Readáptate').length
     const previene = clientesConTrabajador.filter(c => categoriaPrograma(c['Servicio contratado']) === 'Programa Previene').length
-    return { activos, noActivos, readaptate, previene }
+    const renuevan = clientesConTrabajador.filter(c => normalizaRenueva(c.Renueva) === 'Sí').length
+    return { activos, noActivos, readaptate, previene, renuevan }
   }, [clientesConTrabajador])
 
   const handleSubmit = (event) => {
@@ -166,6 +181,10 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
       Trabajadores: trabajadoresFinal,
       'Fecha inicio': formData.fechaInicio,
       'Fecha fin': formData.fechaFin,
+      Renueva: formData.renueva,
+      'Forma de renovación': formData.renueva === 'Sí' ? formData.formaRenovacion : '',
+      'Importe renovación': formData.renueva === 'Sí' ? formData.importeRenovacion : '',
+      'Fecha renovación': formData.renueva === 'Sí' ? formData.fechaRenovacion : '',
     }
 
     if (isEditing && editingIndex !== null) {
@@ -201,6 +220,10 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
       trabajadores: cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : []),
       fechaInicio: cliente['Fecha inicio'] || '',
       fechaFin: cliente['Fecha fin'] || '',
+      renueva: normalizaRenueva(cliente.Renueva),
+      formaRenovacion: cliente['Forma de renovación'] || '',
+      importeRenovacion: cliente['Importe renovación'] || '',
+      fechaRenovacion: cliente['Fecha renovación'] || '',
     })
     setIsEditing(true)
     setEditingIndex(index)
@@ -277,6 +300,18 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
               <span className="badge-text">del total</span>
             </div>
           </div>
+
+          <div className="kpi-card">
+            <div className="kpi-card-header">
+              <span className="kpi-card-label">Renuevan</span>
+              <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)' }}>🔄</div>
+            </div>
+            <div className="kpi-card-value">{stats.renuevan}</div>
+            <div className="kpi-card-footer">
+              <span className="badge-up">▲ {Math.round((stats.renuevan / Math.max(clientes.length, 1)) * 100)}%</span>
+              <span className="badge-text">del total</span>
+            </div>
+          </div>
         </div>
 
         <div className="card" style={{ marginBottom: 16 }}>
@@ -332,6 +367,11 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
             <select className="filter-select" value={trabajador} onChange={e => setTrabajador(e.target.value)}>
               {trabajadorOptions.map(option => <option key={option} value={option}>{option}</option>)}
             </select>
+            <select className="filter-select" value={renuevaFiltro} onChange={e => setRenuevaFiltro(e.target.value)}>
+              <option value="Todos">Renueva: Todos</option>
+              <option value="Sí">Renueva: Sí</option>
+              <option value="No">Renueva: No</option>
+            </select>
           </div>
         </div>
 
@@ -353,6 +393,7 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
                   <th>Profesionales</th>
                   <th>Inicio</th>
                   <th>Fin</th>
+                  <th>Renueva</th>
                   <th>Forma de pago</th>
                   <th>Email</th>
                   <th>Acciones</th>
@@ -374,6 +415,16 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
                     </td>
                     <td>{formatDate(cliente['Fecha inicio'])}</td>
                     <td>{formatDate(cliente['Fecha fin'])}</td>
+                    <td>
+                      <span className={`status-pill ${normalizaRenueva(cliente.Renueva) === 'Sí' ? 'status-activo' : 'status-inactivo'}`}>
+                        {normalizaRenueva(cliente.Renueva)}
+                      </span>
+                      {normalizaRenueva(cliente.Renueva) === 'Sí' && cliente['Forma de renovación'] && (
+                        <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 3 }}>
+                          {cliente['Forma de renovación']}{cliente['Importe renovación'] ? ` · ${cliente['Importe renovación']}€` : ''}
+                        </div>
+                      )}
+                    </td>
                     <td>{cliente['Forma de pago'] || '—'}</td>
                     <td style={{ color: 'var(--color-text-secondary)' }}>{cliente.Email || '—'}</td>
                     <td>
@@ -479,6 +530,36 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
                 value={formData.fechaFin}
                 onChange={event => setFormData({ ...formData, fechaFin: event.target.value })}
               />
+              <label className="lead-detail-label">¿Renueva?</label>
+              <select
+                value={formData.renueva}
+                onChange={event => setFormData({ ...formData, renueva: event.target.value })}
+              >
+                <option value="No">No</option>
+                <option value="Sí">Sí</option>
+              </select>
+              {formData.renueva === 'Sí' && (
+                <div className="lead-venta-form">
+                  <p className="plan-subtitle-inline">Datos de la renovación</p>
+                  {/* TODO: sustituir por desplegable fijo cuando Raúl pase las formas de renovación reales */}
+                  <input
+                    placeholder="Forma de renovación (ej: renovación trimestral...)"
+                    value={formData.formaRenovacion}
+                    onChange={event => setFormData({ ...formData, formaRenovacion: event.target.value })}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Importe de la renovación (€)"
+                    value={formData.importeRenovacion}
+                    onChange={event => setFormData({ ...formData, importeRenovacion: event.target.value })}
+                  />
+                  <input
+                    placeholder="Fecha de renovación"
+                    value={formData.fechaRenovacion}
+                    onChange={event => setFormData({ ...formData, fechaRenovacion: event.target.value })}
+                  />
+                </div>
+              )}
               <div className="modal-actions">
                 <button type="button" className="secondary-action" onClick={() => setShowModal(false)}>Cancelar</button>
                 <button type="submit" className="primary-action">Guardar cliente</button>
