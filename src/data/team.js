@@ -31,6 +31,7 @@ const team = {
       rol: 'Closer',
       email: 'daniel.soto@mg-group.com',
       telefono: '+34 600 567 890',
+      comision: 20,
     },
     {
       nombre: 'Sara Vidal',

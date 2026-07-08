@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 
-function PersonCard({ persona, assignedCount, onEdit, onDelete }) {
+const esCloser = (persona) => (persona.rol || '').toLowerCase().includes('closer')
+
+function PersonCard({ persona, assignedCount, comisionInfo, onEdit, onDelete }) {
   return (
     <div className="team-card">
       <div className="team-card-header">
@@ -12,7 +14,26 @@ function PersonCard({ persona, assignedCount, onEdit, onDelete }) {
       <div className="team-card-body">
         <p><strong>Email:</strong> {persona.email}</p>
         <p><strong>Teléfono:</strong> {persona.telefono}</p>
+        {esCloser(persona) && (
+          <p><strong>Comisión:</strong> {persona.comision != null ? `${persona.comision}%` : 'Sin definir'}</p>
+        )}
       </div>
+      {comisionInfo && (
+        <div className="team-commission-box">
+          <div className="team-commission-row">
+            <span>Ventas este mes</span>
+            <strong>{comisionInfo.ventasMes}</strong>
+          </div>
+          <div className="team-commission-row">
+            <span>Facturado este mes</span>
+            <strong>{comisionInfo.facturadoMes.toLocaleString('es-ES')}€</strong>
+          </div>
+          <div className="team-commission-row team-commission-highlight">
+            <span>Comisión a pagar</span>
+            <strong>{comisionInfo.comisionMes.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</strong>
+          </div>
+        </div>
+      )}
       <div className="team-card-actions">
         {typeof onEdit === 'function' && (
           <button className="team-edit-btn" type="button" title="Editar miembro del equipo" onClick={onEdit}>✎ Editar</button>
@@ -30,7 +51,7 @@ function PersonCard({ persona, assignedCount, onEdit, onDelete }) {
   )
 }
 
-export default function Equipo({ team, setTeam, clientes }) {
+export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
   const [showModal, setShowModal] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [formData, setFormData] = useState({
@@ -39,6 +60,7 @@ export default function Equipo({ team, setTeam, clientes }) {
     email: '',
     telefono: '',
     area: 'tecnico',
+    comision: '',
   })
   const isEditing = Boolean(editingMember)
 
@@ -51,6 +73,22 @@ export default function Equipo({ team, setTeam, clientes }) {
 
   const tecnicoCount = team.tecnico.length
   const ventasCount = team.ventas.length
+
+  const comisionPorCloser = useMemo(() => {
+    const mesActual = new Date().toISOString().slice(0, 7) // YYYY-MM
+    return team.ventas.reduce((acc, persona) => {
+      if (!esCloser(persona)) return acc
+      const ventasDelMes = ventas.filter((lead) =>
+        lead.closer === persona.nombre &&
+        lead.etapa === 'ganada' &&
+        lead.venta?.fechaCierre?.startsWith(mesActual)
+      )
+      const facturadoMes = ventasDelMes.reduce((sum, lead) => sum + (Number(lead.venta?.importe) || 0), 0)
+      const comisionMes = facturadoMes * ((Number(persona.comision) || 0) / 100)
+      acc[persona.nombre] = { ventasMes: ventasDelMes.length, facturadoMes, comisionMes }
+      return acc
+    }, {})
+  }, [team, ventas])
 
   const deleteMember = (area, index) => {
     setTeam(prev => ({
@@ -72,6 +110,7 @@ export default function Equipo({ team, setTeam, clientes }) {
       rol: formData.rol || (formData.area === 'ventas' ? 'Closer' : 'Especialista'),
       email: formData.email || 'nuevo@mg-group.com',
       telefono: formData.telefono || '+34 600 000 000',
+      ...(formData.area === 'ventas' ? { comision: formData.comision === '' ? undefined : Number(formData.comision) } : {}),
     }
 
     if (isEditing && editingMember) {
@@ -88,13 +127,13 @@ export default function Equipo({ team, setTeam, clientes }) {
       }))
     }
 
-    setFormData({ nombre: '', rol: '', email: '', telefono: '', area: 'tecnico' })
+    setFormData({ nombre: '', rol: '', email: '', telefono: '', area: 'tecnico', comision: '' })
     setEditingMember(null)
     setShowModal(false)
   }
 
   const openNewMemberModal = (area = 'tecnico') => {
-    setFormData({ nombre: '', rol: '', email: '', telefono: '', area })
+    setFormData({ nombre: '', rol: '', email: '', telefono: '', area, comision: '' })
     setEditingMember(null)
     setShowModal(true)
   }
@@ -107,6 +146,7 @@ export default function Equipo({ team, setTeam, clientes }) {
       email: persona.email,
       telefono: persona.telefono,
       area,
+      comision: persona.comision != null ? String(persona.comision) : '',
     })
     setEditingMember({ area, index })
     setShowModal(true)
@@ -162,6 +202,7 @@ export default function Equipo({ team, setTeam, clientes }) {
               <PersonCard
                 key={`${persona.nombre}-${index}`}
                 persona={persona}
+                comisionInfo={esCloser(persona) ? comisionPorCloser[persona.nombre] : null}
                 onEdit={() => startEditMember('ventas', index)}
                 onDelete={() => deleteMember('ventas', index)}
               />
@@ -217,6 +258,16 @@ export default function Equipo({ team, setTeam, clientes }) {
                 <option value="tecnico">Técnico</option>
                 <option value="ventas">Ventas</option>
               </select>
+              {formData.area === 'ventas' && (
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="Comisión por venta (%) — solo Closer"
+                  value={formData.comision}
+                  onChange={event => setFormData({ ...formData, comision: event.target.value })}
+                />
+              )}
               <div className="modal-actions">
                 <button type="button" className="secondary-action" onClick={() => setShowModal(false)}>Cancelar</button>
                 <button type="submit" className="primary-action">Guardar miembro</button>

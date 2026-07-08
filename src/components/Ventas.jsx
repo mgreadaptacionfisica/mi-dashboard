@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react'
-
-// TODO: sustituir por la lista real de servicios cuando la definas.
-const SERVICIOS = ['Mensual', 'Trimestral', 'Cuatrimestral', 'Semestral', 'Anual']
+import SERVICIOS from '../data/servicios'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -28,11 +26,13 @@ const initialLeadForm = {
 }
 
 const initialVentaForm = {
-  servicio: SERVICIOS[1],
+  servicioId: SERVICIOS[0].id,
+  otroNombre: '',
   tipoCliente: 'HIGH TICKET',
-  importe: '',
+  importe: SERVICIOS[0].precio,
   formaPago: 'Stripe',
-  plan: 'COMPLETO',
+  tipoPago: 'unico',
+  numPlazos: '3',
   fechaInicio: '',
 }
 
@@ -213,19 +213,35 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
     }
   }
 
+  const handleServicioChange = (id) => {
+    const encontrado = SERVICIOS.find((s) => s.id === id)
+    setVentaForm((prev) => ({
+      ...prev,
+      servicioId: id,
+      importe: encontrado ? encontrado.precio : prev.importe,
+    }))
+  }
+
   const confirmarVenta = (event) => {
     event.preventDefault()
     if (!activeLead) return
+
+    const servicioSeleccionado = SERVICIOS.find((s) => s.id === ventaForm.servicioId)
+    const servicioNombre = ventaForm.servicioId === 'otro'
+      ? (ventaForm.otroNombre.trim() || 'Servicio personalizado')
+      : (servicioSeleccionado?.nombre || '')
+    const importeNum = Number(ventaForm.importe) || 0
+    const pagoLabel = ventaForm.tipoPago === 'unico' ? 'PAGO ÚNICO' : `${ventaForm.numPlazos} PLAZOS`
 
     const nuevoCliente = {
       Nombre: activeLead.nombre,
       Email: activeLead.email,
       'Tipo de cliente': ventaForm.tipoCliente,
-      'Servicio contratado': ventaForm.servicio,
+      'Servicio contratado': servicioNombre,
       'Estado del cliente': 'ACTIVO',
       'Forma de pago': ventaForm.formaPago,
-      Pago: ventaForm.plan,
-      'Primer pago': ventaForm.importe,
+      Pago: pagoLabel,
+      'Primer pago': importeNum,
       Trabajador: '',
       'Fecha inicio': ventaForm.fechaInicio || todayISO(),
       'Fecha fin': '',
@@ -239,7 +255,14 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
     updateLead(activeLead.id, {
       etapa: 'ganada',
       compraEnLlamada: activeLead.etapa === 'realizada' ? true : activeLead.compraEnLlamada,
-      venta: { ...ventaForm, fechaCierre: todayISO() },
+      venta: {
+        servicio: servicioNombre,
+        importe: importeNum,
+        tipoPago: ventaForm.tipoPago,
+        numPlazos: ventaForm.tipoPago === 'plazos' ? Number(ventaForm.numPlazos) : null,
+        formaPago: ventaForm.formaPago,
+        fechaCierre: todayISO(),
+      },
     })
 
     setShowVentaForm(false)
@@ -479,21 +502,45 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
                     <option value="HIGH TICKET">HIGH TICKET</option>
                     <option value="LOW TICKET">LOW TICKET</option>
                   </select>
-                  <select value={ventaForm.servicio} onChange={(e) => setVentaForm({ ...ventaForm, servicio: e.target.value })}>
-                    {SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
+
+                  <label className="lead-detail-label">Programa</label>
+                  <select value={ventaForm.servicioId} onChange={(e) => handleServicioChange(e.target.value)}>
+                    {SERVICIOS.map((s) => (
+                      <option key={s.id} value={s.id}>{s.nombre} — {s.precio}€</option>
+                    ))}
+                    <option value="otro">Otro (personalizado)</option>
                   </select>
-                  <input placeholder="Importe (€)" value={ventaForm.importe}
+
+                  {ventaForm.servicioId === 'otro' && (
+                    <input placeholder="Nombre del servicio" value={ventaForm.otroNombre}
+                      onChange={(e) => setVentaForm({ ...ventaForm, otroNombre: e.target.value })} />
+                  )}
+
+                  <label className="lead-detail-label">Importe (€)</label>
+                  <input type="number" placeholder="Importe (€)" value={ventaForm.importe}
                     onChange={(e) => setVentaForm({ ...ventaForm, importe: e.target.value })} />
+
                   <select value={ventaForm.formaPago} onChange={(e) => setVentaForm({ ...ventaForm, formaPago: e.target.value })}>
                     <option>Stripe</option>
                     <option>Bizum</option>
                     <option>Transferencia</option>
                   </select>
-                  <select value={ventaForm.plan} onChange={(e) => setVentaForm({ ...ventaForm, plan: e.target.value })}>
-                    <option value="COMPLETO">Pago completo</option>
-                    <option value="2 PLAZOS">2 plazos</option>
-                    <option value="3 PLAZOS">3 plazos</option>
+
+                  <label className="lead-detail-label">Forma de cobro</label>
+                  <select value={ventaForm.tipoPago} onChange={(e) => setVentaForm({ ...ventaForm, tipoPago: e.target.value })}>
+                    <option value="unico">Pago único</option>
+                    <option value="plazos">Pago a plazos</option>
                   </select>
+
+                  {ventaForm.tipoPago === 'plazos' && (
+                    <select value={ventaForm.numPlazos} onChange={(e) => setVentaForm({ ...ventaForm, numPlazos: e.target.value })}>
+                      <option value="3">3 plazos</option>
+                      <option value="6">6 plazos</option>
+                      <option value="9">9 plazos</option>
+                      <option value="12">12 plazos</option>
+                    </select>
+                  )}
+
                   <input type="date" placeholder="Fecha de inicio" value={ventaForm.fechaInicio}
                     onChange={(e) => setVentaForm({ ...ventaForm, fechaInicio: e.target.value })} />
                   <div className="modal-actions">
@@ -523,7 +570,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
 
               {activeLead.etapa === 'ganada' && activeLead.venta && (
                 <div className="lead-venta-summary">
-                  ✅ Vendido: {activeLead.venta.servicio} · {activeLead.venta.importe}€ · {activeLead.venta.plan} · cerrado el {activeLead.venta.fechaCierre}
+                  ✅ Vendido: {activeLead.venta.servicio} · {activeLead.venta.importe}€ · {activeLead.venta.tipoPago === 'unico' ? 'pago único' : `${activeLead.venta.numPlazos} plazos`} · cerrado el {activeLead.venta.fechaCierre}
                 </div>
               )}
               {activeLead.etapa === 'perdida' && (
