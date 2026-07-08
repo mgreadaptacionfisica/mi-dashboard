@@ -1861,6 +1861,36 @@ tbody td {
   color: var(--color-text-secondary);
 }
 
+.seguimiento-revision-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 138, 65, 0.06);
+  border: 1px solid rgba(0, 138, 65, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.seguimiento-revision-form select {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-size: 12.5px;
+  background: #fff;
+}
+
+.seguimiento-hora-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.seguimiento-hora-picker select {
+  padding: 7px 6px;
+}
+
 textarea {
   width: 100%;
   border: 1px solid var(--color-border);

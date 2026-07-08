@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
-import { semanaActualISO, progresoSemana, ultimaRevisionCliente } from '../utils/seguimientoHelpers'
+import { semanaActualISO, progresoSemana, ultimaRevisionCliente, semanaVacia, DIAS_SEMANA } from '../utils/seguimientoHelpers'
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+const HORAS_12 = Array.from({ length: 12 }, (_, i) => String(i + 1))
+const MINUTOS = ['00', '15', '30', '45']
 
 const esCloser = (persona) => (persona.rol || '').toLowerCase().includes('closer')
 
@@ -140,6 +147,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
   const [detailCloser, setDetailCloser] = useState(null)
   const [detailTecnico, setDetailTecnico] = useState(null)
   const [seguimientoClienteAbierto, setSeguimientoClienteAbierto] = useState(null)
+  const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', persona: '', dia: 'lunes', hora: '10', minuto: '00', ampm: 'AM' })
   const [formData, setFormData] = useState({
     nombre: '',
     rol: '',
@@ -304,14 +312,63 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
         return { cliente, progreso, ultimaRevision: ultima }
       })
 
+      const revisionesRecientes = clientesAsignados
+        .flatMap((cliente) =>
+          seguimientos
+            .filter((s) => s.clienteNombre === cliente.Nombre)
+            .flatMap((s) => (s.revisiones || []).map((r) => ({ ...r, clienteNombre: cliente.Nombre })))
+        )
+        .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))
+        .slice(0, 15)
+
       acc[persona.nombre] = {
         resumenClientes,
         porcentajeGeneral: totalTareas > 0 ? Math.round((totalRevisadas / totalTareas) * 100) : null,
         ultimaRevisionGeneral,
+        revisionesRecientes,
       }
       return acc
     }, {})
   }, [team, seguimientos, actividadPorTecnico])
+
+  const registrarRevisionManual = (event) => {
+    event.preventDefault()
+    if (!revisionForm.clienteNombre || !revisionForm.persona) return
+    const semanaActual = semanaActualISO()
+    const horaTexto = `${revisionForm.hora}:${revisionForm.minuto} ${revisionForm.ampm}`
+    const nuevaRevision = { persona: revisionForm.persona, dia: revisionForm.dia, hora: horaTexto, fecha: todayISO() }
+
+    setSeguimientos((prev) => {
+      const existe = prev.some((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual)
+      if (existe) {
+        return prev.map((s) =>
+          (s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual)
+            ? { ...s, revisiones: [nuevaRevision, ...(s.revisiones || [])] }
+            : s
+        )
+      }
+      return [...prev, {
+        clienteNombre: revisionForm.clienteNombre,
+        semana: semanaActual,
+        dias: semanaVacia(),
+        comentarios: '',
+        revisiones: [nuevaRevision],
+      }]
+    })
+  }
+
+  const abrirDetalleTecnico = (persona) => {
+    const clientesDePersona = actividadPorTecnico[persona.nombre]?.clientesAsignados || []
+    setRevisionForm({
+      clienteNombre: clientesDePersona[0]?.Nombre || '',
+      persona: persona.nombre,
+      dia: 'lunes',
+      hora: '10',
+      minuto: '00',
+      ampm: 'AM',
+    })
+    setDetailTecnico(persona)
+  }
 
   const deleteMember = (area, index) => {
     setTeam(prev => ({
@@ -409,7 +466,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                 pagoInfo={actividadPorTecnico[persona.nombre]}
                 onEdit={() => startEditMember('tecnico', index)}
                 onDelete={() => deleteMember('tecnico', index)}
-                onDetail={() => setDetailTecnico(persona)}
+                onDetail={() => abrirDetalleTecnico(persona)}
               />
             ))}
           </div>
@@ -646,6 +703,48 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                       </li>
                     ))}
                   </ul>
+
+                  {typeof setSeguimientos === 'function' && (
+                    <>
+                      <h4 className="team-activity-subtitle">Registrar última revisión</h4>
+                      <form className="seguimiento-revision-form" onSubmit={registrarRevisionManual}>
+                        <select value={revisionForm.clienteNombre} onChange={(e) => setRevisionForm({ ...revisionForm, clienteNombre: e.target.value })}>
+                          <option value="">Selecciona cliente</option>
+                          {(act.clientesAsignados || []).map((c) => <option key={c.Nombre} value={c.Nombre}>{c.Nombre}</option>)}
+                        </select>
+                        <select value={revisionForm.persona} onChange={(e) => setRevisionForm({ ...revisionForm, persona: e.target.value })}>
+                          {team.tecnico.map((p) => <option key={p.nombre} value={p.nombre}>{p.nombre}</option>)}
+                        </select>
+                        <select value={revisionForm.dia} onChange={(e) => setRevisionForm({ ...revisionForm, dia: e.target.value })}>
+                          {DIAS_SEMANA.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+                        </select>
+                        <div className="seguimiento-hora-picker">
+                          <select value={revisionForm.hora} onChange={(e) => setRevisionForm({ ...revisionForm, hora: e.target.value })}>
+                            {HORAS_12.map((h) => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                          <span>:</span>
+                          <select value={revisionForm.minuto} onChange={(e) => setRevisionForm({ ...revisionForm, minuto: e.target.value })}>
+                            {MINUTOS.map((m) => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                          <select value={revisionForm.ampm} onChange={(e) => setRevisionForm({ ...revisionForm, ampm: e.target.value })}>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                        </div>
+                        <button type="submit" className="primary-action">Registrar</button>
+                      </form>
+
+                      {seg?.revisionesRecientes?.length > 0 && (
+                        <ul className="lead-log-list" style={{ marginTop: 10 }}>
+                          {seg.revisionesRecientes.map((r, i) => (
+                            <li key={i}>
+                              <strong>{r.persona}</strong> revisó a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {r.hora} ({r.fecha})
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
                 </div>
               )
             })()}
