@@ -539,6 +539,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
                     <option>Stripe</option>
                     <option>Bizum</option>
                     <option>Transferencia</option>
+                    <option value="HOTMART">HOTMART</option>
                   </select>
 
                   <label className="lead-detail-label">Forma de cobro</label>

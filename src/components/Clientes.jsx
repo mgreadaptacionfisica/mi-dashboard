@@ -362,6 +362,7 @@ export default function Clientes({ clientes, setClientes, team }) {
                 <option value="Stripe">Stripe</option>
                 <option value="Bizum">Bizum</option>
                 <option value="Transferencia">Transferencia</option>
+                <option value="HOTMART">HOTMART</option>
               </select>
               <select value={formData.trabajador} onChange={event => setFormData({ ...formData, trabajador: event.target.value })}>
                 <option value="">Sin asignar</option>
