@@ -19,6 +19,7 @@ const Ventas = lazy(() => import('./components/Ventas'))
 const clientesDataPromise = () => import('./data/clientes')
 const teamDataPromise = () => import('./data/team')
 const ventasDataPromise = () => import('./data/ventas')
+const seguimientosDataPromise = () => import('./data/seguimientos')
 
 function PlaceholderView({ name }) {
   return (
@@ -51,15 +52,17 @@ function InternalApp() {
   const [clientes, setClientes] = useState([])
   const [team, setTeam] = useState([])
   const [ventas, setVentas] = useState([])
+  const [seguimientos, setSeguimientos] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([clientesDataPromise(), teamDataPromise(), ventasDataPromise()]).then(([c, t, v]) => {
+    Promise.all([clientesDataPromise(), teamDataPromise(), ventasDataPromise(), seguimientosDataPromise()]).then(([c, t, v, s]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
       setVentas(v.default)
+      setSeguimientos(s.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -69,7 +72,7 @@ function InternalApp() {
     switch (activeView) {
       case 'dashboard':    return <Dashboard />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} />
-      case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} />
+      case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} />
       case 'onboarding':   return <Onboarding />
       case 'operaciones':  return <PlaceholderView name="Operaciones" />

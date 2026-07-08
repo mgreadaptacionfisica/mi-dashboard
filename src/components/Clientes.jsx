@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import SERVICIOS from '../data/servicios'
+import SeguimientoCliente from './SeguimientoCliente'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
 
@@ -70,7 +71,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function Clientes({ clientes, setClientes, team }) {
+export default function Clientes({ clientes, setClientes, team, seguimientos = [], setSeguimientos }) {
   const [search, setSearch] = useState('')
   const [estado, setEstado] = useState('Todos')
   const [servicio, setServicio] = useState('Todos')
@@ -80,6 +81,7 @@ export default function Clientes({ clientes, setClientes, team }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editingIndex, setEditingIndex] = useState(null)
   const [formData, setFormData] = useState(initialForm)
+  const [seguimientoCliente, setSeguimientoCliente] = useState(null)
 
   const tecnicoNames = useMemo(
     () => team?.tecnico.map(persona => persona.nombre) ?? [],
@@ -382,6 +384,15 @@ export default function Clientes({ clientes, setClientes, team }) {
                       >
                         Editar
                       </button>
+                      {typeof setSeguimientos === 'function' && (
+                        <button
+                          type="button"
+                          className="row-action-btn"
+                          onClick={() => setSeguimientoCliente(cliente)}
+                        >
+                          📋 Seguimiento
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -475,6 +486,15 @@ export default function Clientes({ clientes, setClientes, team }) {
             </form>
           </div>
         </div>
+      )}
+
+      {seguimientoCliente && typeof setSeguimientos === 'function' && (
+        <SeguimientoCliente
+          cliente={seguimientoCliente}
+          seguimientos={seguimientos}
+          setSeguimientos={setSeguimientos}
+          onClose={() => setSeguimientoCliente(null)}
+        />
       )}
     </>
   )
