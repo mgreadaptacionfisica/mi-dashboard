@@ -151,13 +151,17 @@ export default function Clientes({ clientes, setClientes, team }) {
       ? (formData.otroServicio.trim() || 'Servicio personalizado')
       : (servicioSeleccionado?.nombre || '')
 
+    // Si el cliente pasa a NO ACTIVO, se le quita automáticamente
+    // la asignación de profesionales del equipo técnico.
+    const trabajadoresFinal = formData.estado === 'NO ACTIVO' ? [] : (formData.trabajadores || [])
+
     const clienteActualizado = {
       Nombre: formData.nombre,
       Email: formData.email,
       'Servicio contratado': nombreServicio,
       'Estado del cliente': formData.estado,
       'Forma de pago': formData.formaPago,
-      Trabajadores: formData.trabajadores || [],
+      Trabajadores: trabajadoresFinal,
       'Fecha inicio': formData.fechaInicio,
       'Fecha fin': formData.fechaFin,
     }
@@ -425,7 +429,18 @@ export default function Clientes({ clientes, setClientes, team }) {
                   onChange={event => setFormData({ ...formData, otroServicio: event.target.value })}
                 />
               )}
-              <select value={formData.estado} onChange={event => setFormData({ ...formData, estado: event.target.value })}>
+              <select
+                value={formData.estado}
+                onChange={event => {
+                  const nuevoEstado = event.target.value
+                  // Al pasar a NO ACTIVO se desasignan automáticamente los profesionales.
+                  setFormData({
+                    ...formData,
+                    estado: nuevoEstado,
+                    trabajadores: nuevoEstado === 'NO ACTIVO' ? [] : formData.trabajadores,
+                  })
+                }}
+              >
                 <option value="ACTIVO">ACTIVO</option>
                 <option value="NO ACTIVO">NO ACTIVO</option>
               </select>

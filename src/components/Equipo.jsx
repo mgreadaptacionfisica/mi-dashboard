@@ -10,7 +10,50 @@ const ETAPA_LABELS = {
   perdida: 'Perdida',
 }
 
-function PersonCard({ persona, assignedCount, comisionInfo, onEdit, onDelete, onDetail }) {
+// Tarifa por cliente activo del equipo técnico, según volumen total asignado.
+function tarifaPorClientes(n) {
+  if (n <= 20) return 30
+  if (n <= 40) return 35
+  return 40
+}
+
+const MESES_ES = {
+  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
+  julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+}
+
+// Acepta fechas en formato ISO (2026-07-08) o en texto largo en español
+// (7 de junio de 2026), que es como llegan los clientes sincronizados de Notion.
+function parseFechaFlexible(value) {
+  if (!value) return null
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
+  const esLarga = /^(\d{1,2}) de ([a-záéíóúñ]+) de (\d{4})/i.exec(value.trim())
+  if (esLarga) {
+    const mes = MESES_ES[esLarga[2].toLowerCase()]
+    if (mes) return new Date(Number(esLarga[3]), mes - 1, Number(esLarga[1]))
+  }
+  return null
+}
+
+function mesesEntreFechas(inicio, fin) {
+  if (!inicio) return []
+  const start = new Date(inicio.getFullYear(), inicio.getMonth(), 1)
+  const limite = fin || new Date()
+  const end = new Date(limite.getFullYear(), limite.getMonth(), 1)
+  if (end < start) return []
+  const meses = []
+  let cursor = start
+  let guard = 0
+  while (cursor <= end && guard < 240) {
+    meses.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`)
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
+    guard += 1
+  }
+  return meses
+}
+
+function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, onDelete, onDetail }) {
   return (
     <div className="team-card">
       <div className="team-card-header">
@@ -53,6 +96,22 @@ function PersonCard({ persona, assignedCount, comisionInfo, onEdit, onDelete, on
           </div>
         </div>
       )}
+      {pagoInfo && (
+        <div className="team-commission-box">
+          <div className="team-commission-row">
+            <span>Clientes activos</span>
+            <strong>{pagoInfo.activos}</strong>
+          </div>
+          <div className="team-commission-row">
+            <span>Tarifa aplicada</span>
+            <strong>{pagoInfo.tarifaActual}€/cliente</strong>
+          </div>
+          <div className="team-commission-row team-commission-highlight">
+            <span>Total a pagar este mes</span>
+            <strong>{pagoInfo.totalMes.toLocaleString('es-ES')}€</strong>
+          </div>
+        </div>
+      )}
       <div className="team-card-actions">
         {typeof onDetail === 'function' && (
           <button className="team-edit-btn" type="button" title="Ver actividad completa" onClick={onDetail}>📊 Ver actividad</button>
@@ -77,6 +136,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
   const [showModal, setShowModal] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [detailCloser, setDetailCloser] = useState(null)
+  const [detailTecnico, setDetailTecnico] = useState(null)
   const [formData, setFormData] = useState({
     nombre: '',
     rol: '',
@@ -173,6 +233,51 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
     }, {})
   }, [team, ventas])
 
+  // Actividad y pago del equipo técnico: clientes asignados (activos e históricos),
+  // tarifa según volumen y desglose mensual de pago derivado de las fechas del cliente.
+  // Al pasar un cliente a NO ACTIVO se le desasigna automáticamente (ver Clientes.jsx),
+  // y al cambiar de servicio el pago se recalcula solo porque se deriva en vivo de los datos.
+  const actividadPorTecnico = useMemo(() => {
+    return team.tecnico.reduce((acc, persona) => {
+      const clientesAsignados = clientes.filter(cliente => {
+        const asignados = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
+        return asignados.includes(persona.nombre)
+      })
+      const activos = clientesAsignados.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
+      const tarifaActual = tarifaPorClientes(activos.length)
+      const totalMes = activos.length * tarifaActual
+
+      const conteoPorMes = {}
+      clientesAsignados.forEach(cliente => {
+        const inicio = parseFechaFlexible(cliente['Fecha inicio'])
+        if (!inicio) return
+        const estado = (cliente['Estado del cliente'] || '').toUpperCase()
+        const fin = estado === 'NO ACTIVO' ? parseFechaFlexible(cliente['Fecha fin']) : null
+        mesesEntreFechas(inicio, fin).forEach(mes => {
+          conteoPorMes[mes] = (conteoPorMes[mes] || 0) + 1
+        })
+      })
+
+      const historial = Object.keys(conteoPorMes)
+        .sort((a, b) => b.localeCompare(a))
+        .map(mes => {
+          const n = conteoPorMes[mes]
+          const tarifa = tarifaPorClientes(n)
+          return { mes, clientes: n, tarifa, total: n * tarifa }
+        })
+
+      acc[persona.nombre] = {
+        clientesAsignados,
+        totalAsignados: clientesAsignados.length,
+        activos: activos.length,
+        tarifaActual,
+        totalMes,
+        historial,
+      }
+      return acc
+    }, {})
+  }, [team, clientes])
+
   const deleteMember = (area, index) => {
     setTeam(prev => ({
       ...prev,
@@ -266,8 +371,10 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
                 key={`${persona.nombre}-${index}`}
                 persona={persona}
                 assignedCount={clienteCount[persona.nombre] ?? 0}
+                pagoInfo={actividadPorTecnico[persona.nombre]}
                 onEdit={() => startEditMember('tecnico', index)}
                 onDelete={() => deleteMember('tecnico', index)}
+                onDetail={() => setDetailTecnico(persona)}
               />
             ))}
           </div>
@@ -427,6 +534,62 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
                       <li key={lead.id}>
                         <strong>{lead.nombre}</strong> — {ETAPA_LABELS[lead.etapa] || lead.etapa}
                         {lead.fechaAgenda ? ` · ${lead.fechaAgenda}${lead.horaAgenda ? ` ${lead.horaAgenda}` : ''}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
+      {detailTecnico && (
+        <div className="client-modal-overlay" onClick={() => setDetailTecnico(null)}>
+          <div className="client-modal team-activity-modal" onClick={event => event.stopPropagation()}>
+            <div className="card-header">
+              <div>
+                <div className="card-title">{detailTecnico.nombre}</div>
+                <div className="card-subtitle">Actividad y pago</div>
+              </div>
+              <button className="close-modal-btn" onClick={() => setDetailTecnico(null)}>✕</button>
+            </div>
+
+            {(() => {
+              const act = actividadPorTecnico[detailTecnico.nombre]
+              if (!act || act.totalAsignados === 0) {
+                return <p className="lead-log-empty" style={{ padding: '12px 4px' }}>Todavía no tiene clientes asignados.</p>
+              }
+              return (
+                <div className="team-activity-body">
+                  <div className="team-activity-kpis">
+                    <div className="team-activity-kpi"><span>Clientes asignados</span><strong>{act.totalAsignados}</strong></div>
+                    <div className="team-activity-kpi"><span>Activos ahora</span><strong>{act.activos}</strong></div>
+                    <div className="team-activity-kpi"><span>Tarifa actual</span><strong>{act.tarifaActual}€/cliente</strong></div>
+                    <div className="team-activity-kpi"><span>Total a pagar este mes</span><strong>{act.totalMes.toLocaleString('es-ES')}€</strong></div>
+                  </div>
+
+                  <h4 className="team-activity-subtitle">Historial mensual de pago</h4>
+                  <div className="team-history-table">
+                    <div className="team-history-row team-history-header" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                      <span>Mes</span><span>Clientes activos</span><span>Tarifa</span><span>Total</span>
+                    </div>
+                    {act.historial.length === 0 && <p className="lead-log-empty">Sin historial calculable (revisa el formato de las fechas).</p>}
+                    {act.historial.map((row) => (
+                      <div className="team-history-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }} key={row.mes}>
+                        <span>{row.mes}</span>
+                        <span>{row.clientes}</span>
+                        <span>{row.tarifa}€</span>
+                        <strong>{row.total.toLocaleString('es-ES')}€</strong>
+                      </div>
+                    ))}
+                  </div>
+
+                  <h4 className="team-activity-subtitle">Clientes asignados</h4>
+                  <ul className="lead-log-list team-activity-leadlist">
+                    {act.clientesAsignados.map((cliente, i) => (
+                      <li key={i}>
+                        <strong>{cliente.Nombre}</strong> — {cliente['Servicio contratado'] || 'Sin servicio'} · {cliente['Estado del cliente'] || 'Sin estado'}
                       </li>
                     ))}
                   </ul>
