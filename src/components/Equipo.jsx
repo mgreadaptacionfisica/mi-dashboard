@@ -2,7 +2,15 @@ import { useMemo, useState } from 'react'
 
 const esCloser = (persona) => (persona.rol || '').toLowerCase().includes('closer')
 
-function PersonCard({ persona, assignedCount, comisionInfo, onEdit, onDelete }) {
+const ETAPA_LABELS = {
+  agendada: 'Agendada',
+  realizada: 'Llamada realizada',
+  seguimiento: 'Seguimiento',
+  ganada: 'Ganada',
+  perdida: 'Perdida',
+}
+
+function PersonCard({ persona, assignedCount, comisionInfo, onEdit, onDelete, onDetail }) {
   return (
     <div className="team-card">
       <div className="team-card-header">
@@ -15,7 +23,10 @@ function PersonCard({ persona, assignedCount, comisionInfo, onEdit, onDelete }) 
         <p><strong>Email:</strong> {persona.email}</p>
         <p><strong>Teléfono:</strong> {persona.telefono}</p>
         {esCloser(persona) && (
-          <p><strong>Comisión:</strong> {persona.comision != null ? `${persona.comision}%` : 'Sin definir'}</p>
+          <>
+            <p><strong>Comisión:</strong> {persona.comision != null ? `${persona.comision}%` : 'Sin definir'}</p>
+            <p><strong>Fijo mensual:</strong> {persona.fijo ? `${persona.fijo}€` : 'Sin definir'}</p>
+          </>
         )}
       </div>
       {comisionInfo && (
@@ -28,13 +39,24 @@ function PersonCard({ persona, assignedCount, comisionInfo, onEdit, onDelete }) 
             <span>Facturado este mes</span>
             <strong>{comisionInfo.facturadoMes.toLocaleString('es-ES')}€</strong>
           </div>
-          <div className="team-commission-row team-commission-highlight">
-            <span>Comisión a pagar</span>
+          <div className="team-commission-row">
+            <span>Comisión</span>
             <strong>{comisionInfo.comisionMes.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</strong>
+          </div>
+          <div className="team-commission-row">
+            <span>Fijo mensual</span>
+            <strong>{comisionInfo.fijo.toLocaleString('es-ES')}€</strong>
+          </div>
+          <div className="team-commission-row team-commission-highlight">
+            <span>Total a pagar este mes</span>
+            <strong>{comisionInfo.totalMes.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</strong>
           </div>
         </div>
       )}
       <div className="team-card-actions">
+        {typeof onDetail === 'function' && (
+          <button className="team-edit-btn" type="button" title="Ver actividad completa" onClick={onDetail}>📊 Ver actividad</button>
+        )}
         {typeof onEdit === 'function' && (
           <button className="team-edit-btn" type="button" title="Editar miembro del equipo" onClick={onEdit}>✎ Editar</button>
         )}
@@ -54,6 +76,7 @@ function PersonCard({ persona, assignedCount, comisionInfo, onEdit, onDelete }) 
 export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
   const [showModal, setShowModal] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
+  const [detailCloser, setDetailCloser] = useState(null)
   const [formData, setFormData] = useState({
     nombre: '',
     rol: '',
@@ -61,6 +84,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
     telefono: '',
     area: 'tecnico',
     comision: '',
+    fijo: '',
   })
   const isEditing = Boolean(editingMember)
 
@@ -85,7 +109,63 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
       )
       const facturadoMes = ventasDelMes.reduce((sum, lead) => sum + (Number(lead.venta?.importe) || 0), 0)
       const comisionMes = facturadoMes * ((Number(persona.comision) || 0) / 100)
-      acc[persona.nombre] = { ventasMes: ventasDelMes.length, facturadoMes, comisionMes }
+      const fijo = Number(persona.fijo) || 0
+      acc[persona.nombre] = { ventasMes: ventasDelMes.length, facturadoMes, comisionMes, fijo, totalMes: comisionMes + fijo }
+      return acc
+    }, {})
+  }, [team, ventas])
+
+  // Actividad completa por closer: leads asignados, llamadas, conversión,
+  // cumplimiento de checklist e historial mensual de comisión + fijo.
+  const actividadPorCloser = useMemo(() => {
+    return team.ventas.reduce((acc, persona) => {
+      if (!esCloser(persona)) return acc
+      const leads = ventas.filter((lead) => lead.closer === persona.nombre)
+      const llamadasRealizadas = leads.filter((lead) => lead.resultadoLlamada === 'realizada')
+      const ganadas = leads.filter((lead) => lead.etapa === 'ganada')
+      const perdidas = leads.filter((lead) => lead.etapa === 'perdida')
+      const checklistCompleto = leads.filter((lead) =>
+        lead.preLlamada?.whatsapp && lead.preLlamada?.prellamada && lead.preLlamada?.recordatorio
+      )
+      const tasaConversion = llamadasRealizadas.length > 0
+        ? Math.round((ganadas.length / llamadasRealizadas.length) * 100)
+        : 0
+
+      const meses = {}
+      leads.forEach((lead) => {
+        const mesAgenda = (lead.fechaAgenda || lead.creadoEn || '').slice(0, 7)
+        if (mesAgenda) {
+          meses[mesAgenda] = meses[mesAgenda] || { leads: 0, llamadas: 0, ventas: 0, facturado: 0 }
+          meses[mesAgenda].leads += 1
+          if (lead.resultadoLlamada === 'realizada') meses[mesAgenda].llamadas += 1
+        }
+        if (lead.etapa === 'ganada' && lead.venta?.fechaCierre) {
+          const mesCierre = lead.venta.fechaCierre.slice(0, 7)
+          meses[mesCierre] = meses[mesCierre] || { leads: 0, llamadas: 0, ventas: 0, facturado: 0 }
+          meses[mesCierre].ventas += 1
+          meses[mesCierre].facturado += Number(lead.venta.importe) || 0
+        }
+      })
+
+      const historial = Object.keys(meses)
+        .sort((a, b) => b.localeCompare(a))
+        .map((mes) => {
+          const datos = meses[mes]
+          const comision = datos.facturado * ((Number(persona.comision) || 0) / 100)
+          const fijo = Number(persona.fijo) || 0
+          return { mes, ...datos, comision, fijo, total: comision + fijo }
+        })
+
+      acc[persona.nombre] = {
+        leads,
+        totalLeads: leads.length,
+        llamadasRealizadas: llamadasRealizadas.length,
+        ganadas: ganadas.length,
+        perdidas: perdidas.length,
+        tasaConversion,
+        checklistCompleto: checklistCompleto.length,
+        historial,
+      }
       return acc
     }, {})
   }, [team, ventas])
@@ -110,7 +190,10 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
       rol: formData.rol || (formData.area === 'ventas' ? 'Closer' : 'Especialista'),
       email: formData.email || 'nuevo@mg-group.com',
       telefono: formData.telefono || '+34 600 000 000',
-      ...(formData.area === 'ventas' ? { comision: formData.comision === '' ? undefined : Number(formData.comision) } : {}),
+      ...(formData.area === 'ventas' ? {
+        comision: formData.comision === '' ? undefined : Number(formData.comision),
+        fijo: formData.fijo === '' ? undefined : Number(formData.fijo),
+      } : {}),
     }
 
     if (isEditing && editingMember) {
@@ -127,13 +210,13 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
       }))
     }
 
-    setFormData({ nombre: '', rol: '', email: '', telefono: '', area: 'tecnico', comision: '' })
+    setFormData({ nombre: '', rol: '', email: '', telefono: '', area: 'tecnico', comision: '', fijo: '' })
     setEditingMember(null)
     setShowModal(false)
   }
 
   const openNewMemberModal = (area = 'tecnico') => {
-    setFormData({ nombre: '', rol: '', email: '', telefono: '', area, comision: '' })
+    setFormData({ nombre: '', rol: '', email: '', telefono: '', area, comision: '', fijo: '' })
     setEditingMember(null)
     setShowModal(true)
   }
@@ -147,6 +230,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
       telefono: persona.telefono,
       area,
       comision: persona.comision != null ? String(persona.comision) : '',
+      fijo: persona.fijo != null ? String(persona.fijo) : '',
     })
     setEditingMember({ area, index })
     setShowModal(true)
@@ -205,6 +289,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
                 comisionInfo={esCloser(persona) ? comisionPorCloser[persona.nombre] : null}
                 onEdit={() => startEditMember('ventas', index)}
                 onDelete={() => deleteMember('ventas', index)}
+                onDetail={esCloser(persona) ? () => setDetailCloser(persona) : null}
               />
             ))}
           </div>
@@ -259,20 +344,92 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
                 <option value="ventas">Ventas</option>
               </select>
               {formData.area === 'ventas' && (
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  placeholder="Comisión por venta (%) — solo Closer"
-                  value={formData.comision}
-                  onChange={event => setFormData({ ...formData, comision: event.target.value })}
-                />
+                <>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="Comisión por venta (%) — solo Closer"
+                    value={formData.comision}
+                    onChange={event => setFormData({ ...formData, comision: event.target.value })}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Fijo mensual (€) — solo Closer"
+                    value={formData.fijo}
+                    onChange={event => setFormData({ ...formData, fijo: event.target.value })}
+                  />
+                </>
               )}
               <div className="modal-actions">
                 <button type="button" className="secondary-action" onClick={() => setShowModal(false)}>Cancelar</button>
                 <button type="submit" className="primary-action">Guardar miembro</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {detailCloser && (
+        <div className="client-modal-overlay" onClick={() => setDetailCloser(null)}>
+          <div className="client-modal team-activity-modal" onClick={event => event.stopPropagation()}>
+            <div className="card-header">
+              <div>
+                <div className="card-title">{detailCloser.nombre}</div>
+                <div className="card-subtitle">Actividad comercial completa</div>
+              </div>
+              <button className="close-modal-btn" onClick={() => setDetailCloser(null)}>✕</button>
+            </div>
+
+            {(() => {
+              const act = actividadPorCloser[detailCloser.nombre]
+              if (!act || act.totalLeads === 0) {
+                return <p className="lead-log-empty" style={{ padding: '12px 4px' }}>Todavía no tiene leads asignados en el pipeline.</p>
+              }
+              return (
+                <div className="team-activity-body">
+                  <div className="team-activity-kpis">
+                    <div className="team-activity-kpi"><span>Leads asignados</span><strong>{act.totalLeads}</strong></div>
+                    <div className="team-activity-kpi"><span>Llamadas realizadas</span><strong>{act.llamadasRealizadas}</strong></div>
+                    <div className="team-activity-kpi"><span>Ventas ganadas</span><strong>{act.ganadas}</strong></div>
+                    <div className="team-activity-kpi"><span>Perdidas</span><strong>{act.perdidas}</strong></div>
+                    <div className="team-activity-kpi"><span>Tasa de conversión</span><strong>{act.tasaConversion}%</strong></div>
+                    <div className="team-activity-kpi"><span>Checklist completo</span><strong>{act.checklistCompleto}/{act.totalLeads}</strong></div>
+                  </div>
+
+                  <h4 className="team-activity-subtitle">Historial mensual (comisión + fijo)</h4>
+                  <div className="team-history-table">
+                    <div className="team-history-row team-history-header">
+                      <span>Mes</span><span>Leads</span><span>Llamadas</span><span>Ventas</span><span>Facturado</span><span>Comisión</span><span>Fijo</span><span>Total</span>
+                    </div>
+                    {act.historial.length === 0 && <p className="lead-log-empty">Sin historial todavía.</p>}
+                    {act.historial.map((row) => (
+                      <div className="team-history-row" key={row.mes}>
+                        <span>{row.mes}</span>
+                        <span>{row.leads}</span>
+                        <span>{row.llamadas}</span>
+                        <span>{row.ventas}</span>
+                        <span>{row.facturado.toLocaleString('es-ES')}€</span>
+                        <span>{row.comision.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</span>
+                        <span>{row.fijo.toLocaleString('es-ES')}€</span>
+                        <strong>{row.total.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</strong>
+                      </div>
+                    ))}
+                  </div>
+
+                  <h4 className="team-activity-subtitle">Leads asignados</h4>
+                  <ul className="lead-log-list team-activity-leadlist">
+                    {act.leads.map((lead) => (
+                      <li key={lead.id}>
+                        <strong>{lead.nombre}</strong> — {ETAPA_LABELS[lead.etapa] || lead.etapa}
+                        {lead.fechaAgenda ? ` · ${lead.fechaAgenda}${lead.horaAgenda ? ` ${lead.horaAgenda}` : ''}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}

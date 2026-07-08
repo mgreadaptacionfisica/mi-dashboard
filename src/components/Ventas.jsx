@@ -39,6 +39,13 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function addMonthsISO(fechaISO, meses) {
+  if (!fechaISO || !meses) return ''
+  const [y, m, d] = fechaISO.split('-').map(Number)
+  const fecha = new Date(y, (m - 1) + meses, d)
+  return fecha.toISOString().slice(0, 10)
+}
+
 function LeadCard({ lead, onOpen }) {
   return (
     <button type="button" className="lead-card" onClick={onOpen}>
@@ -227,6 +234,11 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
       : (servicioSeleccionado?.nombre || '')
     const importeNum = Number(ventaForm.importe) || 0
     const pagoLabel = ventaForm.tipoPago === 'unico' ? 'PAGO ÚNICO' : `${ventaForm.numPlazos} PLAZOS`
+    const fechaInicio = ventaForm.fechaInicio || todayISO()
+    const meses = ventaForm.servicioId === 'otro' ? 0 : (servicioSeleccionado?.meses || 0)
+    const fechaFin = addMonthsISO(fechaInicio, meses)
+    const numPlazosNum = ventaForm.tipoPago === 'plazos' ? Number(ventaForm.numPlazos) : 1
+    const importePorPlazo = numPlazosNum > 0 ? Math.round((importeNum / numPlazosNum) * 100) / 100 : importeNum
 
     const nuevoCliente = {
       Nombre: activeLead.nombre,
@@ -236,11 +248,23 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
       'Estado del cliente': 'ACTIVO',
       'Forma de pago': ventaForm.formaPago,
       Pago: pagoLabel,
-      'Primer pago': importeNum,
+      'Primer pago': importePorPlazo,
+      'Segundo pago': ventaForm.tipoPago === 'plazos' && numPlazosNum >= 2 ? importePorPlazo : '',
+      'Tercer pago': ventaForm.tipoPago === 'plazos' && numPlazosNum >= 3 ? importePorPlazo : '',
+      'Fecha primer pago': fechaInicio,
+      'Fecha segundo pago': ventaForm.tipoPago === 'plazos' && numPlazosNum >= 2 ? addMonthsISO(fechaInicio, 1) : '',
+      'Fecha tercer pago': ventaForm.tipoPago === 'plazos' && numPlazosNum >= 3 ? addMonthsISO(fechaInicio, 2) : '',
+      Renueva: 'No',
+      Drive: '',
       Trabajador: '',
-      'Fecha inicio': ventaForm.fechaInicio || todayISO(),
-      'Fecha fin': '',
+      'Fecha inicio': fechaInicio,
+      'Fecha fin': fechaFin,
       Teléfono: activeLead.telefono,
+      // Trazabilidad del origen de la venta (no forma parte del CSV original de Notion).
+      Closer: activeLead.closer || '',
+      'Importe total': importeNum,
+      'Nº de plazos': numPlazosNum,
+      'Lead origen': activeLead.id,
     }
 
     if (typeof setClientes === 'function') {
