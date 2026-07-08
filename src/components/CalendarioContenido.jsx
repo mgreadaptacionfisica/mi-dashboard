@@ -77,7 +77,7 @@ function MultiSelect({ options, selected, onChange, placeholder = 'Sin seleccion
 }
 
 const initialForm = {
-  fecha: todayISO(),
+  fecha: '',
   titulo: '',
   descripcion: '',
   redes: [],
@@ -89,12 +89,21 @@ const initialForm = {
 
 export default function CalendarioContenido({ ideas = [], setIdeas, equipoContenido = [] }) {
   const hoy = new Date()
+  const [vista, setVista] = useState('calendario')
   const [cursor, setCursor] = useState({ year: hoy.getFullYear(), month: hoy.getMonth() })
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState(initialForm)
 
   const editorNames = equipoContenido.map((p) => p.nombre)
+
+  const ideasSinFecha = useMemo(() => ideas.filter((i) => !i.fecha), [ideas])
+  const ideasProgramadas = useMemo(() => ideas.filter((i) => !!i.fecha), [ideas])
+
+  const asignarFecha = (id, fechaISO) => {
+    if (typeof setIdeas !== 'function') return
+    setIdeas((prev) => prev.map((i) => (i.id === id ? { ...i, fecha: fechaISO } : i)))
+  }
 
   const celdas = useMemo(() => celdasDelMes(cursor.year, cursor.month), [cursor])
   const mesKey = `${cursor.year}-${pad2(cursor.month + 1)}`
@@ -135,7 +144,7 @@ export default function CalendarioContenido({ ideas = [], setIdeas, equipoConten
 
   const openNew = (fechaISO) => {
     setEditingId(null)
-    setFormData({ ...initialForm, fecha: fechaISO || todayISO() })
+    setFormData({ ...initialForm, fecha: fechaISO || '' })
     setShowForm(true)
   }
 
@@ -179,86 +188,150 @@ export default function CalendarioContenido({ ideas = [], setIdeas, equipoConten
 
   return (
     <>
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <div className="kpi-card-header">
-            <span className="kpi-card-label">Ideas este mes</span>
-            <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)' }}>🗓️</div>
-          </div>
-          <div className="kpi-card-value">{stats.total}</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-card-header">
-            <span className="kpi-card-label">Publicadas</span>
-            <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)' }}>✅</div>
-          </div>
-          <div className="kpi-card-value">{stats.publicadas}</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-card-header">
-            <span className="kpi-card-label">Pendientes</span>
-            <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>⏳</div>
-          </div>
-          <div className="kpi-card-value">{stats.pendientes}</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-card-header">
-            <span className="kpi-card-label">Sin portada/miniatura</span>
-            <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fee2e2, #fecaca)' }}>🖼️</div>
-          </div>
-          <div className="kpi-card-value">{stats.sinPortada}</div>
-        </div>
+      <div className="tabs-bar">
+        <button type="button" className={`tab-btn ${vista === 'calendario' ? 'tab-btn-active' : ''}`} onClick={() => setVista('calendario')}>
+          📅 Calendario
+        </button>
+        <button type="button" className={`tab-btn ${vista === 'listado' ? 'tab-btn-active' : ''}`} onClick={() => setVista('listado')}>
+          📝 Listado de ideas ({ideasSinFecha.length})
+        </button>
       </div>
 
-      <div className="table-card">
-        <div className="card-header">
-          <div>
-            <div className="card-title">{NOMBRES_MES[cursor.month]} {cursor.year}</div>
-            <div className="card-subtitle">Calendario de contenido</div>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" className="secondary-action" onClick={irMesAnterior}>← Mes anterior</button>
-            <button type="button" className="secondary-action" onClick={irMesSiguiente}>Mes siguiente →</button>
-            <button type="button" className="add-client-btn" onClick={() => openNew(todayISO())}>＋ Añadir idea</button>
-          </div>
-        </div>
-
-        <div className="calendario-contenido-grid">
-          {DIAS_SEMANA_CORTO.map((dia) => (
-            <div key={dia} className="calendario-contenido-diasemana">{dia}</div>
-          ))}
-          {celdas.map((fecha, index) => {
-            if (!fecha) return <div key={`vacio-${index}`} className="calendario-contenido-celda calendario-contenido-celda-vacia" />
-            const iso = toISO(fecha)
-            const ideasDia = ideasPorDia[iso] || []
-            const esHoy = iso === todayISO()
-            return (
-              <div key={iso} className={`calendario-contenido-celda ${esHoy ? 'calendario-contenido-hoy' : ''}`}>
-                <div className="calendario-contenido-celda-header">
-                  <span>{fecha.getDate()}</span>
-                  <button type="button" className="calendario-contenido-add" onClick={() => openNew(iso)}>＋</button>
-                </div>
-                <div className="calendario-contenido-ideas">
-                  {ideasDia.map((idea) => (
-                    <button
-                      key={idea.id}
-                      type="button"
-                      className="calendario-contenido-chip"
-                      onClick={() => openEdit(idea)}
-                      title={idea.titulo}
-                    >
-                      <span className={`status-pill ${ESTADO_CLASS[idea.estado] || 'status-idea'}`} style={{ padding: '1px 6px', fontSize: 10 }}>
-                        {idea.estado}
-                      </span>
-                      <span className="calendario-contenido-chip-titulo">{idea.titulo || 'Sin título'}</span>
-                    </button>
-                  ))}
-                </div>
+      {vista === 'calendario' && (
+        <>
+          <div className="kpi-grid">
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-card-label">Ideas este mes</span>
+                <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)' }}>🗓️</div>
               </div>
-            )
-          })}
+              <div className="kpi-card-value">{stats.total}</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-card-label">Publicadas</span>
+                <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)' }}>✅</div>
+              </div>
+              <div className="kpi-card-value">{stats.publicadas}</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-card-label">Pendientes</span>
+                <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>⏳</div>
+              </div>
+              <div className="kpi-card-value">{stats.pendientes}</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-card-label">Sin portada/miniatura</span>
+                <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fee2e2, #fecaca)' }}>🖼️</div>
+              </div>
+              <div className="kpi-card-value">{stats.sinPortada}</div>
+            </div>
+          </div>
+
+          <div className="table-card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">{NOMBRES_MES[cursor.month]} {cursor.year}</div>
+                <div className="card-subtitle">Calendario de contenido</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="secondary-action" onClick={irMesAnterior}>← Mes anterior</button>
+                <button type="button" className="secondary-action" onClick={irMesSiguiente}>Mes siguiente →</button>
+                <button type="button" className="add-client-btn" onClick={() => openNew(todayISO())}>＋ Añadir idea</button>
+              </div>
+            </div>
+
+            <div className="calendario-contenido-grid">
+              {DIAS_SEMANA_CORTO.map((dia) => (
+                <div key={dia} className="calendario-contenido-diasemana">{dia}</div>
+              ))}
+              {celdas.map((fecha, index) => {
+                if (!fecha) return <div key={`vacio-${index}`} className="calendario-contenido-celda calendario-contenido-celda-vacia" />
+                const iso = toISO(fecha)
+                const ideasDia = ideasPorDia[iso] || []
+                const esHoy = iso === todayISO()
+                return (
+                  <div key={iso} className={`calendario-contenido-celda ${esHoy ? 'calendario-contenido-hoy' : ''}`}>
+                    <div className="calendario-contenido-celda-header">
+                      <span>{fecha.getDate()}</span>
+                      <button type="button" className="calendario-contenido-add" onClick={() => openNew(iso)}>＋</button>
+                    </div>
+                    <div className="calendario-contenido-ideas">
+                      {ideasDia.map((idea) => (
+                        <button
+                          key={idea.id}
+                          type="button"
+                          className="calendario-contenido-chip"
+                          onClick={() => openEdit(idea)}
+                          title={idea.titulo}
+                        >
+                          <span className={`status-pill ${ESTADO_CLASS[idea.estado] || 'status-idea'}`} style={{ padding: '1px 6px', fontSize: 10 }}>
+                            {idea.estado}
+                          </span>
+                          <span className="calendario-contenido-chip-titulo">{idea.titulo || 'Sin título'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      {vista === 'listado' && (
+        <div className="table-card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Listado de ideas</div>
+              <div className="card-subtitle">{ideasSinFecha.length} sin fecha asignada · {ideasProgramadas.length} ya programadas</div>
+            </div>
+            <button type="button" className="add-client-btn" onClick={() => openNew()}>＋ Añadir idea</button>
+          </div>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Redes</th>
+                  <th>Formato</th>
+                  <th>Estado</th>
+                  <th>Editores</th>
+                  <th>Asignar fecha</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ideasSinFecha.map((idea) => (
+                  <tr key={idea.id}>
+                    <td style={{ fontWeight: 600 }}>{idea.titulo || 'Sin título'}</td>
+                    <td>{(idea.redes || []).join(', ') || '—'}</td>
+                    <td>{idea.formato || '—'}</td>
+                    <td><span className={`status-pill ${ESTADO_CLASS[idea.estado] || 'status-idea'}`}>{idea.estado}</span></td>
+                    <td>{(idea.editores || []).join(', ') || '—'}</td>
+                    <td>
+                      <input
+                        type="date"
+                        onChange={(e) => asignarFecha(idea.id, e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <button type="button" className="row-action-btn" onClick={() => openEdit(idea)}>Editar</button>
+                      <button type="button" className="row-action-btn" onClick={() => eliminar(idea.id)}>Eliminar</button>
+                    </td>
+                  </tr>
+                ))}
+                {ideasSinFecha.length === 0 && (
+                  <tr><td colSpan={7} className="lead-log-empty">Sin ideas pendientes de programar. Añade alguna con "＋ Añadir idea".</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {showForm && (
         <div className="client-modal-overlay" onClick={() => setShowForm(false)}>
@@ -271,8 +344,8 @@ export default function CalendarioContenido({ ideas = [], setIdeas, equipoConten
               <button className="close-modal-btn" onClick={() => setShowForm(false)}>✕</button>
             </div>
             <form className="modal-form" onSubmit={handleSubmit}>
-              <label className="lead-detail-label">Fecha</label>
-              <input type="date" required value={formData.fecha}
+              <label className="lead-detail-label">Fecha (opcional — puedes dejarla sin poner y asignarla luego desde el Listado de ideas)</label>
+              <input type="date" value={formData.fecha}
                 onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
 
               <input required placeholder="Título" value={formData.titulo}
