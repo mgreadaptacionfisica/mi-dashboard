@@ -73,7 +73,7 @@ function InternalApp() {
       case 'dashboard':    return <Dashboard />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} />
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
-      case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} />
+      case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
       case 'onboarding':   return <Onboarding />
       case 'operaciones':  return <PlaceholderView name="Operaciones" />
       default:             return <Dashboard />

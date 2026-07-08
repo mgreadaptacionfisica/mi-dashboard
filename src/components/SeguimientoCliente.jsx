@@ -1,48 +1,17 @@
 import { useMemo, useState } from 'react'
+import {
+  BLOQUES_SESION,
+  DIAS_SEMANA,
+  mondayOf,
+  toISO,
+  formatRangoSemana,
+  diaVacio,
+  semanaVacia,
+  progresoSemana,
+} from '../utils/seguimientoHelpers'
 
-// Bloques/fases de un plan de entrenamiento (según nos confirmó Raúl:
-// A/1, B/2... son bloques del plan; "Otra" cubre cualquier caso suelto).
-const BLOQUES_SESION = ['DIA', 'A/1', 'B/2', 'C/3', 'D/4', 'Cardio', 'Entrenamiento', 'Evaluación', 'Semanal', 'Mensual', 'Otra']
-
-const DIAS_SEMANA = [
-  { id: 'lunes', label: 'Lunes' },
-  { id: 'martes', label: 'Martes' },
-  { id: 'miercoles', label: 'Miércoles' },
-  { id: 'jueves', label: 'Jueves' },
-  { id: 'viernes', label: 'Viernes' },
-  { id: 'sabado', label: 'Sábado' },
-  { id: 'domingo', label: 'Domingo' },
-]
-
-function mondayOf(date) {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  d.setDate(d.getDate() + diff)
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function toISO(date) {
-  return date.toISOString().slice(0, 10)
-}
-
-function formatRangoSemana(mondayISO) {
-  const inicio = new Date(`${mondayISO}T00:00:00`)
-  const fin = new Date(inicio)
-  fin.setDate(fin.getDate() + 6)
-  const fmt = (d) => `${d.getDate()} ${d.toLocaleString('es-ES', { month: 'short' })}`
-  return `${fmt(inicio)} – ${fmt(fin)}`
-}
-
-function diaVacio() {
-  return { tareas: [], revisado: false }
-}
-
-function semanaVacia() {
-  const dias = {}
-  DIAS_SEMANA.forEach((d) => { dias[d.id] = diaVacio() })
-  return dias
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
 }
 
 export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, onClose }) {
@@ -61,6 +30,7 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
 
   const diasActuales = registro?.dias || semanaVacia()
   const comentarios = registro?.comentarios || ''
+  const progreso = progresoSemana(registro)
 
   const actualizarSemana = (patch) => {
     setSeguimientos((prev) => {
@@ -84,22 +54,23 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
     const bloque = tareaDraft[diaId] || BLOQUES_SESION[0]
     const diaActual = diasActuales[diaId] || diaVacio()
     actualizarSemana({
-      dias: { ...diasActuales, [diaId]: { ...diaActual, tareas: [...diaActual.tareas, bloque] } },
+      dias: { ...diasActuales, [diaId]: { tareas: [...diaActual.tareas, { texto: bloque, revisado: false, revisadoEn: null }] } },
     })
   }
 
   const removeTarea = (diaId, index) => {
     const diaActual = diasActuales[diaId] || diaVacio()
     actualizarSemana({
-      dias: { ...diasActuales, [diaId]: { ...diaActual, tareas: diaActual.tareas.filter((_, i) => i !== index) } },
+      dias: { ...diasActuales, [diaId]: { tareas: diaActual.tareas.filter((_, i) => i !== index) } },
     })
   }
 
-  const toggleRevisado = (diaId) => {
+  const toggleTareaRevisado = (diaId, index) => {
     const diaActual = diasActuales[diaId] || diaVacio()
-    actualizarSemana({
-      dias: { ...diasActuales, [diaId]: { ...diaActual, revisado: !diaActual.revisado } },
-    })
+    const tareas = diaActual.tareas.map((t, i) =>
+      i === index ? { ...t, revisado: !t.revisado, revisadoEn: !t.revisado ? todayISO() : null } : t
+    )
+    actualizarSemana({ dias: { ...diasActuales, [diaId]: { tareas } } })
   }
 
   const setComentarios = (texto) => {
@@ -119,7 +90,10 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
 
         <div className="seguimiento-week-nav">
           <button type="button" className="secondary-action" onClick={() => setWeekOffset((w) => w - 1)}>← Semana anterior</button>
-          <strong>Semana del {formatRangoSemana(mondayISO)}{weekOffset === 0 ? ' (actual)' : ''}</strong>
+          <strong>
+            Semana del {formatRangoSemana(mondayISO)}{weekOffset === 0 ? ' (actual)' : ''}
+            {progreso.total > 0 && ` · ${progreso.revisadas}/${progreso.total} revisadas (${progreso.porcentaje}%)`}
+          </strong>
           <button type="button" className="secondary-action" onClick={() => setWeekOffset((w) => w + 1)}>Semana siguiente →</button>
         </div>
 
@@ -130,18 +104,20 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
               <div key={dia.id} className="seguimiento-dia-card">
                 <div className="seguimiento-dia-header">
                   <span>{dia.label}</span>
-                  <label className="seguimiento-revisado">
-                    <input type="checkbox" checked={info.revisado} onChange={() => toggleRevisado(dia.id)} />
-                    Revisado
-                  </label>
+                  {info.tareas.length > 0 && (
+                    <span className="seguimiento-dia-count">
+                      {info.tareas.filter((t) => t.revisado).length}/{info.tareas.length}
+                    </span>
+                  )}
                 </div>
                 <div className="seguimiento-tareas-list">
                   {info.tareas.length === 0 && <span className="lead-log-empty">Sin tareas</span>}
                   {info.tareas.map((tarea, i) => (
-                    <span key={i} className="seguimiento-tarea-chip">
-                      {tarea}
+                    <label key={i} className={`seguimiento-tarea-chip ${tarea.revisado ? 'seguimiento-tarea-revisada' : ''}`}>
+                      <input type="checkbox" checked={tarea.revisado} onChange={() => toggleTareaRevisado(dia.id, i)} />
+                      {tarea.texto}
                       <button type="button" onClick={() => removeTarea(dia.id, i)}>✕</button>
-                    </span>
+                    </label>
                   ))}
                 </div>
                 <div className="seguimiento-add-tarea">

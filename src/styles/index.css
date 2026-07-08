@@ -1796,6 +1796,71 @@ tbody td {
   font-size: 12px;
 }
 
+.seguimiento-dia-count {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.seguimiento-tarea-revisada {
+  background: rgba(0, 138, 65, 0.2) !important;
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.seguimiento-tarea-chip input[type="checkbox"] {
+  margin: 0;
+}
+
+.seguimiento-resumen-list {
+  max-height: 260px;
+}
+
+.seguimiento-resumen-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 4px;
+}
+
+.seguimiento-resumen-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.seguimiento-progreso-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.seguimiento-progreso-completo {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.seguimiento-progreso-pendiente {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.seguimiento-progreso-vacio {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--color-text-secondary);
+}
+
+.seguimiento-ultima-revision {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
 textarea {
   width: 100%;
   border: 1px solid var(--color-border);

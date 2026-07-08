@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import SeguimientoCliente from './SeguimientoCliente'
+import { semanaActualISO, progresoSemana, ultimaRevisionCliente } from '../utils/seguimientoHelpers'
 
 const esCloser = (persona) => (persona.rol || '').toLowerCase().includes('closer')
 
@@ -132,11 +134,12 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, on
   )
 }
 
-export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
+export default function Equipo({ team, setTeam, clientes, ventas = [], seguimientos = [], setSeguimientos }) {
   const [showModal, setShowModal] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [detailCloser, setDetailCloser] = useState(null)
   const [detailTecnico, setDetailTecnico] = useState(null)
+  const [seguimientoClienteAbierto, setSeguimientoClienteAbierto] = useState(null)
   const [formData, setFormData] = useState({
     nombre: '',
     rol: '',
@@ -277,6 +280,38 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
       return acc
     }, {})
   }, [team, clientes])
+
+  // Resumen del seguimiento semanal por técnico: progreso de tareas revisadas
+  // de la semana actual (por cliente y agregado) y última revisión registrada.
+  // Al agruparse por técnico, cada persona solo ve sus propios clientes aquí;
+  // falta el login (ver Supabase pendiente) para que esto sea un acceso real
+  // por persona en vez de una vista compartida.
+  const seguimientoPorTecnico = useMemo(() => {
+    const semanaActual = semanaActualISO()
+    return team.tecnico.reduce((acc, persona) => {
+      const clientesAsignados = actividadPorTecnico[persona.nombre]?.clientesAsignados || []
+      let totalTareas = 0
+      let totalRevisadas = 0
+      let ultimaRevisionGeneral = null
+
+      const resumenClientes = clientesAsignados.map((cliente) => {
+        const registroActual = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaActual)
+        const progreso = progresoSemana(registroActual)
+        const ultima = ultimaRevisionCliente(seguimientos, cliente.Nombre)
+        totalTareas += progreso.total
+        totalRevisadas += progreso.revisadas
+        if (ultima && (!ultimaRevisionGeneral || ultima > ultimaRevisionGeneral)) ultimaRevisionGeneral = ultima
+        return { cliente, progreso, ultimaRevision: ultima }
+      })
+
+      acc[persona.nombre] = {
+        resumenClientes,
+        porcentajeGeneral: totalTareas > 0 ? Math.round((totalRevisadas / totalTareas) * 100) : null,
+        ultimaRevisionGeneral,
+      }
+      return acc
+    }, {})
+  }, [team, seguimientos, actividadPorTecnico])
 
   const deleteMember = (area, index) => {
     setTeam(prev => ({
@@ -557,6 +592,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
 
             {(() => {
               const act = actividadPorTecnico[detailTecnico.nombre]
+              const seg = seguimientoPorTecnico[detailTecnico.nombre]
               if (!act || act.totalAsignados === 0) {
                 return <p className="lead-log-empty" style={{ padding: '12px 4px' }}>Todavía no tiene clientes asignados.</p>
               }
@@ -567,6 +603,8 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
                     <div className="team-activity-kpi"><span>Activos ahora</span><strong>{act.activos}</strong></div>
                     <div className="team-activity-kpi"><span>Tarifa actual</span><strong>{act.tarifaActual}€/cliente</strong></div>
                     <div className="team-activity-kpi"><span>Total a pagar este mes</span><strong>{act.totalMes.toLocaleString('es-ES')}€</strong></div>
+                    <div className="team-activity-kpi"><span>Progreso semana actual</span><strong>{seg?.porcentajeGeneral != null ? `${seg.porcentajeGeneral}%` : '—'}</strong></div>
+                    <div className="team-activity-kpi"><span>Última revisión</span><strong style={{ fontSize: 13 }}>{seg?.ultimaRevisionGeneral || 'Sin revisiones'}</strong></div>
                   </div>
 
                   <h4 className="team-activity-subtitle">Historial mensual de pago</h4>
@@ -585,11 +623,26 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
                     ))}
                   </div>
 
-                  <h4 className="team-activity-subtitle">Clientes asignados</h4>
-                  <ul className="lead-log-list team-activity-leadlist">
-                    {act.clientesAsignados.map((cliente, i) => (
-                      <li key={i}>
-                        <strong>{cliente.Nombre}</strong> — {cliente['Servicio contratado'] || 'Sin servicio'} · {cliente['Estado del cliente'] || 'Sin estado'}
+                  <h4 className="team-activity-subtitle">Seguimiento semanal por cliente</h4>
+                  <ul className="lead-log-list team-activity-leadlist seguimiento-resumen-list">
+                    {seg?.resumenClientes.map(({ cliente, progreso, ultimaRevision }, i) => (
+                      <li key={i} className="seguimiento-resumen-item">
+                        <div>
+                          <strong>{cliente.Nombre}</strong> — {cliente['Servicio contratado'] || 'Sin servicio'}
+                          <div className="seguimiento-resumen-meta">
+                            {progreso.total > 0 ? (
+                              <span className={`seguimiento-progreso-badge ${progreso.porcentaje === 100 ? 'seguimiento-progreso-completo' : progreso.porcentaje === 0 ? 'seguimiento-progreso-pendiente' : ''}`}>
+                                {progreso.revisadas}/{progreso.total} ({progreso.porcentaje}%)
+                              </span>
+                            ) : (
+                              <span className="seguimiento-progreso-badge seguimiento-progreso-vacio">Sin tareas esta semana</span>
+                            )}
+                            <span className="seguimiento-ultima-revision">Última revisión: {ultimaRevision || 'nunca'}</span>
+                          </div>
+                        </div>
+                        {typeof setSeguimientos === 'function' && (
+                          <button type="button" className="secondary-action" onClick={() => setSeguimientoClienteAbierto(cliente)}>Ver semana</button>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -598,6 +651,15 @@ export default function Equipo({ team, setTeam, clientes, ventas = [] }) {
             })()}
           </div>
         </div>
+      )}
+
+      {seguimientoClienteAbierto && typeof setSeguimientos === 'function' && (
+        <SeguimientoCliente
+          cliente={seguimientoClienteAbierto}
+          seguimientos={seguimientos}
+          setSeguimientos={setSeguimientos}
+          onClose={() => setSeguimientoClienteAbierto(null)}
+        />
       )}
     </>
   )
