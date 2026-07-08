@@ -9,6 +9,8 @@ const SERVICIOS = [
   { id: 'readaptate-semestral-pp', nombre: 'PROGRAMA READAPTATE SEMESTRAL (pronto pago)', precio: 847, meses: 6 },
   { id: 'previene-cuatrimestral', nombre: 'PROGRAMA PREVIENE CUATRIMESTRAL (low ticket)', precio: 299, meses: 4 },
   { id: 'sesion-evaluacion', nombre: 'SESIÓN EVALUACIÓN', precio: 70, meses: 0 },
+  { id: 'reserva-cuatrimestre', nombre: 'RESERVA CUATRIMESTRE', precio: 70, meses: 0 },
+  { id: 'reserva-semestre', nombre: 'RESERVA SEMESTRE', precio: 100, meses: 0 },
 ]
 
 export default SERVICIOS
