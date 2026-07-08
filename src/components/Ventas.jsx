@@ -62,6 +62,9 @@ function LeadCard({ lead, onOpen }) {
       {lead.objeciones?.length > 0 && (
         <p className="lead-objections">⚠️ {lead.objeciones.length} objeción{lead.objeciones.length === 1 ? '' : 'es'}</p>
       )}
+      {lead.grabacionUrl && (
+        <p className="lead-checks">🎥 Grabación disponible</p>
+      )}
     </button>
   )
 }
@@ -132,6 +135,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
       objeciones: [],
       seguimiento: { realizado: false, contesta: null, compraTrasSeguimiento: null },
       notasSeguimiento: [],
+      grabacionUrl: '',
       creadoEn: todayISO(),
     }
     setVentas((prev) => [nuevo, ...prev])
@@ -446,6 +450,18 @@ export default function Ventas({ ventas, setVentas, team, setClientes }) {
               <div className="lead-detail-row" style={{ gridTemplateColumns: '1fr' }}>
                 <span className="status-pill status-activo">{ETAPAS.find((e) => e.id === activeLead.etapa)?.label}</span>
               </div>
+
+              {activeLead.etapa !== 'agendada' && (
+                <div>
+                  <label className="lead-detail-label">🎥 Grabación de la llamada</label>
+                  <input
+                    type="url"
+                    placeholder="Enlace a la grabación (Drive, Loom, Zoom...)"
+                    value={activeLead.grabacionUrl || ''}
+                    onChange={(e) => updateLead(activeLead.id, { grabacionUrl: e.target.value })}
+                  />
+                </div>
+              )}
 
               {/* ---- Etapa: Agendada ---- */}
               {activeLead.etapa === 'agendada' && !showReagendar && !showResultadoNoRealizada && (
