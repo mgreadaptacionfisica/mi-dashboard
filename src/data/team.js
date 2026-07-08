@@ -41,6 +41,7 @@ const team = {
       telefono: '+34 600 678 901',
     },
   ],
+  contenido: [],
 }
 
 export default team;

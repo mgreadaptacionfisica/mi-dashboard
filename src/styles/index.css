@@ -1302,6 +1302,9 @@ tbody td {
 .status-activo    { background: #d1fae5; color: #065f46; }
 .status-pendiente { background: #fef3c7; color: #92400e; }
 .status-inactivo  { background: #fee2e2; color: #991b1b; }
+.status-idea       { background: #e2e8f0; color: #334155; }
+.status-grabado    { background: #dbeafe; color: #1e40af; }
+.status-programado { background: #ede9fe; color: #5b21b6; }
 
 .loading-state {
   display: flex;
@@ -1945,6 +1948,88 @@ tbody td {
   color: #fff;
 }
 
+.calendario-contenido-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  padding: 0 20px 20px;
+}
+
+.calendario-contenido-diasemana {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.calendario-contenido-celda {
+  min-height: 96px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fff;
+}
+
+.calendario-contenido-celda-vacia {
+  border: none;
+  background: transparent;
+}
+
+.calendario-contenido-hoy {
+  border-color: #008A41;
+  background: rgba(0, 138, 65, 0.06);
+}
+
+.calendario-contenido-celda-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.calendario-contenido-add {
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.calendario-contenido-ideas {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+}
+
+.calendario-contenido-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 3px 5px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 11px;
+}
+
+.calendario-contenido-chip-titulo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 textarea {
   width: 100%;
   border: 1px solid var(--color-border);
@@ -1974,5 +2059,10 @@ textarea {
   .team-history-row {
     grid-template-columns: repeat(4, 1fr);
     font-size: 11px;
+  }
+
+  .calendario-contenido-grid {
+    grid-template-columns: repeat(7, 60px);
+    overflow-x: auto;
   }
 }

@@ -187,6 +187,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
 
   const tecnicoCount = team.tecnico.length
   const ventasCount = team.ventas.length
+  const contenidoCount = (team.contenido || []).length
 
   // Pagos al equipo (comisión+fijo de closers, tarifa de técnicos) registrados
   // como gasto profesional. Se identifican por persona + mes para poder marcar
@@ -423,8 +424,8 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
   }
 
   const clearTeam = () => {
-    if (window.confirm('¿Eliminar todo el equipo? Esta acción limpiará técnicos y comerciales.')) {
-      setTeam({ tecnico: [], ventas: [] })
+    if (window.confirm('¿Eliminar todo el equipo? Esta acción limpiará técnicos, comerciales y contenido.')) {
+      setTeam({ tecnico: [], ventas: [], contenido: [] })
     }
   }
 
@@ -486,7 +487,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
       <header className="topbar">
         <div>
           <div className="topbar-title">Equipo</div>
-          <div className="topbar-subtitle">Técnico y ventas</div>
+          <div className="topbar-subtitle">Técnico, ventas y contenido</div>
         </div>
       </header>
 
@@ -547,6 +548,31 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
             <span>{ventasCount} miembros de ventas</span>
           </div>
         </section>
+
+        <section className="team-section">
+          <div className="team-section-header">
+            <div>
+              <h2>Equipo de contenido</h2>
+              <p>Editores de vídeo y encargados de redes sociales.</p>
+            </div>
+          </div>
+          <div className="team-grid">
+            {(team.contenido || []).map((persona, index) => (
+              <PersonCard
+                key={`${persona.nombre}-${index}`}
+                persona={persona}
+                onEdit={() => startEditMember('contenido', index)}
+                onDelete={() => deleteMember('contenido', index)}
+              />
+            ))}
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <button className="add-team-btn" onClick={() => openNewMemberModal('contenido')}>＋ Añadir editor de contenido</button>
+          </div>
+          <div className="team-summary-bar">
+            <span>{contenidoCount} miembros de contenido</span>
+          </div>
+        </section>
       </main>
 
       {showModal && (
@@ -589,6 +615,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
               >
                 <option value="tecnico">Técnico</option>
                 <option value="ventas">Ventas</option>
+                <option value="contenido">Contenido</option>
               </select>
               {formData.area === 'ventas' && (
                 <>

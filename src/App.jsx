@@ -17,6 +17,7 @@ const Clientes = lazy(() => import('./components/Clientes'))
 const Equipo = lazy(() => import('./components/Equipo'))
 const Ventas = lazy(() => import('./components/Ventas'))
 const Finanzas = lazy(() => import('./components/Finanzas'))
+const Operaciones = lazy(() => import('./components/Operaciones'))
 const clientesDataPromise = () => import('./data/clientes')
 const teamDataPromise = () => import('./data/team')
 const ventasDataPromise = () => import('./data/ventas')
@@ -29,6 +30,8 @@ const recontactosDataPromise = () => import('./data/recontactos')
 const ingresosPersonalesDataPromise = () => import('./data/ingresosPersonales')
 const gastosPersonalesDataPromise = () => import('./data/gastosPersonales')
 const gastosProfesionalesDataPromise = () => import('./data/gastosProfesionales')
+const contenidoIdeasDataPromise = () => import('./data/contenidoIdeas')
+const sopsDataPromise = () => import('./data/sops')
 
 function PlaceholderView({ name }) {
   return (
@@ -70,6 +73,8 @@ function InternalApp() {
   const [ingresosPersonales, setIngresosPersonales] = useState([])
   const [gastosPersonales, setGastosPersonales] = useState([])
   const [gastosProfesionales, setGastosProfesionales] = useState([])
+  const [contenidoIdeas, setContenidoIdeas] = useState([])
+  const [sops, setSops] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
@@ -78,8 +83,8 @@ function InternalApp() {
       clientesDataPromise(), teamDataPromise(), ventasDataPromise(), seguimientosDataPromise(),
       settingDataPromise(), adsKpiDataPromise(), adsNotasDataPromise(), anunciosDataPromise(),
       recontactosDataPromise(), ingresosPersonalesDataPromise(), gastosPersonalesDataPromise(),
-      gastosProfesionalesDataPromise(),
-    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, gpr]) => {
+      gastosProfesionalesDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
+    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, gpr, ci, so]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -93,6 +98,8 @@ function InternalApp() {
       setIngresosPersonales(ip.default)
       setGastosPersonales(gp.default)
       setGastosProfesionales(gpr.default)
+      setContenidoIdeas(ci.default)
+      setSops(so.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -106,7 +113,7 @@ function InternalApp() {
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} />
       case 'finanzas':     return <Finanzas ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales} gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} />
       case 'onboarding':   return <Onboarding />
-      case 'operaciones':  return <PlaceholderView name="Operaciones" />
+      case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} />
       default:             return <Dashboard />
     }
   }
