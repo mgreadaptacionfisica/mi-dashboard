@@ -24,6 +24,7 @@ const settingDataPromise = () => import('./data/setting')
 const adsKpiDataPromise = () => import('./data/adsKpi')
 const adsNotasDataPromise = () => import('./data/adsNotasMensuales')
 const anunciosDataPromise = () => import('./data/anuncios')
+const recontactosDataPromise = () => import('./data/recontactos')
 
 function PlaceholderView({ name }) {
   return (
@@ -61,6 +62,7 @@ function InternalApp() {
   const [adsKpi, setAdsKpi] = useState([])
   const [adsNotas, setAdsNotas] = useState([])
   const [anuncios, setAnuncios] = useState([])
+  const [recontactos, setRecontactos] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
@@ -68,7 +70,8 @@ function InternalApp() {
     Promise.all([
       clientesDataPromise(), teamDataPromise(), ventasDataPromise(), seguimientosDataPromise(),
       settingDataPromise(), adsKpiDataPromise(), adsNotasDataPromise(), anunciosDataPromise(),
-    ]).then(([c, t, v, s, st, ak, an, anu]) => {
+      recontactosDataPromise(),
+    ]).then(([c, t, v, s, st, ak, an, anu, rc]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -78,6 +81,7 @@ function InternalApp() {
       setAdsKpi(ak.default)
       setAdsNotas(an.default)
       setAnuncios(anu.default)
+      setRecontactos(rc.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -86,7 +90,7 @@ function InternalApp() {
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':    return <Dashboard />
-      case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} />
+      case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
       case 'onboarding':   return <Onboarding />

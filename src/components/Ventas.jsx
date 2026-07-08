@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import SERVICIOS from '../data/servicios'
 import SettingInstagram from './SettingInstagram'
 import AdsKpi from './AdsKpi'
+import Recontactar from './Recontactar'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -71,7 +72,7 @@ function LeadCard({ lead, onOpen }) {
   )
 }
 
-export default function Ventas({ ventas, setVentas, team, setClientes, setting, setSetting, adsKpi, setAdsKpi, adsNotas, setAdsNotas, anuncios, setAnuncios }) {
+export default function Ventas({ ventas, setVentas, team, setClientes, setting, setSetting, adsKpi, setAdsKpi, adsNotas, setAdsNotas, anuncios, setAnuncios, recontactos, setRecontactos }) {
   const [activeTab, setActiveTab] = useState('pipeline')
   const [showNewLead, setShowNewLead] = useState(false)
   const [leadForm, setLeadForm] = useState(initialLeadForm)
@@ -312,6 +313,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
             {activeTab === 'pipeline' && 'Pipeline comercial: de la llamada al cliente'}
             {activeTab === 'setting' && 'Setting de Instagram: bienvenidas y follow-ups'}
             {activeTab === 'ads' && 'Inversión y resultados de Ads'}
+            {activeTab === 'recontactar' && 'Personas a las que hay que volver a contactar'}
           </div>
         </div>
         <div className="topbar-right">
@@ -344,6 +346,13 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
           >
             📊 KPI Ads
           </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'recontactar' ? 'tab-btn-active' : ''}`}
+            onClick={() => setActiveTab('recontactar')}
+          >
+            🔁 Recontactar
+          </button>
         </div>
 
         {activeTab === 'setting' && (
@@ -358,6 +367,15 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
             setAdsNotas={setAdsNotas}
             anuncios={anuncios}
             setAnuncios={setAnuncios}
+          />
+        )}
+
+        {activeTab === 'recontactar' && (
+          <Recontactar
+            ventas={ventas}
+            setVentas={setVentas}
+            recontactos={recontactos}
+            setRecontactos={setRecontactos}
           />
         )}
 
