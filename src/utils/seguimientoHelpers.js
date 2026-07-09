@@ -63,14 +63,34 @@ export function progresoSemana(registro) {
 }
 
 // Los 3 puntos de contacto semanal con el cliente por parte del técnico.
+// "hint" es lo que se le debe preguntar/decir al cliente en ese mensaje.
 export const PUNTOS_CONTACTO = [
-  { id: 'inicio', label: 'Inicio de semana (lunes)', hint: 'Qué tal el finde y cómo empezamos la semana' },
-  { id: 'mitad', label: 'Mitad de semana (mié/jue)', hint: 'Cómo va la semana' },
-  { id: 'fin', label: 'Fin de semana (vie/sáb)', hint: 'Cómo ha ido la semana, pendientes y buen finde' },
+  {
+    id: 'inicio',
+    label: 'Inicio de semana',
+    dia: 'Lunes',
+    hint: 'Preguntarle qué tal ha ido el fin de semana y cómo empezamos la semana.',
+  },
+  {
+    id: 'mitad',
+    label: 'Mitad de semana',
+    dia: 'Miércoles o jueves',
+    hint: 'Preguntarle cómo va la semana.',
+  },
+  {
+    id: 'fin',
+    label: 'Fin de semana',
+    dia: 'Viernes o sábado',
+    hint: 'Preguntarle qué tal ha ido la semana en general, si hay algo que revisar de cara al fin de semana o la semana que viene, y desearle buen fin de semana.',
+  },
 ]
 
 export function contactoVacio() {
-  return { inicio: { hecho: false, fecha: null }, mitad: { hecho: false, fecha: null }, fin: { hecho: false, fecha: null } }
+  return {
+    inicio: { hecho: false, fecha: null, comentario: '' },
+    mitad: { hecho: false, fecha: null, comentario: '' },
+    fin: { hecho: false, fecha: null, comentario: '' },
+  }
 }
 
 // Progreso de contacto semanal (0-3) para un registro concreto (puede ser undefined).
