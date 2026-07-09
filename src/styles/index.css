@@ -1466,7 +1466,7 @@ tbody td {
 @media (max-width: 900px) {
   .charts-grid { grid-template-columns: 1fr; }
   .sidebar { width: 200px; }
-  .main-content { margin-left: 200px; }
+  .app-layout:not(.app-layout-public) .main-content { margin-left: 200px; }
 }
 
 /* ---------- Ventas: pipeline de leads ---------- */
