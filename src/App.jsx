@@ -33,8 +33,16 @@ const gastosPersonalesDataPromise = () => import('./data/gastosPersonales')
 const gastosProfesionalesDataPromise = () => import('./data/gastosProfesionales')
 const contenidoIdeasDataPromise = () => import('./data/contenidoIdeas')
 const contactosSemanalesDataPromise = () => import('./data/contactosSemanales')
-const mensajesEquipoDataPromise = () => import('./data/mensajesEquipo')
 const valoracionesClientesDataPromise = () => import('./data/valoracionesClientes')
+
+// Comunicación: segundo módulo migrado a Supabase, mismo patrón que SOPs
+// (fallback automático al archivo estático si la tabla remota no responde).
+const mensajesEquipoDataPromise = async () => {
+  const { fetchMensajesEquipo } = await import('./lib/queries/mensajesEquipo')
+  const remoto = await fetchMensajesEquipo()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/mensajesEquipo')
+}
 
 // SOPs: primer módulo migrado a Supabase (piloto). Si la tabla remota no
 // está disponible (sin conexión, sin configurar, error de red...) hace

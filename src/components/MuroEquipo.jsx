@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { insertMensajeRemote, deleteMensajeRemote } from '../lib/queries/mensajesEquipo'
 
 function nowISO() {
   return new Date().toISOString()
@@ -35,16 +36,16 @@ export default function MuroEquipo({ mensajes, setMensajes, team }) {
   const publicar = (event) => {
     event.preventDefault()
     if (!texto.trim()) return
-    setMensajes((prev) => [
-      { id: `msg-${Date.now()}`, autor, texto: texto.trim(), menciones, fecha: nowISO() },
-      ...prev,
-    ])
+    const nuevo = { id: `msg-${Date.now()}`, autor, texto: texto.trim(), menciones, fecha: nowISO() }
+    setMensajes((prev) => [nuevo, ...prev])
+    insertMensajeRemote(nuevo)
     setTexto('')
     setMenciones([])
   }
 
   const eliminarMensaje = (id) => {
     setMensajes((prev) => prev.filter((m) => m.id !== id))
+    deleteMensajeRemote(id)
   }
 
   const mensajesVisibles = useMemo(() => {
