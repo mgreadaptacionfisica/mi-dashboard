@@ -35,6 +35,7 @@ const contenidoIdeasDataPromise = () => import('./data/contenidoIdeas')
 const sopsDataPromise = () => import('./data/sops')
 const contactosSemanalesDataPromise = () => import('./data/contactosSemanales')
 const mensajesEquipoDataPromise = () => import('./data/mensajesEquipo')
+const valoracionesClientesDataPromise = () => import('./data/valoracionesClientes')
 
 function PlaceholderView({ name }) {
   return (
@@ -80,6 +81,7 @@ function InternalApp() {
   const [sops, setSops] = useState([])
   const [contactosSemanales, setContactosSemanales] = useState([])
   const [mensajesEquipo, setMensajesEquipo] = useState([])
+  const [valoracionesClientes, setValoracionesClientes] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
@@ -89,8 +91,8 @@ function InternalApp() {
       settingDataPromise(), adsKpiDataPromise(), adsNotasDataPromise(), anunciosDataPromise(),
       recontactosDataPromise(), ingresosPersonalesDataPromise(), gastosPersonalesDataPromise(),
       gastosProfesionalesDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
-      contactosSemanalesDataPromise(), mensajesEquipoDataPromise(),
-    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, gpr, ci, so, cs, me]) => {
+      contactosSemanalesDataPromise(), mensajesEquipoDataPromise(), valoracionesClientesDataPromise(),
+    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, gpr, ci, so, cs, me, vc]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -108,6 +110,7 @@ function InternalApp() {
       setSops(so.default)
       setContactosSemanales(cs.default)
       setMensajesEquipo(me.default)
+      setValoracionesClientes(vc.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -117,7 +120,7 @@ function InternalApp() {
     switch (activeView) {
       case 'dashboard':    return <Dashboard />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
-      case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
+      case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
       case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} />
       case 'finanzas':     return <Finanzas ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales} gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} />

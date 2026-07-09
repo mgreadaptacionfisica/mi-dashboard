@@ -2440,3 +2440,151 @@ textarea {
     font-size: 11px;
   }
 }
+
+/* ---------- Valoración funcional de clientes ---------- */
+
+.valoracion-modal {
+  max-width: 820px;
+}
+
+.valoracion-form-modal {
+  max-width: 720px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.valoracion-evolucion,
+.valoracion-historial {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.valoracion-evolucion-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.valoracion-evolucion-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 0.7fr;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 8px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.03);
+  font-size: 12px;
+}
+
+.valoracion-evolucion-header {
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  background: transparent;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.valoracion-mejora-positiva {
+  color: #008A41;
+  font-weight: 700;
+}
+
+.valoracion-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.valoracion-campo input[type="date"],
+.valoracion-campo input[type="number"] {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.valoracion-campo-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.valoracion-campo-input input {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 13px;
+}
+
+.valoracion-campo-unidad {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.valoracion-referencia {
+  display: block;
+  font-size: 10.5px;
+  color: var(--color-text-secondary);
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.valoracion-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.valoracion-cuestionario-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.valoracion-item-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.valoracion-item-mini input {
+  width: 42px;
+  text-align: center;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 6px 4px;
+  font-size: 13px;
+}
+
+.valoracion-total-live {
+  font-size: 13px;
+  margin: 2px 0 4px;
+}
+
+.valoracion-interpretacion {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  margin-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+  .valoracion-evolucion-row {
+    grid-template-columns: 1.4fr 1fr 1fr 0.6fr;
+    font-size: 10.5px;
+  }
+}

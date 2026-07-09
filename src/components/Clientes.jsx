@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import SERVICIOS from '../data/servicios'
 import RENOVACIONES from '../data/renovaciones'
 import SeguimientoCliente from './SeguimientoCliente'
+import ValoracionCliente from './ValoracionCliente'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
 
@@ -85,7 +86,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function Clientes({ clientes, setClientes, team, seguimientos = [], setSeguimientos }) {
+export default function Clientes({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones }) {
   const [search, setSearch] = useState('')
   const [estado, setEstado] = useState('Todos')
   const [servicio, setServicio] = useState('Todos')
@@ -97,6 +98,7 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
   const [editingIndex, setEditingIndex] = useState(null)
   const [formData, setFormData] = useState(initialForm)
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
+  const [valoracionCliente, setValoracionCliente] = useState(null)
 
   const tecnicoNames = useMemo(
     () => team?.tecnico.map(persona => persona.nombre) ?? [],
@@ -454,6 +456,15 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
                           📋 Seguimiento
                         </button>
                       )}
+                      {typeof setValoraciones === 'function' && (
+                        <button
+                          type="button"
+                          className="row-action-btn"
+                          onClick={() => setValoracionCliente(cliente)}
+                        >
+                          📈 Valoración
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -603,6 +614,15 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
           seguimientos={seguimientos}
           setSeguimientos={setSeguimientos}
           onClose={() => setSeguimientoCliente(null)}
+        />
+      )}
+
+      {valoracionCliente && typeof setValoraciones === 'function' && (
+        <ValoracionCliente
+          cliente={valoracionCliente}
+          valoraciones={valoraciones}
+          setValoraciones={setValoraciones}
+          onClose={() => setValoracionCliente(null)}
         />
       )}
     </>
