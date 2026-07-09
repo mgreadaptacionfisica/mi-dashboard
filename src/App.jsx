@@ -18,6 +18,7 @@ const Equipo = lazy(() => import('./components/Equipo'))
 const Ventas = lazy(() => import('./components/Ventas'))
 const Finanzas = lazy(() => import('./components/Finanzas'))
 const Operaciones = lazy(() => import('./components/Operaciones'))
+const MuroEquipo = lazy(() => import('./components/MuroEquipo'))
 const clientesDataPromise = () => import('./data/clientes')
 const teamDataPromise = () => import('./data/team')
 const ventasDataPromise = () => import('./data/ventas')
@@ -32,6 +33,8 @@ const gastosPersonalesDataPromise = () => import('./data/gastosPersonales')
 const gastosProfesionalesDataPromise = () => import('./data/gastosProfesionales')
 const contenidoIdeasDataPromise = () => import('./data/contenidoIdeas')
 const sopsDataPromise = () => import('./data/sops')
+const contactosSemanalesDataPromise = () => import('./data/contactosSemanales')
+const mensajesEquipoDataPromise = () => import('./data/mensajesEquipo')
 
 function PlaceholderView({ name }) {
   return (
@@ -75,6 +78,8 @@ function InternalApp() {
   const [gastosProfesionales, setGastosProfesionales] = useState([])
   const [contenidoIdeas, setContenidoIdeas] = useState([])
   const [sops, setSops] = useState([])
+  const [contactosSemanales, setContactosSemanales] = useState([])
+  const [mensajesEquipo, setMensajesEquipo] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
@@ -84,7 +89,8 @@ function InternalApp() {
       settingDataPromise(), adsKpiDataPromise(), adsNotasDataPromise(), anunciosDataPromise(),
       recontactosDataPromise(), ingresosPersonalesDataPromise(), gastosPersonalesDataPromise(),
       gastosProfesionalesDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
-    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, gpr, ci, so]) => {
+      contactosSemanalesDataPromise(), mensajesEquipoDataPromise(),
+    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, gpr, ci, so, cs, me]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -100,6 +106,8 @@ function InternalApp() {
       setGastosProfesionales(gpr.default)
       setContenidoIdeas(ci.default)
       setSops(so.default)
+      setContactosSemanales(cs.default)
+      setMensajesEquipo(me.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -110,7 +118,8 @@ function InternalApp() {
       case 'dashboard':    return <Dashboard />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} />
-      case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} />
+      case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
+      case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} />
       case 'finanzas':     return <Finanzas ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales} gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} />
       case 'onboarding':   return <Onboarding />
       case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} />

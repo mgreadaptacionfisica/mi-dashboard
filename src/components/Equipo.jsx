@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
-import { semanaActualISO, progresoSemana, ultimaRevisionCliente, semanaVacia, DIAS_SEMANA } from '../utils/seguimientoHelpers'
+import ContactoSemanal from './ContactoSemanal'
+import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, semanaVacia, DIAS_SEMANA } from '../utils/seguimientoHelpers'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -157,7 +158,7 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, on
   )
 }
 
-export default function Equipo({ team, setTeam, clientes, ventas = [], seguimientos = [], setSeguimientos, gastosProfesionales = [], setGastosProfesionales }) {
+export default function Equipo({ team, setTeam, clientes, ventas = [], seguimientos = [], setSeguimientos, gastosProfesionales = [], setGastosProfesionales, contactosSemanales = [], setContactosSemanales }) {
   const [showModal, setShowModal] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [detailCloser, setDetailCloser] = useState(null)
@@ -376,6 +377,22 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
       return acc
     }, {})
   }, [team, seguimientos, actividadPorTecnico])
+
+  // Progreso agregado del contacto semanal (3 checks por cliente) de la semana actual.
+  const contactoPorTecnico = useMemo(() => {
+    const semanaActual = semanaActualISO()
+    return team.tecnico.reduce((acc, persona) => {
+      const clientesAsignados = actividadPorTecnico[persona.nombre]?.clientesAsignados || []
+      let hechos = 0
+      const total = clientesAsignados.length * 3
+      clientesAsignados.forEach((cliente) => {
+        const registro = contactosSemanales.find((c) => c.clienteNombre === cliente.Nombre && c.semana === semanaActual)
+        hechos += progresoContacto(registro).hechos
+      })
+      acc[persona.nombre] = { hechos, total, porcentaje: total > 0 ? Math.round((hechos / total) * 100) : null }
+      return acc
+    }, {})
+  }, [team, contactosSemanales, actividadPorTecnico])
 
   const registrarRevisionManual = (event) => {
     event.preventDefault()
@@ -746,6 +763,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
             {(() => {
               const act = actividadPorTecnico[detailTecnico.nombre]
               const seg = seguimientoPorTecnico[detailTecnico.nombre]
+              const contacto = contactoPorTecnico[detailTecnico.nombre]
               if (!act || act.totalAsignados === 0) {
                 return <p className="lead-log-empty" style={{ padding: '12px 4px' }}>Todavía no tiene clientes asignados.</p>
               }
@@ -756,7 +774,8 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     <div className="team-activity-kpi"><span>Activos ahora</span><strong>{act.activos}</strong></div>
                     <div className="team-activity-kpi"><span>Tarifa actual</span><strong>{act.tarifaActual}€/cliente</strong></div>
                     <div className="team-activity-kpi"><span>Total a pagar este mes</span><strong>{act.totalMes.toLocaleString('es-ES')}€</strong></div>
-                    <div className="team-activity-kpi"><span>Progreso semana actual</span><strong>{seg?.porcentajeGeneral != null ? `${seg.porcentajeGeneral}%` : '—'}</strong></div>
+                    <div className="team-activity-kpi"><span>Contacto semanal (3x)</span><strong>{contacto?.total > 0 ? `${contacto.hechos}/${contacto.total} (${contacto.porcentaje}%)` : '—'}</strong></div>
+                    <div className="team-activity-kpi"><span>Progreso tareas semana</span><strong>{seg?.porcentajeGeneral != null ? `${seg.porcentajeGeneral}%` : '—'}</strong></div>
                     <div className="team-activity-kpi"><span>Última revisión</span><strong style={{ fontSize: 13 }}>{seg?.ultimaRevisionGeneral || 'Sin revisiones'}</strong></div>
                   </div>
 
@@ -799,6 +818,14 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                       </div>
                     ))}
                   </div>
+
+                  <h4 className="team-activity-subtitle">Contacto semanal por cliente (3x)</h4>
+                  <p className="team-activity-hint">Lunes: inicio de semana · Miércoles/jueves: mitad de semana · Viernes/sábado: fin de semana.</p>
+                  <ContactoSemanal
+                    clientes={act.clientesAsignados}
+                    contactos={contactosSemanales}
+                    setContactos={setContactosSemanales}
+                  />
 
                   <h4 className="team-activity-subtitle">Seguimiento semanal por cliente</h4>
                   <ul className="lead-log-list team-activity-leadlist seguimiento-resumen-list">

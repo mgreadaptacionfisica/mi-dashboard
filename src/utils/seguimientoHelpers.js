@@ -62,6 +62,24 @@ export function progresoSemana(registro) {
   return { total, revisadas, porcentaje: total > 0 ? Math.round((revisadas / total) * 100) : null }
 }
 
+// Los 3 puntos de contacto semanal con el cliente por parte del técnico.
+export const PUNTOS_CONTACTO = [
+  { id: 'inicio', label: 'Inicio de semana (lunes)', hint: 'Qué tal el finde y cómo empezamos la semana' },
+  { id: 'mitad', label: 'Mitad de semana (mié/jue)', hint: 'Cómo va la semana' },
+  { id: 'fin', label: 'Fin de semana (vie/sáb)', hint: 'Cómo ha ido la semana, pendientes y buen finde' },
+]
+
+export function contactoVacio() {
+  return { inicio: { hecho: false, fecha: null }, mitad: { hecho: false, fecha: null }, fin: { hecho: false, fecha: null } }
+}
+
+// Progreso de contacto semanal (0-3) para un registro concreto (puede ser undefined).
+export function progresoContacto(registro) {
+  if (!registro) return { total: 3, hechos: 0, porcentaje: 0 }
+  const hechos = PUNTOS_CONTACTO.filter((p) => registro[p.id]?.hecho).length
+  return { total: 3, hechos, porcentaje: Math.round((hechos / 3) * 100) }
+}
+
 // Última vez que se marcó como revisada cualquier tarea de un cliente,
 // mirando todas las semanas guardadas (no solo la actual).
 export function ultimaRevisionCliente(seguimientos, clienteNombre) {
