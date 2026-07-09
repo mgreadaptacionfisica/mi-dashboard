@@ -10,7 +10,7 @@ function formatFecha(iso) {
   return `${d}/${m}/${y}`
 }
 
-const initialForm = { titulo: '', categoria: '', contenido: '' }
+const initialForm = { titulo: '', categoria: '', contenido: '', enlace: '' }
 
 export default function SOPs({ sops = [], setSops }) {
   const [filtroCategoria, setFiltroCategoria] = useState('Todas')
@@ -47,7 +47,7 @@ export default function SOPs({ sops = [], setSops }) {
 
   const openEdit = (sop) => {
     setEditingId(sop.id)
-    setFormData({ titulo: sop.titulo || '', categoria: sop.categoria || '', contenido: sop.contenido || '' })
+    setFormData({ titulo: sop.titulo || '', categoria: sop.categoria || '', contenido: sop.contenido || '', enlace: sop.enlace || '' })
     setShowForm(true)
   }
 
@@ -65,6 +65,7 @@ export default function SOPs({ sops = [], setSops }) {
         titulo: formData.titulo.trim(),
         categoria: formData.categoria.trim(),
         contenido: formData.contenido,
+        enlace: formData.enlace.trim(),
         actualizadoEn: todayISO(),
       } : s)))
     } else {
@@ -73,6 +74,7 @@ export default function SOPs({ sops = [], setSops }) {
         titulo: formData.titulo.trim(),
         categoria: formData.categoria.trim(),
         contenido: formData.contenido,
+        enlace: formData.enlace.trim(),
         actualizadoEn: todayISO(),
       }])
     }
@@ -130,7 +132,7 @@ export default function SOPs({ sops = [], setSops }) {
                         style={{ fontWeight: 600, border: 'none', background: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}
                         onClick={() => setExpandido((prev) => (prev === sop.id ? null : sop.id))}
                       >
-                        {expandido === sop.id ? '▾' : '▸'} {sop.titulo || 'Sin título'}
+                        {expandido === sop.id ? '▾' : '▸'} {sop.titulo || 'Sin título'} {sop.enlace ? '🔗' : ''}
                       </button>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Actualizado {formatFecha(sop.actualizadoEn)}</span>
@@ -139,9 +141,27 @@ export default function SOPs({ sops = [], setSops }) {
                       </div>
                     </div>
                     {expandido === sop.id && (
-                      <p style={{ whiteSpace: 'pre-wrap', marginTop: 6, color: 'var(--color-text-secondary)' }}>
-                        {sop.contenido || 'Sin contenido.'}
-                      </p>
+                      <div style={{ marginTop: 6 }}>
+                        {sop.enlace && (
+                          <a
+                            href={sop.enlace}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="row-action-btn"
+                            style={{ display: 'inline-block', marginBottom: 8, textDecoration: 'none' }}
+                          >
+                            📄 Abrir documento
+                          </a>
+                        )}
+                        {sop.contenido && (
+                          <p style={{ whiteSpace: 'pre-wrap', color: 'var(--color-text-secondary)' }}>
+                            {sop.contenido}
+                          </p>
+                        )}
+                        {!sop.enlace && !sop.contenido && (
+                          <p style={{ color: 'var(--color-text-secondary)' }}>Sin contenido.</p>
+                        )}
+                      </div>
                     )}
                   </li>
                 ))}
@@ -174,7 +194,13 @@ export default function SOPs({ sops = [], setSops }) {
               <datalist id="sop-categorias">
                 {categorias.map((c) => <option key={c} value={c} />)}
               </datalist>
-              <textarea rows={8} placeholder="Contenido del protocolo" value={formData.contenido}
+              <input
+                type="url"
+                placeholder="Enlace al documento (Google Drive/Doc/PDF) — opcional"
+                value={formData.enlace}
+                onChange={(e) => setFormData({ ...formData, enlace: e.target.value })}
+              />
+              <textarea rows={8} placeholder="Contenido del protocolo (opcional, para protocolos simples sin imágenes)" value={formData.contenido}
                 onChange={(e) => setFormData({ ...formData, contenido: e.target.value })} />
               <div className="modal-actions">
                 <button type="button" className="secondary-action" onClick={() => setShowForm(false)}>Cancelar</button>
