@@ -2492,6 +2492,15 @@ textarea {
   font-weight: 700;
 }
 
+.valoracion-simetria-row {
+  grid-template-columns: 2fr 1fr 1fr;
+}
+
+.valoracion-simetria-baja {
+  color: var(--color-red);
+  font-weight: 700;
+}
+
 .valoracion-campo {
   display: flex;
   flex-direction: column;

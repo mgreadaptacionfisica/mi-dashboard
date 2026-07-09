@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
-  ITEMS_FUERZA,
-  ITEMS_MOVILIDAD_HOMBRO,
-  REFERENCIA_FUERZA,
+  BLOQUES,
+  SIMETRIA_PARES,
   SPADI_ITEMS,
   SPADI_ENLACE,
   TAMPA_ITEMS,
@@ -11,6 +10,7 @@ import {
   spadiTotal,
   tampaTotal,
   mejoraPct,
+  indiceSimetria,
 } from '../utils/valoracionHelpers'
 
 function todayISO() {
@@ -21,6 +21,11 @@ function formatFecha(iso) {
   if (!iso) return '—'
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
+}
+
+function unidadDe(bloque, item) {
+  if (item.unidad !== undefined) return item.unidad
+  return bloque.unidadGrados ? 'º' : ''
 }
 
 // Fila numérica genérica: label + input number + unidad opcional.
@@ -57,39 +62,26 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
 
   const historialDesc = useMemo(() => historial.slice().reverse(), [historial])
 
-  // Evolución: para cada ítem con al menos un valor registrado, primera vs última medición.
-  const evolucionFuerza = useMemo(() => {
-    return ITEMS_FUERZA.map((item) => {
-      const conValor = historial.filter((v) => v.fuerza?.[item.id] !== undefined && v.fuerza[item.id] !== '')
-      if (conValor.length === 0) return null
-      const primero = conValor[0]
-      const ultimo = conValor[conValor.length - 1]
-      return {
-        item,
-        primero: primero.fuerza[item.id],
-        primeroFecha: primero.fecha,
-        ultimo: ultimo.fuerza[item.id],
-        ultimoFecha: ultimo.fecha,
-        pct: mejoraPct(primero.fuerza[item.id], ultimo.fuerza[item.id]),
-      }
-    }).filter(Boolean)
-  }, [historial])
-
-  const evolucionMovilidad = useMemo(() => {
-    return ITEMS_MOVILIDAD_HOMBRO.map((item) => {
-      const conValor = historial.filter((v) => v.movilidadHombro?.[item.id] !== undefined && v.movilidadHombro[item.id] !== '')
-      if (conValor.length === 0) return null
-      const primero = conValor[0]
-      const ultimo = conValor[conValor.length - 1]
-      return {
-        item,
-        primero: primero.movilidadHombro[item.id],
-        primeroFecha: primero.fecha,
-        ultimo: ultimo.movilidadHombro[item.id],
-        ultimoFecha: ultimo.fecha,
-        pct: mejoraPct(primero.movilidadHombro[item.id], ultimo.movilidadHombro[item.id]),
-      }
-    }).filter(Boolean)
+  // Evolución por bloque: para cada ítem con al menos un valor registrado, primera vs última medición.
+  const evolucionPorBloque = useMemo(() => {
+    return BLOQUES.map((bloque) => {
+      const filas = bloque.items.map((item) => {
+        const conValor = historial.filter((v) => v[bloque.id]?.[item.id] !== undefined && v[bloque.id][item.id] !== '')
+        if (conValor.length === 0) return null
+        const primero = conValor[0]
+        const ultimo = conValor[conValor.length - 1]
+        return {
+          item,
+          unidad: unidadDe(bloque, item),
+          primero: primero[bloque.id][item.id],
+          primeroFecha: primero.fecha,
+          ultimo: ultimo[bloque.id][item.id],
+          ultimoFecha: ultimo.fecha,
+          pct: mejoraPct(primero[bloque.id][item.id], ultimo[bloque.id][item.id]),
+        }
+      }).filter(Boolean)
+      return { bloque, filas }
+    }).filter((b) => b.filas.length > 0)
   }, [historial])
 
   const evolucionCuestionarios = useMemo(() => {
@@ -101,7 +93,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
       const ultimo = spadiTotal(conSpadi[conSpadi.length - 1].spadi)
       filas.push({
         label: 'SPADI (0-100, menor es mejor)', primero, primeroFecha: conSpadi[0].fecha,
-        ultimo, ultimoFecha: conSpadi[conSpadi.length - 1].fecha, pct: mejoraPct(primero, ultimo),
+        ultimo, ultimoFecha: conSpadi[conSpadi.length - 1].fecha, pct: mejoraPct(primero, ultimo), invertido: true,
       })
     }
     if (conTampa.length > 0) {
@@ -109,10 +101,24 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
       const ultimo = tampaTotal(conTampa[conTampa.length - 1].tampa)
       filas.push({
         label: 'TAMPA (11-44, menor es mejor)', primero, primeroFecha: conTampa[0].fecha,
-        ultimo, ultimoFecha: conTampa[conTampa.length - 1].fecha, pct: mejoraPct(primero, ultimo),
+        ultimo, ultimoFecha: conTampa[conTampa.length - 1].fecha, pct: mejoraPct(primero, ultimo), invertido: true,
       })
     }
     return filas
+  }, [historial])
+
+  // Índices de simetría: usan la valoración más reciente que tenga ambos lados rellenados.
+  const indicesSimetria = useMemo(() => {
+    return SIMETRIA_PARES.map((par) => {
+      const conAmbos = historial.filter((v) =>
+        v[par.bloque]?.[par.dxId] !== undefined && v[par.bloque][par.dxId] !== '' &&
+        v[par.bloque]?.[par.izqId] !== undefined && v[par.bloque][par.izqId] !== ''
+      )
+      if (conAmbos.length === 0) return null
+      const ultima = conAmbos[conAmbos.length - 1]
+      const indice = indiceSimetria(ultima[par.bloque][par.dxId], ultima[par.bloque][par.izqId])
+      return { par, indice, fecha: ultima.fecha }
+    }).filter(Boolean)
   }, [historial])
 
   const openNew = () => {
@@ -122,15 +128,13 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
   }
 
   const openEdit = (valoracion) => {
+    const base = { fecha: valoracion.fecha, ...valoracionVacia() }
+    BLOQUES.forEach((b) => { base[b.id] = valoracion[b.id] || {} })
+    base.spadi = valoracion.spadi || {}
+    base.tampa = valoracion.tampa || {}
+    base.notas = valoracion.notas || ''
     setEditingId(valoracion.id)
-    setFormData({
-      fecha: valoracion.fecha,
-      fuerza: valoracion.fuerza || {},
-      movilidadHombro: valoracion.movilidadHombro || {},
-      spadi: valoracion.spadi || {},
-      tampa: valoracion.tampa || {},
-      notas: valoracion.notas || '',
-    })
+    setFormData(base)
     setShowForm(true)
   }
 
@@ -139,8 +143,8 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     setValoraciones((prev) => prev.filter((v) => v.id !== id))
   }
 
-  const setCampo = (bloque, itemId, valor) => {
-    setFormData((prev) => ({ ...prev, [bloque]: { ...prev[bloque], [itemId]: valor } }))
+  const setCampo = (bloqueId, itemId, valor) => {
+    setFormData((prev) => ({ ...prev, [bloqueId]: { ...prev[bloqueId], [itemId]: valor } }))
   }
 
   const handleSubmit = (event) => {
@@ -195,43 +199,39 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
               </>
             )}
 
-            {evolucionFuerza.length > 0 && (
+            {indicesSimetria.length > 0 && (
               <>
-                <h4 className="team-activity-subtitle">Fuerza</h4>
+                <h4 className="team-activity-subtitle">Índices de simetría (última medición, sano &gt;90%)</h4>
                 <div className="valoracion-evolucion-table">
-                  <div className="valoracion-evolucion-row valoracion-evolucion-header">
-                    <span>Ítem</span><span>Primera</span><span>Última</span><span>% mejoría</span>
-                  </div>
-                  {evolucionFuerza.map((fila) => (
-                    <div className="valoracion-evolucion-row" key={fila.item.id}>
-                      <span>{fila.item.label}</span>
-                      <span>{fila.primero}{fila.item.unidad} ({formatFecha(fila.primeroFecha)})</span>
-                      <span>{fila.ultimo}{fila.item.unidad} ({formatFecha(fila.ultimoFecha)})</span>
-                      <span className={fila.pct != null && fila.pct >= 0 ? 'valoracion-mejora-positiva' : ''}>{fila.pct != null ? `${fila.pct}%` : '—'}</span>
+                  {indicesSimetria.map(({ par, indice, fecha }) => (
+                    <div className="valoracion-evolucion-row valoracion-simetria-row" key={par.label}>
+                      <span>{par.label}</span>
+                      <span>{formatFecha(fecha)}</span>
+                      <span className={indice >= 90 ? 'valoracion-mejora-positiva' : 'valoracion-simetria-baja'}>{indice}%</span>
                     </div>
                   ))}
                 </div>
               </>
             )}
 
-            {evolucionMovilidad.length > 0 && (
-              <>
-                <h4 className="team-activity-subtitle">Movilidad de hombro</h4>
+            {evolucionPorBloque.map(({ bloque, filas }) => (
+              <div key={bloque.id}>
+                <h4 className="team-activity-subtitle">{bloque.label}</h4>
                 <div className="valoracion-evolucion-table">
                   <div className="valoracion-evolucion-row valoracion-evolucion-header">
                     <span>Ítem</span><span>Primera</span><span>Última</span><span>% mejoría</span>
                   </div>
-                  {evolucionMovilidad.map((fila) => (
+                  {filas.map((fila) => (
                     <div className="valoracion-evolucion-row" key={fila.item.id}>
                       <span>{fila.item.label}</span>
-                      <span>{fila.primero}º ({formatFecha(fila.primeroFecha)})</span>
-                      <span>{fila.ultimo}º ({formatFecha(fila.ultimoFecha)})</span>
+                      <span>{fila.primero}{fila.unidad} ({formatFecha(fila.primeroFecha)})</span>
+                      <span>{fila.ultimo}{fila.unidad} ({formatFecha(fila.ultimoFecha)})</span>
                       <span className={fila.pct != null && fila.pct >= 0 ? 'valoracion-mejora-positiva' : ''}>{fila.pct != null ? `${fila.pct}%` : '—'}</span>
                     </div>
                   ))}
                 </div>
-              </>
-            )}
+              </div>
+            ))}
           </div>
         )}
 
@@ -262,11 +262,10 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                     </div>
                     {expandido === v.id && (
                       <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
-                        {ITEMS_FUERZA.filter((it) => v.fuerza?.[it.id] !== undefined && v.fuerza[it.id] !== '').map((it) => (
-                          <div key={it.id}>{it.label}: <strong>{v.fuerza[it.id]}{it.unidad}</strong></div>
-                        ))}
-                        {ITEMS_MOVILIDAD_HOMBRO.filter((it) => v.movilidadHombro?.[it.id] !== undefined && v.movilidadHombro[it.id] !== '').map((it) => (
-                          <div key={it.id}>{it.label}: <strong>{v.movilidadHombro[it.id]}º</strong></div>
+                        {BLOQUES.map((bloque) => (
+                          bloque.items.filter((it) => v[bloque.id]?.[it.id] !== undefined && v[bloque.id][it.id] !== '').map((it) => (
+                            <div key={it.id}>{it.label}: <strong>{v[bloque.id][it.id]}{unidadDe(bloque, it)}</strong></div>
+                          ))
                         ))}
                         {v.notas && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>📝 {v.notas}</p>}
                       </div>
@@ -296,35 +295,26 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                 <input type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
               </label>
 
-              <h4 className="team-activity-subtitle">Fuerza</h4>
-              <div className="valoracion-grid">
-                {ITEMS_FUERZA.map((item) => (
-                  <div key={item.id}>
-                    <CampoNumerico
-                      label={item.label}
-                      unidad={item.unidad}
-                      value={formData.fuerza[item.id]}
-                      onChange={(v) => setCampo('fuerza', item.id, v)}
-                    />
-                    {REFERENCIA_FUERZA[item.id] && (
-                      <span className="valoracion-referencia">Ref: {REFERENCIA_FUERZA[item.id].mujeres} (mujeres) / {REFERENCIA_FUERZA[item.id].hombres} (hombres)</span>
-                    )}
+              {BLOQUES.map((bloque) => (
+                <div key={bloque.id}>
+                  <h4 className="team-activity-subtitle">{bloque.label}</h4>
+                  <div className="valoracion-grid">
+                    {bloque.items.map((item) => (
+                      <div key={item.id}>
+                        <CampoNumerico
+                          label={item.label}
+                          unidad={unidadDe(bloque, item)}
+                          value={formData[bloque.id]?.[item.id]}
+                          onChange={(v) => setCampo(bloque.id, item.id, v)}
+                        />
+                        {bloque.referencia?.[item.id] && (
+                          <span className="valoracion-referencia">Ref: {bloque.referencia[item.id].mujeres} (mujeres) / {bloque.referencia[item.id].hombres} (hombres)</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-
-              <h4 className="team-activity-subtitle">Movilidad de hombro (grados)</h4>
-              <div className="valoracion-grid">
-                {ITEMS_MOVILIDAD_HOMBRO.map((item) => (
-                  <CampoNumerico
-                    key={item.id}
-                    label={item.label}
-                    unidad="º"
-                    value={formData.movilidadHombro[item.id]}
-                    onChange={(v) => setCampo('movilidadHombro', item.id, v)}
-                  />
-                ))}
-              </div>
+                </div>
+              ))}
 
               <h4 className="team-activity-subtitle">SPADI (0-10 cada ítem) · <a href={SPADI_ENLACE} target="_blank" rel="noopener noreferrer">ver cuestionario</a></h4>
               <div className="valoracion-cuestionario-grid">
