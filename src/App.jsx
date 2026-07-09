@@ -32,10 +32,19 @@ const ingresosPersonalesDataPromise = () => import('./data/ingresosPersonales')
 const gastosPersonalesDataPromise = () => import('./data/gastosPersonales')
 const gastosProfesionalesDataPromise = () => import('./data/gastosProfesionales')
 const contenidoIdeasDataPromise = () => import('./data/contenidoIdeas')
-const sopsDataPromise = () => import('./data/sops')
 const contactosSemanalesDataPromise = () => import('./data/contactosSemanales')
 const mensajesEquipoDataPromise = () => import('./data/mensajesEquipo')
 const valoracionesClientesDataPromise = () => import('./data/valoracionesClientes')
+
+// SOPs: primer módulo migrado a Supabase (piloto). Si la tabla remota no
+// está disponible (sin conexión, sin configurar, error de red...) hace
+// fallback automático al archivo estático para que el panel nunca se rompa.
+const sopsDataPromise = async () => {
+  const { fetchSops } = await import('./lib/queries/sops')
+  const remoto = await fetchSops()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/sops')
+}
 
 function PlaceholderView({ name }) {
   return (

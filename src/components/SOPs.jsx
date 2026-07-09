@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { insertSopRemote, updateSopRemote, deleteSopRemote } from '../lib/queries/sops'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -54,29 +55,33 @@ export default function SOPs({ sops = [], setSops }) {
   const eliminar = (id) => {
     if (typeof setSops !== 'function') return
     setSops((prev) => prev.filter((s) => s.id !== id))
+    deleteSopRemote(id)
   }
 
   const handleSubmit = (event) => {
     event.preventDefault()
     if (typeof setSops !== 'function') return
     if (editingId) {
-      setSops((prev) => prev.map((s) => (s.id === editingId ? {
-        ...s,
+      const patch = {
         titulo: formData.titulo.trim(),
         categoria: formData.categoria.trim(),
         contenido: formData.contenido,
         enlace: formData.enlace.trim(),
         actualizadoEn: todayISO(),
-      } : s)))
+      }
+      setSops((prev) => prev.map((s) => (s.id === editingId ? { ...s, ...patch } : s)))
+      updateSopRemote(editingId, patch)
     } else {
-      setSops((prev) => [...prev, {
+      const nuevo = {
         id: `sop-${Date.now()}`,
         titulo: formData.titulo.trim(),
         categoria: formData.categoria.trim(),
         contenido: formData.contenido,
         enlace: formData.enlace.trim(),
         actualizadoEn: todayISO(),
-      }])
+      }
+      setSops((prev) => [...prev, nuevo])
+      insertSopRemote(nuevo)
     }
     setShowForm(false)
     setEditingId(null)
