@@ -1,6 +1,38 @@
 # Migración a Supabase — plan de trabajo
 
-_Preparado en la sesión automática del 9 julio 2026. Pendiente de revisar juntos y empezar a ejecutar._
+_Preparado en la sesión automática del 9 julio 2026. Actualizado la noche del 9 julio 2026 tras conectar los dos primeros módulos._
+
+## Estado actual (9 julio, noche)
+
+✅ **Hecho y verificado en producción:**
+- `sops` — tabla creada, RLS temporal (abierta) activa, 10 SOPs migrados, frontend (`SOPs.jsx` + `App.jsx`) leyendo/escribiendo en Supabase con fallback a `src/data/sops.js` si no hay conexión.
+- `mensajes_equipo` (Comunicación) — tabla creada, RLS temporal activa, frontend (`MuroEquipo.jsx` + `App.jsx`) conectado igual que SOPs.
+- Variables de entorno `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` ya configuradas en Vercel (Project → Settings → Environment Variables) y funcionando.
+
+📝 **Preparado, pendiente de ejecutar mañana con Raúl presente** (todo en `supabase-sql/`, numerado en el orden recomendado para pegar uno a uno en el SQL Editor, igual que hoy):
+- `03_miembros_equipo.sql` — equipo técnico/ventas/contenido. **Ojo**: los datos de `team.js` (Lucía Martínez, Carlos Herrera...) tienen pinta de ser de ejemplo/placeholder, no el equipo real — confirmar con Raúl antes de darle a Run, o sustituir por los nombres reales.
+- `04_clientes.sql` (esquema) + `04b_clientes_data.sql` (55 clientes reales, generados desde `src/data/clientes.js` vía `scripts/export-data.mjs` + `scripts/generate-insert-sql.mjs`). Revisar unas filas contra el panel antes de ejecutar el `04b`, por ser datos de facturación reales. Falta el campo `trabajadores` (asignación técnico↔cliente): hoy solo vive en memoria del navegador, no está en el CSV base.
+- `05_ventas_pipeline.sql` — vacío, solo esquema.
+- `06_seguimiento_y_contacto.sql` — `seguimientos` + `contactos_semanales`, vacíos, solo esquema.
+- `07_valoraciones_clientes.sql` — vacío, solo esquema.
+- `08_setting_instagram.sql` (esquema + los 6 mensajes de plantilla N1/N2/N3) + `08b_setting_instagram_data.sql` (48 registros reales generados igual que clientes).
+- `09_ads.sql` — vacío, solo esquema.
+- `10_recontactos.sql` — vacío, solo esquema.
+- `11_finanzas.sql` — vacío, solo esquema.
+- `12_contenido_ideas.sql` — vacío, solo esquema.
+- `13_catalogos.sql` — `servicios` y `renovaciones`, con los datos reales ya incluidos (catálogos estables).
+
+Para regenerar los JSON/SQL de datos si `src/data/*.js` cambia antes de mañana: `node scripts/export-data.mjs` y luego `node scripts/generate-insert-sql.mjs`.
+
+## Siguiente sesión (mañana ~9:00) — orden sugerido
+
+1. Repasar juntos `03_miembros_equipo.sql` (confirmar si los nombres son reales o hay que cambiarlos) → pegar y Run.
+2. `04_clientes.sql` → Run. Luego revisar 2-3 filas de `04b_clientes_data.sql` contra el panel → Run.
+3. `05_ventas_pipeline.sql`, `06_seguimiento_y_contacto.sql`, `07_valoraciones_clientes.sql` → Run (son solo esquema, sin riesgo).
+4. `08_setting_instagram.sql` → Run, luego `08b_setting_instagram_data.sql` → Run.
+5. `09_ads.sql`, `10_recontactos.sql`, `11_finanzas.sql`, `12_contenido_ideas.sql`, `13_catalogos.sql` → Run (todas de bajo riesgo).
+6. Por cada tabla, conectar el frontend correspondiente (mismo patrón que `src/lib/queries/sops.js`): crear `src/lib/queries/<tabla>.js`, cambiar el `xDataPromise` en `App.jsx`, y añadir las llamadas remotas en el componente que edita esos datos.
+7. Cuando todas las tablas estén conectadas: diseñar Auth + RLS por rol (closers/técnicos) para cerrar las políticas temporales "abiertas" — ver sección 3 más abajo.
 
 ## 1. Precios actuales de Supabase (revisado hoy, supabase.com/pricing)
 
