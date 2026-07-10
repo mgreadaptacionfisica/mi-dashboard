@@ -1,11 +1,27 @@
 import { supabase } from './supabaseClient'
 
-// Autenticación mínima: por ahora solo Raúl tiene cuenta (rol admin). El
-// resto del equipo sigue entrando al panel sin login, igual que hasta ahora.
-// Cualquier sesión de Supabase Auth activa se trata como "admin", porque de
-// momento es la única cuenta que existe. Si en el futuro se dan cuentas al
-// resto del equipo, aquí habrá que mirar un campo "rol" real en vez de
-// asumir que toda sesión = admin.
+// Login obligatorio para todo el mundo, con roles reales por persona:
+// 'admin' (Raúl), 'closer', 'tecnico', 'contenido'. El rol se guarda en
+// app_metadata (no en user_metadata) porque app_metadata no se puede editar
+// desde el propio navegador con la clave anon — solo por SQL/Admin API — así
+// que una persona no puede auto-asignarse otro rol con las herramientas del
+// navegador. Se fija con SQL directamente sobre auth.users (ver el script
+// que asigna cada rol tras crear el usuario en el Dashboard de Supabase).
+
+export const SECCIONES_POR_ROL = {
+  admin: ['dashboard', 'ventas', 'clientes', 'equipo', 'comunicacion', 'finanzas', 'onboarding', 'operaciones'],
+  closer: ['ventas', 'comunicacion'],
+  tecnico: ['clientes', 'comunicacion'],
+  contenido: ['operaciones', 'comunicacion'],
+}
+
+export function getRole(session) {
+  return session?.user?.app_metadata?.rol || null
+}
+
+export function seccionesDelRol(rol) {
+  return SECCIONES_POR_ROL[rol] || []
+}
 
 export async function getSession() {
   if (!supabase) return null

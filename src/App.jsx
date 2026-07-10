@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import Onboarding from './components/Onboarding'
-import AdminLogin from './components/AdminLogin'
-import { getSession, onAuthChange, signOut } from './lib/auth'
+import PanelLogin from './components/PanelLogin'
+import { getSession, onAuthChange, signOut, getRole, seccionesDelRol } from './lib/auth'
 
 // Rutas públicas: se sirven solas, sin sidebar ni el resto del panel interno,
 // y sin cargar los módulos que contienen datos de clientes.
@@ -175,8 +175,29 @@ function PublicOnboardingPage() {
   )
 }
 
-function InternalApp() {
-  const [activeView, setActiveView] = useState('dashboard')
+// Pantalla a pantalla completa mientras se resuelve si hay sesión, para no
+// mostrar un parpadeo del login ni del panel antes de tiempo.
+function LoadingScreen() {
+  return <div className="loading-state" style={{ minHeight: '100vh' }}>Cargando…</div>
+}
+
+// Se muestra si hay sesión pero la cuenta no tiene un rol reconocido
+// asignado todavía (p. ej. justo después de crear la cuenta, antes de
+// correr el SQL que le da rol).
+function SinRolAsignado({ email, onLogout }) {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, padding: 20, textAlign: 'center' }}>
+      <span style={{ fontSize: 40 }}>🔒</span>
+      <p>Tu cuenta ({email}) todavía no tiene un rol asignado en el panel.</p>
+      <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Pídele a Raúl que te asigne un rol para poder entrar.</p>
+      <button type="button" className="secondary-action" onClick={onLogout}>Cerrar sesión</button>
+    </div>
+  )
+}
+
+function InternalApp({ session, rol, onLogout }) {
+  const seccionesPermitidas = seccionesDelRol(rol)
+  const [activeView, setActiveView] = useState(seccionesPermitidas[0] || 'dashboard')
   const [clientes, setClientes] = useState([])
   const [team, setTeam] = useState([])
   const [ventas, setVentas] = useState([])
@@ -196,18 +217,6 @@ function InternalApp() {
   const [mensajesEquipo, setMensajesEquipo] = useState([])
   const [valoracionesClientes, setValoracionesClientes] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
-
-  // Acceso admin: por ahora solo Raúl tiene cuenta. El resto del equipo
-  // sigue usando el panel sin login; esto solo desbloquea Finanzas.
-  const [session, setSession] = useState(null)
-  const [showLogin, setShowLogin] = useState(false)
-  const isAdmin = !!session
-
-  useEffect(() => {
-    getSession().then(setSession)
-    const unsubscribe = onAuthChange(setSession)
-    return unsubscribe
-  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -242,52 +251,43 @@ function InternalApp() {
     return () => { cancelled = true }
   }, [])
 
-  // Las 4 tablas de Finanzas se cargan también en el efecto de arriba, pero
-  // ese efecto corre una sola vez al montar la app — normalmente antes de
-  // que getSession() resuelva si hay sesión admin o no. Como ingresos_
-  // empresa/ingresos_personales/gastos_personales exigen sesión (RLS), esa
-  // primera carga (sin sesión todavía) devuelve vacío y se queda así. Este
-  // efecto vuelve a pedir esas 4 tablas en cuanto isAdmin pasa a true, para
-  // que al iniciar sesión aparezcan los datos reales en vez de verse "vacíos".
-  useEffect(() => {
-    if (!isAdmin) return
-    let cancelled = false
-    Promise.all([
-      ingresosPersonalesDataPromise(), gastosPersonalesDataPromise(),
-      ingresosEmpresaDataPromise(), gastosEmpresaDataPromise(),
-    ]).then(([ip, gp, ie, ge]) => {
-      if (cancelled) return
-      setIngresosPersonales(ip.default)
-      setGastosPersonales(gp.default)
-      setIngresosEmpresa(ie.default)
-      setGastosEmpresa(ge.default)
-    })
-    return () => { cancelled = true }
-  }, [isAdmin])
+  // A diferencia de antes, InternalApp ya no se monta hasta que App()
+  // confirma que hay sesión (ver más abajo), así que el efecto de carga de
+  // arriba ya corre con la sesión activa en el cliente de Supabase — no
+  // hace falta un segundo efecto que vuelva a pedir las tablas de Finanzas
+  // al iniciar sesión, porque nunca se piden "sin sesión todavía".
+
+  const irVistaPermitida = (id) => {
+    if (seccionesPermitidas.includes(id)) setActiveView(id)
+  }
 
   const renderView = () => {
-    switch (activeView) {
+    // Defensa por si activeView quedara en una sección no permitida para
+    // este rol (cambio de cuenta, rol reasignado, etc.): se cae a la
+    // primera sección que sí tenga permitida.
+    const vista = seccionesPermitidas.includes(activeView) ? activeView : (seccionesPermitidas[0] || null)
+    switch (vista) {
       case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
       case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} />
       // Finanzas: datos personales de Raúl + datos de empresa (alimentados
-      // automáticamente desde Ventas/Clientes/Equipo). Aunque el sidebar ya
-      // la oculta sin sesión admin, se protege también aquí por si
-      // activeView llegara a valer 'finanzas' sin sesión (defensa en
-      // profundidad; la protección real vive en las políticas RLS).
-      case 'finanzas':     return isAdmin
-        ? <Finanzas
-            ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales}
-            gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales}
-            ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa}
-            gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa}
-          />
-        : <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} />
+      // automáticamente desde Ventas/Clientes/Equipo). Solo 'admin' tiene
+      // 'finanzas' en sus secciones permitidas (ver SECCIONES_POR_ROL en
+      // lib/auth.js), así que si se llega aquí es porque isAdmin ya es
+      // true — la protección real de los datos vive en las políticas RLS.
+      case 'finanzas':     return (
+        <Finanzas
+          ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales}
+          gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales}
+          ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa}
+          gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa}
+        />
+      )
       case 'onboarding':   return <Onboarding />
       case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} />
-      default:             return <Dashboard />
+      default:             return null
     }
   }
 
@@ -295,27 +295,50 @@ function InternalApp() {
     <div className="app-layout">
       <Sidebar
         activeView={activeView}
-        onNavigate={setActiveView}
-        isAdmin={isAdmin}
-        onLoginClick={() => setShowLogin(true)}
-        onLogout={() => { signOut(); setActiveView('dashboard') }}
+        onNavigate={irVistaPermitida}
+        seccionesPermitidas={seccionesPermitidas}
+        rol={rol}
+        email={session?.user?.email}
+        onLogout={onLogout}
       />
       <div className="main-content">
         {renderView()}
       </div>
-      {showLogin && (
-        <AdminLogin
-          onClose={() => setShowLogin(false)}
-          onSuccess={() => setShowLogin(false)}
-        />
-      )}
     </div>
+  )
+}
+
+// Puerta de acceso al panel interno: exige sesión iniciada y un rol
+// reconocido antes de montar InternalApp. Vive separada de App() para no
+// disparar ninguna comprobación de sesión en la ruta pública /onboarding,
+// que no debe depender en nada del login del equipo.
+function AuthGate() {
+  const [session, setSession] = useState(null)
+  const [sessionChecked, setSessionChecked] = useState(false)
+
+  useEffect(() => {
+    getSession().then((s) => { setSession(s); setSessionChecked(true) })
+    const unsubscribe = onAuthChange((s) => { setSession(s); setSessionChecked(true) })
+    return unsubscribe
+  }, [])
+
+  if (!sessionChecked) return <LoadingScreen />
+  if (!session) return <PanelLogin />
+
+  const rol = getRole(session)
+  if (!rol) return <SinRolAsignado email={session.user?.email} onLogout={signOut} />
+
+  return (
+    <Suspense fallback={<div className="loading-state">Cargando…</div>}>
+      <InternalApp session={session} rol={rol} onLogout={signOut} />
+    </Suspense>
   )
 }
 
 export default function App() {
   if (isPublicRoute) {
-    // Ruta pública: /onboarding. Sin Sidebar, sin datos de clientes cargados.
+    // Ruta pública: /onboarding. Sin Sidebar, sin login, sin datos de
+    // clientes cargados — no forma parte del panel interno del equipo.
     return (
       <Suspense fallback={null}>
         <PublicOnboardingPage />
@@ -323,9 +346,5 @@ export default function App() {
     )
   }
 
-  return (
-    <Suspense fallback={<div className="loading-state">Cargando…</div>}>
-      <InternalApp />
-    </Suspense>
-  )
+  return <AuthGate />
 }
