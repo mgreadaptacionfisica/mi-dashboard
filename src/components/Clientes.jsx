@@ -122,7 +122,9 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
 export default function Clientes({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, ingresosEmpresa = [], setIngresosEmpresa }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
-  const [estado, setEstado] = useState('Todos')
+  // Por defecto solo se ven los clientes ACTIVO (menos ruido visual); desde
+  // el desplegable de estado se puede cambiar a "NO ACTIVO" o "Todos".
+  const [estado, setEstado] = useState('ACTIVO')
   const [servicio, setServicio] = useState('Todos')
   const [categoria, setCategoria] = useState('Todos')
   const [trabajador, setTrabajador] = useState('Todos')
