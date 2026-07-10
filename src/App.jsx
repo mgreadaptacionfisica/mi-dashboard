@@ -141,7 +141,7 @@ function InternalApp() {
 
   const renderView = () => {
     switch (activeView) {
-      case 'dashboard':    return <Dashboard />
+      case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />

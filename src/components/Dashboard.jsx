@@ -4,6 +4,7 @@ import {
   Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from 'recharts'
 import KPICard from './KPICard'
+import CalendarioAvisos from './CalendarioAvisos'
 import {
   fetchKPIs,
   fetchClientesPorServicio,
@@ -26,7 +27,7 @@ function diasColor(dias) {
   return '#10b981'
 }
 
-export default function Dashboard() {
+export default function Dashboard({ clientes = [], ventas = [], recontactos = [] }) {
   const [kpis, setKpis]           = useState(null)
   const [servicios, setServicios] = useState([])
   const [formas, setFormas]       = useState([])
@@ -175,6 +176,8 @@ export default function Dashboard() {
                 </ResponsiveContainer>
               </div>
             </div>
+
+            <CalendarioAvisos clientes={clientes} ventas={ventas} recontactos={recontactos} />
 
             {/* Tabla renovaciones */}
             <div className="table-card">
