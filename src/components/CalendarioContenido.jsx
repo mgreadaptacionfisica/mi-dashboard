@@ -3,7 +3,7 @@ import { insertIdeaRemote, updateIdeaRemote, deleteIdeaRemote } from '../lib/que
 
 export const REDES_SOCIALES = ['Instagram', 'TikTok', 'Facebook', 'YouTube']
 export const FORMATOS_CONTENIDO = ['Reel', 'Carrusel', 'Foto', 'Vídeo corto', 'Vídeo largo']
-export const ESTADOS_CONTENIDO = ['Idea', 'Grabado', 'En edición', 'Programado', 'Publicado']
+export const ESTADOS_CONTENIDO = ['Idea', 'Grabado', 'En edición', 'Editado', 'Programado', 'Publicado']
 
 const NOMBRES_MES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -40,6 +40,7 @@ const ESTADO_CLASS = {
   Idea: 'status-idea',
   Grabado: 'status-grabado',
   'En edición': 'status-pendiente',
+  Editado: 'status-editado',
   Programado: 'status-programado',
   Publicado: 'status-activo',
 }
