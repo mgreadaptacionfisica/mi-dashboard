@@ -21,6 +21,7 @@ const Ventas = lazy(() => import('./components/Ventas'))
 const Finanzas = lazy(() => import('./components/Finanzas'))
 const Operaciones = lazy(() => import('./components/Operaciones'))
 const MuroEquipo = lazy(() => import('./components/MuroEquipo'))
+const MisTareas = lazy(() => import('./components/MisTareas'))
 // Clientes: último módulo migrado a Supabase. Los 64 clientes reales se
 // recuperaron del estado en memoria del panel (nunca hubo persistencia
 // real antes) y se migraron con supabase-sql/04_clientes.sql + 04b.
@@ -149,6 +150,14 @@ const sopsDataPromise = async () => {
   return import('./data/sops')
 }
 
+// Mis tareas: tabla nueva admin-only, sin datos estáticos previos (no
+// representaba nada antes de existir la sección).
+const tareasPersonalesDataPromise = async () => {
+  const { fetchTareasPersonales } = await import('./lib/queries/tareasPersonales')
+  const remoto = await fetchTareasPersonales()
+  return { default: remoto || [] }
+}
+
 function PlaceholderView({ name }) {
   return (
     <>
@@ -216,6 +225,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [contactosSemanales, setContactosSemanales] = useState([])
   const [mensajesEquipo, setMensajesEquipo] = useState([])
   const [valoracionesClientes, setValoracionesClientes] = useState([])
+  const [tareasPersonales, setTareasPersonales] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
@@ -226,7 +236,8 @@ function InternalApp({ session, rol, onLogout }) {
       recontactosDataPromise(), ingresosPersonalesDataPromise(), gastosPersonalesDataPromise(),
       ingresosEmpresaDataPromise(), gastosEmpresaDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
       contactosSemanalesDataPromise(), mensajesEquipoDataPromise(), valoracionesClientesDataPromise(),
-    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc]) => {
+      tareasPersonalesDataPromise(),
+    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -246,6 +257,7 @@ function InternalApp({ session, rol, onLogout }) {
       setContactosSemanales(cs.default)
       setMensajesEquipo(me.default)
       setValoracionesClientes(vc.default)
+      setTareasPersonales(ta.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -267,7 +279,7 @@ function InternalApp({ session, rol, onLogout }) {
     // primera sección que sí tenga permitida.
     const vista = seccionesPermitidas.includes(activeView) ? activeView : (seccionesPermitidas[0] || null)
     switch (vista) {
-      case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} />
+      case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} tareasPersonales={tareasPersonales} />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
@@ -287,6 +299,7 @@ function InternalApp({ session, rol, onLogout }) {
       )
       case 'onboarding':   return <Onboarding />
       case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} />
+      case 'tareas':       return <MisTareas tareas={tareasPersonales} setTareas={setTareasPersonales} />
       default:             return null
     }
   }

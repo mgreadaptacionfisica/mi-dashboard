@@ -52,8 +52,17 @@ function diasColor(dias) {
   return '#10b981'
 }
 
-export default function Dashboard({ clientes = [], ventas = [], recontactos = [], ingresosEmpresa = [] }) {
+export default function Dashboard({ clientes = [], ventas = [], recontactos = [], ingresosEmpresa = [], tareasPersonales = [] }) {
   const hoy = todayISO()
+
+  // Aviso de tareas: el panel no puede mandar notificaciones fuera de sí
+  // mismo, así que el "recordatorio" es este banner que se ve al entrar en
+  // el Dashboard, cuando hay tareas de "Mis tareas" para hoy o vencidas.
+  const tareasAviso = useMemo(() => {
+    return tareasPersonales
+      .filter((t) => !t.hecha && t.fecha && t.fecha <= hoy)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+  }, [tareasPersonales, hoy])
 
   const stats = useMemo(() => {
     const activos = clientes.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
@@ -123,6 +132,24 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
       </header>
 
       <main className="page-content">
+        {tareasAviso.length > 0 && (
+          <div className="tareas-aviso-banner">
+            <div>
+              <div className="tareas-aviso-titulo">
+                🔔 {tareasAviso.length} tarea{tareasAviso.length === 1 ? '' : 's'} pendiente{tareasAviso.length === 1 ? '' : 's'} para hoy o vencida{tareasAviso.length === 1 ? '' : 's'}
+              </div>
+              <div className="tareas-aviso-lista">
+                {tareasAviso.slice(0, 4).map((t) => (
+                  <span key={t.id} className="tareas-aviso-item">
+                    {t.fecha < hoy ? '⏰' : '📌'} {t.texto}
+                  </span>
+                ))}
+                {tareasAviso.length > 4 && <span className="tareas-aviso-item">+{tareasAviso.length - 4} más</span>}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="kpi-grid">
           <KPICard
             label="Clientes Activos"

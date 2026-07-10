@@ -9,6 +9,7 @@ const TODOS_LOS_ITEMS = [
   { id: 'finanzas', icon: '💶', label: 'Finanzas' },
   { id: 'onboarding', icon: '✨', label: 'Onboarding' },
   { id: 'operaciones', icon: '⚙️', label: 'Operaciones' },
+  { id: 'tareas', icon: '🗒️', label: 'Mis tareas' },
 ]
 
 const ETIQUETA_ROL = {

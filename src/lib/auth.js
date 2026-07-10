@@ -9,7 +9,7 @@ import { supabase } from './supabaseClient'
 // que asigna cada rol tras crear el usuario en el Dashboard de Supabase).
 
 export const SECCIONES_POR_ROL = {
-  admin: ['dashboard', 'ventas', 'clientes', 'equipo', 'comunicacion', 'finanzas', 'onboarding', 'operaciones'],
+  admin: ['dashboard', 'ventas', 'clientes', 'equipo', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas'],
   closer: ['ventas', 'comunicacion'],
   tecnico: ['clientes', 'comunicacion'],
   contenido: ['operaciones', 'comunicacion'],

@@ -1350,6 +1350,109 @@ tbody td {
 .status-programado { background: #ede9fe; color: #5b21b6; }
 .status-editado    { background: #cffafe; color: #155e75; }
 
+.tareas-composer {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+
+.tareas-composer input[type="text"] {
+  flex: 1 1 260px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+}
+
+.tareas-composer input[type="date"] {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+}
+
+.tareas-list {
+  list-style: none;
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tareas-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.tareas-item-hecha {
+  opacity: 0.55;
+}
+
+.tareas-item-hecha .tareas-check span {
+  text-decoration: line-through;
+}
+
+.tareas-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tareas-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.tareas-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tareas-aviso-banner {
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  border: 1px solid #fdba74;
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+
+.tareas-aviso-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: #9a3412;
+  margin-bottom: 6px;
+}
+
+.tareas-aviso-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.tareas-aviso-item {
+  font-size: 13px;
+  color: #7c2d12;
+}
+
 .loading-state {
   display: flex;
   flex-direction: column;
