@@ -18,6 +18,9 @@ function todayISO() {
 export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, onClose }) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [tareaDraft, setTareaDraft] = useState({})
+  // Texto libre cuando se elige "Otra" en el desplegable de bloques, para
+  // poder escribir algo que no esté en la lista fija (A/1, B/2, Cardio...).
+  const [tareaOtroDraft, setTareaOtroDraft] = useState({})
 
   const mondayISO = useMemo(() => {
     const base = mondayOf(new Date())
@@ -50,10 +53,12 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
 
   const addTarea = (diaId) => {
     const bloque = tareaDraft[diaId] || BLOQUES_SESION[0]
+    const texto = bloque === 'Otra' ? (tareaOtroDraft[diaId] || '').trim() || 'Otra' : bloque
     const diaActual = diasActuales[diaId] || diaVacio()
     actualizarSemana({
-      dias: { ...diasActuales, [diaId]: { tareas: [...diaActual.tareas, { texto: bloque, revisado: false, revisadoEn: null }] } },
+      dias: { ...diasActuales, [diaId]: { tareas: [...diaActual.tareas, { texto, revisado: false, revisadoEn: null }] } },
     })
+    if (bloque === 'Otra') setTareaOtroDraft({ ...tareaOtroDraft, [diaId]: '' })
   }
 
   const removeTarea = (diaId, index) => {
@@ -125,6 +130,15 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
                   >
                     {BLOQUES_SESION.map((b) => <option key={b} value={b}>{b}</option>)}
                   </select>
+                  {(tareaDraft[dia.id] || BLOQUES_SESION[0]) === 'Otra' && (
+                    <input
+                      type="text"
+                      placeholder="Escribe la tarea..."
+                      value={tareaOtroDraft[dia.id] || ''}
+                      onChange={(e) => setTareaOtroDraft({ ...tareaOtroDraft, [dia.id]: e.target.value })}
+                      style={{ width: 120 }}
+                    />
+                  )}
                   <button type="button" className="secondary-action" onClick={() => addTarea(dia.id)}>＋</button>
                 </div>
               </div>
