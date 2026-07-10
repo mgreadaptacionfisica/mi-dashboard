@@ -20,7 +20,13 @@ const Finanzas = lazy(() => import('./components/Finanzas'))
 const Operaciones = lazy(() => import('./components/Operaciones'))
 const MuroEquipo = lazy(() => import('./components/MuroEquipo'))
 const clientesDataPromise = () => import('./data/clientes')
-const teamDataPromise = () => import('./data/team')
+// Equipo: tercer módulo migrado a Supabase, mismo patrón que SOPs/Comunicación.
+const teamDataPromise = async () => {
+  const { fetchMiembrosEquipo } = await import('./lib/queries/miembrosEquipo')
+  const remoto = await fetchMiembrosEquipo()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/team')
+}
 const ventasDataPromise = () => import('./data/ventas')
 const seguimientosDataPromise = () => import('./data/seguimientos')
 const settingDataPromise = () => import('./data/setting')

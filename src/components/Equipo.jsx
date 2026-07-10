@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
 import ContactoSemanal from './ContactoSemanal'
+import { insertMiembroRemote, updateMiembroRemote, deleteMiembroRemote, deleteAllMiembrosRemote } from '../lib/queries/miembrosEquipo'
 import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, semanaVacia, DIAS_SEMANA } from '../utils/seguimientoHelpers'
 
 function todayISO() {
@@ -434,21 +435,24 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
   }
 
   const deleteMember = (area, index) => {
+    const persona = team[area][index]
     setTeam(prev => ({
       ...prev,
       [area]: prev[area].filter((_, i) => i !== index),
     }))
+    if (persona?.id) deleteMiembroRemote(persona.id)
   }
 
   const clearTeam = () => {
     if (window.confirm('¿Eliminar todo el equipo? Esta acción limpiará técnicos, comerciales y contenido.')) {
       setTeam({ tecnico: [], ventas: [], contenido: [] })
+      deleteAllMiembrosRemote()
     }
   }
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    const miembroActualizado = {
+    const base = {
       nombre: formData.nombre || 'Nuevo miembro',
       rol: formData.rol || (formData.area === 'ventas' ? 'Closer' : 'Especialista'),
       email: formData.email || 'nuevo@mg-group.com',
@@ -460,17 +464,22 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
     }
 
     if (isEditing && editingMember) {
+      const existente = team[editingMember.area][editingMember.index]
+      const miembroActualizado = { ...base, id: existente?.id }
       setTeam(prev => ({
         ...prev,
         [editingMember.area]: prev[editingMember.area].map((item, index) =>
           index === editingMember.index ? miembroActualizado : item
         ),
       }))
+      if (existente?.id) updateMiembroRemote(existente.id, miembroActualizado, editingMember.area)
     } else {
+      const miembroActualizado = { ...base, id: `team-${formData.area}-${Date.now()}` }
       setTeam(prev => ({
         ...prev,
         [formData.area]: [miembroActualizado, ...prev[formData.area]],
       }))
+      insertMiembroRemote(miembroActualizado, formData.area)
     }
 
     setFormData({ nombre: '', rol: '', email: '', telefono: '', area: 'tecnico', comision: '', fijo: '' })
