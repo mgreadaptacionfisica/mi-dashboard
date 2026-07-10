@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { insertFinanzaRemote } from '../lib/queries/finanzas'
+import { updateClienteRemote } from '../lib/queries/clientes'
 
 // Vista global de plazos pendientes de cobro, generados desde Clientes al
 // contratar un servicio en 2 o 3 plazos. Al marcar un plazo como cobrado,
@@ -66,10 +67,10 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
   )
 
   const actualizarPlazo = (clienteIndex, numero, patch) => {
-    setClientes(prev => prev.map((c, i) => i === clienteIndex ? {
-      ...c,
-      Plazos: (c.Plazos || []).map(p => p.numero === numero ? { ...p, ...patch } : p),
-    } : c))
+    const cliente = clientes[clienteIndex]
+    const plazosActualizados = (cliente?.Plazos || []).map(p => p.numero === numero ? { ...p, ...patch } : p)
+    setClientes(prev => prev.map((c, i) => i === clienteIndex ? { ...c, Plazos: plazosActualizados } : c))
+    if (cliente?.id) updateClienteRemote(cliente.id, { Plazos: plazosActualizados })
   }
 
   const marcarCobrado = (plazo) => {

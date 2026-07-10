@@ -4,6 +4,7 @@ import RENOVACIONES from '../data/renovaciones'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
 import CobrosPendientes from './CobrosPendientes'
+import { insertClienteRemote, updateClienteRemote } from '../lib/queries/clientes'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
 
@@ -227,7 +228,14 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
     const planExistente = isEditing && editingIndex !== null ? (clientes[editingIndex].Plazos || []) : []
     const plazosFinal = planExistente.length > 0 ? planExistente : generarPlazos(formData.pago, formData.importeTotal)
 
+    // Los clientes nunca tuvieron id propio (ni en el CSV ni en el estado
+    // en memoria); se genera uno estable al crear y se conserva al editar,
+    // igual que se hizo con anuncios/miembros_equipo/recontactos.
+    const idExistente = isEditing && editingIndex !== null ? clientes[editingIndex].id : null
+    const id = idExistente || `cliente-${Date.now()}`
+
     const clienteActualizado = {
+      id,
       Nombre: formData.nombre,
       Email: formData.email,
       'Servicio contratado': nombreServicio,
@@ -247,8 +255,10 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
 
     if (isEditing && editingIndex !== null) {
       setClientes(prev => prev.map((item, index) => index === editingIndex ? clienteActualizado : item))
+      updateClienteRemote(id, clienteActualizado)
     } else {
       setClientes(prev => [clienteActualizado, ...prev])
+      insertClienteRemote(clienteActualizado)
     }
 
     setFormData(initialForm)
@@ -501,7 +511,10 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
                       <MultiTrabajadorSelect
                         options={tecnicoNames}
                         selected={cliente.Trabajadores}
-                        onChange={(nuevos) => setClientes(prev => prev.map((item, i) => i === cliente.originalIndex ? { ...item, Trabajadores: nuevos } : item))}
+                        onChange={(nuevos) => {
+                          setClientes(prev => prev.map((item, i) => i === cliente.originalIndex ? { ...item, Trabajadores: nuevos } : item))
+                          if (cliente.id) updateClienteRemote(cliente.id, { Trabajadores: nuevos })
+                        }}
                       />
                     </td>
                     <td>{formatDate(cliente['Fecha inicio'])}</td>

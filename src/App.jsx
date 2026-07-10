@@ -19,7 +19,15 @@ const Ventas = lazy(() => import('./components/Ventas'))
 const Finanzas = lazy(() => import('./components/Finanzas'))
 const Operaciones = lazy(() => import('./components/Operaciones'))
 const MuroEquipo = lazy(() => import('./components/MuroEquipo'))
-const clientesDataPromise = () => import('./data/clientes')
+// Clientes: último módulo migrado a Supabase. Los 64 clientes reales se
+// recuperaron del estado en memoria del panel (nunca hubo persistencia
+// real antes) y se migraron con supabase-sql/04_clientes.sql + 04b.
+const clientesDataPromise = async () => {
+  const { fetchClientes } = await import('./lib/queries/clientes')
+  const remoto = await fetchClientes()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/clientes')
+}
 // Equipo: tercer módulo migrado a Supabase, mismo patrón que SOPs/Comunicación.
 const teamDataPromise = async () => {
   const { fetchMiembrosEquipo } = await import('./lib/queries/miembrosEquipo')
