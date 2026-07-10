@@ -10,21 +10,42 @@ function formatFecha(iso) {
   return d.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-// Muro de comunicación interna: todo el equipo (Raúl incluido) puede publicar
-// avisos, dudas o cambios y mencionar a compañeros concretos. No hay login
-// todavía (pendiente Supabase), así que "publicar como" es un selector manual.
-export default function MuroEquipo({ mensajes, setMensajes, team }) {
-  const personas = useMemo(() => {
-    const nombres = [
-      'Raúl',
-      ...team.tecnico.map((p) => p.nombre),
-      ...team.ventas.map((p) => p.nombre),
-      ...(team.contenido || []).map((p) => p.nombre),
+// Muro de comunicación interna: todo el equipo puede publicar avisos, dudas
+// o cambios y mencionar a compañeros concretos. Ahora que el login es real
+// y obligatorio, "publicar como" ya no es elegible manualmente (antes
+// cualquiera podía publicar "como" otro compañero) — se fija automáticamente
+// según la cuenta con la que se ha iniciado sesión.
+export default function MuroEquipo({ mensajes, setMensajes, team, miEmail, rol }) {
+  const personasInfo = useMemo(() => {
+    const lista = [
+      { nombre: 'Raúl', email: null },
+      ...team.tecnico.map((p) => ({ nombre: p.nombre, email: p.email })),
+      ...team.ventas.map((p) => ({ nombre: p.nombre, email: p.email })),
+      ...(team.contenido || []).map((p) => ({ nombre: p.nombre, email: p.email })),
     ]
-    return [...new Set(nombres)]
+    const vistos = new Set()
+    return lista.filter((p) => {
+      if (vistos.has(p.nombre)) return false
+      vistos.add(p.nombre)
+      return true
+    })
   }, [team])
 
-  const [autor, setAutor] = useState(personas[0] || 'Raúl')
+  const personas = useMemo(() => personasInfo.map((p) => p.nombre), [personasInfo])
+
+  // Se busca a la persona del equipo cuyo email (el que Raúl le puso en
+  // Equipo) coincide con el email de la cuenta con la que ha iniciado
+  // sesión. Si no hay match (p. ej. admin sin ficha en Equipo), se usa
+  // 'Raúl' para el rol admin, o el propio email como último recurso.
+  const autor = useMemo(() => {
+    const porEmail = personasInfo.find(
+      (p) => p.email && miEmail && p.email.toLowerCase() === miEmail.toLowerCase()
+    )
+    if (porEmail) return porEmail.nombre
+    if (rol === 'admin') return 'Raúl'
+    return miEmail || 'Desconocido'
+  }, [personasInfo, miEmail, rol])
+
   const [texto, setTexto] = useState('')
   const [menciones, setMenciones] = useState([])
   const [soloMenciones, setSoloMenciones] = useState(false)
@@ -65,10 +86,8 @@ export default function MuroEquipo({ mensajes, setMensajes, team }) {
       <main className="page-content muro-page">
         <form className="muro-composer" onSubmit={publicar}>
           <div className="muro-composer-row">
-            <label className="lead-detail-label">Publicar como</label>
-            <select value={autor} onChange={(e) => setAutor(e.target.value)}>
-              {personas.map((nombre) => <option key={nombre} value={nombre}>{nombre}</option>)}
-            </select>
+            <label className="lead-detail-label">Publicando como</label>
+            <span className="muro-autor-fijo">{autor}</span>
           </div>
 
           <textarea

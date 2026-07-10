@@ -44,4 +44,4 @@ create policy "gastos_personales_admin_only" on public.gastos_personales
 -- actualiza solo hasta que se renueva).
 update auth.users
 set raw_app_meta_data = raw_app_meta_data || '{"rol": "admin"}'::jsonb
-where email = 'TU_EMAIL_AQUI';
+where email = 'mgreadaptacionfisica@gmail.com';
