@@ -906,6 +906,16 @@ button {
   margin-bottom: 16px;
 }
 
+.client-modal .card-header {
+  position: sticky;
+  top: -20px;
+  margin: -20px -20px 16px;
+  padding: 20px 20px 12px;
+  background: white;
+  z-index: 5;
+  border-bottom: 1px solid var(--color-border);
+}
+
 .card-title {
   font-size: 15px;
   font-weight: 700;
@@ -1147,6 +1157,8 @@ tbody td {
   width: min(560px, 100%);
   padding: 20px;
   box-shadow: var(--shadow-md);
+  max-height: 88vh;
+  overflow-y: auto;
 }
 
 .modal-form {
