@@ -1,9 +1,15 @@
 import { supabase } from '../supabaseClient'
 
-// Las 3 tablas de Finanzas comparten forma base (id, fecha, concepto,
-// importe, notas); gastos_profesionales añade categoria/origen/
-// personaNombre/mes (para el pago automático al equipo desde Equipo.jsx).
-// Un solo helper genérico parametrizado por tabla, en vez de triplicar
+// Las 4 tablas de Finanzas comparten forma base (id, fecha, concepto,
+// importe, notas). Las dos "de empresa" añaden un origen para distinguir
+// lo automático de lo manual:
+//  - gastos_empresa añade categoria/origen/personaNombre/mes (pago
+//    automático al equipo desde Equipo.jsx).
+//  - ingresos_empresa añade origen/clienteId/plazoNumero (cobro automático
+//    de un plazo desde Clientes > Cobros pendientes).
+// ingresos_personales/gastos_personales son 100% manuales (Raúl), sin
+// columnas de origen.
+// Un solo helper genérico parametrizado por tabla, en vez de cuadruplicar
 // fetch/insert/update/delete.
 const TABLAS = {
   ingresos_personales: {
@@ -12,9 +18,13 @@ const TABLAS = {
   gastos_personales: {
     id: 'id', fecha: 'fecha', concepto: 'concepto', importe: 'importe', notas: 'notas',
   },
-  gastos_profesionales: {
+  gastos_empresa: {
     id: 'id', fecha: 'fecha', concepto: 'concepto', importe: 'importe', notas: 'notas',
     categoria: 'categoria', origen: 'origen', personaNombre: 'persona_nombre', mes: 'mes',
+  },
+  ingresos_empresa: {
+    id: 'id', fecha: 'fecha', concepto: 'concepto', importe: 'importe', notas: 'notas',
+    origen: 'origen', clienteId: 'cliente_id', plazoNumero: 'plazo_numero',
   },
 }
 

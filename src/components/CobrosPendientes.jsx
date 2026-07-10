@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
-import { insertFinanzaRemote } from '../lib/queries/finanzas'
+import { insertFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
 import { updateClienteRemote } from '../lib/queries/clientes'
 
 // Vista global de plazos pendientes de cobro, generados desde Clientes al
 // contratar un servicio en 2 o 3 plazos. Al marcar un plazo como cobrado,
 // se actualiza el cliente (pagado + fecha real de cobro) y se añade
-// automáticamente un ingreso en Finanzas > Ingresos personales.
+// automáticamente un ingreso en Finanzas > Ingresos empresa. El id de ese
+// ingreso es determinista (cliente.id + número de plazo, sin Date.now())
+// para poder encontrarlo y borrarlo si se deshace el cobro.
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -22,7 +24,11 @@ function euro(n) {
   return `${(Number(n) || 0).toLocaleString('es-ES', { maximumFractionDigits: 2 })}€`
 }
 
-export default function CobrosPendientes({ clientes = [], setClientes, setIngresosPersonales }) {
+function idIngresoPlazo(clienteId, numero) {
+  return `fin-plazo-${clienteId}-${numero}`
+}
+
+export default function CobrosPendientes({ clientes = [], setClientes, setIngresosEmpresa }) {
   const [editando, setEditando] = useState(null) // `${clienteIndex}-${numero}`
 
   const pendientes = useMemo(() => {
@@ -33,6 +39,7 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
           lista.push({
             ...plazo,
             clienteIndex,
+            clienteId: cliente.id,
             clienteNombre: cliente.Nombre,
             servicio: cliente['Servicio contratado'],
             totalPlazos: (cliente.Plazos || []).length,
@@ -51,6 +58,7 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
           lista.push({
             ...plazo,
             clienteIndex,
+            clienteId: cliente.id,
             clienteNombre: cliente.Nombre,
             servicio: cliente['Servicio contratado'],
             totalPlazos: (cliente.Plazos || []).length,
@@ -76,16 +84,30 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
   const marcarCobrado = (plazo) => {
     const hoy = todayISO()
     actualizarPlazo(plazo.clienteIndex, plazo.numero, { pagado: true, fechaPago: hoy })
-    if (typeof setIngresosPersonales === 'function') {
+    if (typeof setIngresosEmpresa === 'function' && plazo.clienteId) {
       const nuevoIngreso = {
-        id: `fin-plazo-${plazo.clienteIndex}-${plazo.numero}-${Date.now()}`,
+        id: idIngresoPlazo(plazo.clienteId, plazo.numero),
         fecha: hoy,
         concepto: `Plazo ${plazo.numero}/${plazo.totalPlazos} — ${plazo.clienteNombre}${plazo.servicio ? ' · ' + plazo.servicio : ''}`,
         importe: Number(plazo.importe) || 0,
         notas: 'Cobro automático desde Clientes > Cobros pendientes',
+        origen: 'cobro_cliente',
+        clienteId: plazo.clienteId,
+        plazoNumero: plazo.numero,
       }
-      setIngresosPersonales(prev => [nuevoIngreso, ...prev])
-      insertFinanzaRemote('ingresos_personales', nuevoIngreso)
+      setIngresosEmpresa(prev => [nuevoIngreso, ...prev])
+      insertFinanzaRemote('ingresos_empresa', nuevoIngreso)
+    }
+  }
+
+  // Deshacer: vuelve el plazo a pendiente (sin fecha de cobro) y borra el
+  // ingreso automático que se había creado en Finanzas > Ingresos empresa.
+  const deshacerCobro = (plazo) => {
+    actualizarPlazo(plazo.clienteIndex, plazo.numero, { pagado: false, fechaPago: null })
+    if (typeof setIngresosEmpresa === 'function' && plazo.clienteId) {
+      const id = idIngresoPlazo(plazo.clienteId, plazo.numero)
+      setIngresosEmpresa(prev => prev.filter(ingreso => ingreso.id !== id))
+      deleteFinanzaRemote('ingresos_empresa', id)
     }
   }
 
@@ -112,7 +134,7 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
         <div className="card-header">
           <div>
             <div className="card-title">Plazos pendientes de cobro</div>
-            <div className="card-subtitle">Ordenados por fecha prevista. Al marcar "Cobrado" se añade automáticamente a Ingresos personales.</div>
+            <div className="card-subtitle">Ordenados por fecha prevista. Al marcar "Cobrado" se añade automáticamente a Finanzas &gt; Ingresos empresa.</div>
           </div>
         </div>
         <div className="table-wrapper">
@@ -189,7 +211,7 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
           <div className="card-header">
             <div>
               <div className="card-title">Cobrados recientemente</div>
-              <div className="card-subtitle">Últimos plazos marcados como cobrados</div>
+              <div className="card-subtitle">Últimos plazos marcados como cobrados. "Deshacer" los vuelve a pendiente y borra el ingreso de Finanzas.</div>
             </div>
           </div>
           <div className="table-wrapper">
@@ -201,6 +223,7 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
                   <th>Plazo</th>
                   <th>Importe</th>
                   <th>Fecha de cobro</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -211,6 +234,15 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
                     <td>{plazo.numero}/{plazo.totalPlazos}</td>
                     <td>{euro(plazo.importe)}</td>
                     <td>{formatFecha(plazo.fechaPago)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="row-action-btn"
+                        onClick={() => deshacerCobro(plazo)}
+                      >
+                        ↩️ Deshacer
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

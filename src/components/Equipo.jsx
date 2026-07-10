@@ -161,7 +161,7 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, on
   )
 }
 
-export default function Equipo({ team, setTeam, clientes, ventas = [], seguimientos = [], setSeguimientos, gastosProfesionales = [], setGastosProfesionales, contactosSemanales = [], setContactosSemanales }) {
+export default function Equipo({ team, setTeam, clientes, ventas = [], seguimientos = [], setSeguimientos, gastosEmpresa = [], setGastosEmpresa, contactosSemanales = [], setContactosSemanales }) {
   const [showModal, setShowModal] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [detailCloser, setDetailCloser] = useState(null)
@@ -197,10 +197,10 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
   // como gasto profesional. Se identifican por persona + mes para poder marcar
   // o deshacer el pago de un mes concreto sin duplicar registros.
   const pagoRegistrado = (persona, mesKey) =>
-    gastosProfesionales.find((g) => g.origen === 'equipo' && g.personaNombre === persona.nombre && g.mes === mesKey)
+    gastosEmpresa.find((g) => g.origen === 'equipo' && g.personaNombre === persona.nombre && g.mes === mesKey)
 
   const marcarPago = (persona, importe, mesKey) => {
-    if (typeof setGastosProfesionales !== 'function') return
+    if (typeof setGastosEmpresa !== 'function') return
     const nuevo = {
       id: `gasto-equipo-${persona.nombre}-${mesKey}`,
       fecha: todayISO(),
@@ -212,14 +212,14 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
       personaNombre: persona.nombre,
       mes: mesKey,
     }
-    setGastosProfesionales((prev) => [nuevo, ...prev])
-    insertFinanzaRemote('gastos_profesionales', nuevo)
+    setGastosEmpresa((prev) => [nuevo, ...prev])
+    insertFinanzaRemote('gastos_empresa', nuevo)
   }
 
   const deshacerPago = (persona, mesKey) => {
-    if (typeof setGastosProfesionales !== 'function') return
-    setGastosProfesionales((prev) => prev.filter((g) => !(g.origen === 'equipo' && g.personaNombre === persona.nombre && g.mes === mesKey)))
-    deleteFinanzaRemote('gastos_profesionales', `gasto-equipo-${persona.nombre}-${mesKey}`)
+    if (typeof setGastosEmpresa !== 'function') return
+    setGastosEmpresa((prev) => prev.filter((g) => !(g.origen === 'equipo' && g.personaNombre === persona.nombre && g.mes === mesKey)))
+    deleteFinanzaRemote('gastos_empresa', `gasto-equipo-${persona.nombre}-${mesKey}`)
   }
 
   const comisionPorCloser = useMemo(() => {

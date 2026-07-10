@@ -119,7 +119,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function Clientes({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, ingresosPersonales = [], setIngresosPersonales }) {
+export default function Clientes({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, ingresosEmpresa = [], setIngresosEmpresa }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
   const [estado, setEstado] = useState('Todos')
@@ -335,7 +335,7 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
           <CobrosPendientes
             clientes={clientes}
             setClientes={setClientes}
-            setIngresosPersonales={setIngresosPersonales}
+            setIngresosEmpresa={setIngresosEmpresa}
           />
         )}
 

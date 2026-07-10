@@ -80,11 +80,14 @@ const recontactosDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/recontactos')
 }
+// Ingresos/gastos personales: 100% manuales (Raúl), separados del dinero
+// de la empresa. Al ser tablas nuevas/protegidas por RLS admin-only, un
+// visitante sin sesión simplemente verá listas vacías (no hace fallback a
+// datos estáticos porque no representan ya la realidad tras la reorganización).
 const ingresosPersonalesDataPromise = async () => {
   const { fetchFinanzas } = await import('./lib/queries/finanzas')
   const remoto = await fetchFinanzas('ingresos_personales')
-  if (remoto !== null) return { default: remoto }
-  return import('./data/ingresosPersonales')
+  return { default: remoto || [] }
 }
 const gastosPersonalesDataPromise = async () => {
   const { fetchFinanzas } = await import('./lib/queries/finanzas')
@@ -92,9 +95,19 @@ const gastosPersonalesDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/gastosPersonales')
 }
-const gastosProfesionalesDataPromise = async () => {
+// Ingresos/gastos de empresa: se alimentan automáticamente desde Clientes >
+// Cobros pendientes (ingresos_empresa) y Equipo > Marcar pago (gastos_empresa).
+// Antes de esta reorganización estas tablas se llamaban ingresos_personales
+// y gastos_profesionales (ver supabase-sql/15_finanzas_empresa_personal.sql).
+const ingresosEmpresaDataPromise = async () => {
   const { fetchFinanzas } = await import('./lib/queries/finanzas')
-  const remoto = await fetchFinanzas('gastos_profesionales')
+  const remoto = await fetchFinanzas('ingresos_empresa')
+  if (remoto !== null) return { default: remoto }
+  return import('./data/ingresosPersonales')
+}
+const gastosEmpresaDataPromise = async () => {
+  const { fetchFinanzas } = await import('./lib/queries/finanzas')
+  const remoto = await fetchFinanzas('gastos_empresa')
   if (remoto !== null) return { default: remoto }
   return import('./data/gastosProfesionales')
 }
@@ -175,7 +188,8 @@ function InternalApp() {
   const [recontactos, setRecontactos] = useState([])
   const [ingresosPersonales, setIngresosPersonales] = useState([])
   const [gastosPersonales, setGastosPersonales] = useState([])
-  const [gastosProfesionales, setGastosProfesionales] = useState([])
+  const [ingresosEmpresa, setIngresosEmpresa] = useState([])
+  const [gastosEmpresa, setGastosEmpresa] = useState([])
   const [contenidoIdeas, setContenidoIdeas] = useState([])
   const [sops, setSops] = useState([])
   const [contactosSemanales, setContactosSemanales] = useState([])
@@ -201,9 +215,9 @@ function InternalApp() {
       clientesDataPromise(), teamDataPromise(), ventasDataPromise(), seguimientosDataPromise(),
       settingDataPromise(), adsKpiDataPromise(), adsNotasDataPromise(), anunciosDataPromise(),
       recontactosDataPromise(), ingresosPersonalesDataPromise(), gastosPersonalesDataPromise(),
-      gastosProfesionalesDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
+      ingresosEmpresaDataPromise(), gastosEmpresaDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
       contactosSemanalesDataPromise(), mensajesEquipoDataPromise(), valoracionesClientesDataPromise(),
-    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, gpr, ci, so, cs, me, vc]) => {
+    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -216,7 +230,8 @@ function InternalApp() {
       setRecontactos(rc.default)
       setIngresosPersonales(ip.default)
       setGastosPersonales(gp.default)
-      setGastosProfesionales(gpr.default)
+      setIngresosEmpresa(ie.default)
+      setGastosEmpresa(ge.default)
       setContenidoIdeas(ci.default)
       setSops(so.default)
       setContactosSemanales(cs.default)
@@ -231,15 +246,21 @@ function InternalApp() {
     switch (activeView) {
       case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
-      case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales} />
-      case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
+      case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} />
+      case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
       case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} />
-      // Finanzas: datos personales de Raúl. Aunque el sidebar ya la oculta
-      // sin sesión admin, se protege también aquí por si activeView llegara
-      // a valer 'finanzas' sin sesión (defensa en profundidad; la protección
-      // real de los datos vive en las políticas RLS de Supabase).
+      // Finanzas: datos personales de Raúl + datos de empresa (alimentados
+      // automáticamente desde Ventas/Clientes/Equipo). Aunque el sidebar ya
+      // la oculta sin sesión admin, se protege también aquí por si
+      // activeView llegara a valer 'finanzas' sin sesión (defensa en
+      // profundidad; la protección real vive en las políticas RLS).
       case 'finanzas':     return isAdmin
-        ? <Finanzas ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales} gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} />
+        ? <Finanzas
+            ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales}
+            gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales}
+            ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa}
+            gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa}
+          />
         : <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} />
       case 'onboarding':   return <Onboarding />
       case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} />
