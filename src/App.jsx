@@ -242,6 +242,29 @@ function InternalApp() {
     return () => { cancelled = true }
   }, [])
 
+  // Las 4 tablas de Finanzas se cargan también en el efecto de arriba, pero
+  // ese efecto corre una sola vez al montar la app — normalmente antes de
+  // que getSession() resuelva si hay sesión admin o no. Como ingresos_
+  // empresa/ingresos_personales/gastos_personales exigen sesión (RLS), esa
+  // primera carga (sin sesión todavía) devuelve vacío y se queda así. Este
+  // efecto vuelve a pedir esas 4 tablas en cuanto isAdmin pasa a true, para
+  // que al iniciar sesión aparezcan los datos reales en vez de verse "vacíos".
+  useEffect(() => {
+    if (!isAdmin) return
+    let cancelled = false
+    Promise.all([
+      ingresosPersonalesDataPromise(), gastosPersonalesDataPromise(),
+      ingresosEmpresaDataPromise(), gastosEmpresaDataPromise(),
+    ]).then(([ip, gp, ie, ge]) => {
+      if (cancelled) return
+      setIngresosPersonales(ip.default)
+      setGastosPersonales(gp.default)
+      setIngresosEmpresa(ie.default)
+      setGastosEmpresa(ge.default)
+    })
+    return () => { cancelled = true }
+  }, [isAdmin])
+
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} />
