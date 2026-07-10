@@ -146,6 +146,13 @@ button {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  /* Sin esto, un hijo flex no se encoge por debajo del ancho de su
+     contenido (tablas anchas, filtros con columnas mínimas...): en vez de
+     activar el scroll horizontal de esos elementos, empujaba toda la app
+     más ancha que la ventana, y como el body tiene overflow-x: hidden, esa
+     parte quedaba recortada sin forma de llegar a ella salvo maximizando
+     la ventana. */
+  min-width: 0;
 }
 
 .app-layout-public {
@@ -377,6 +384,7 @@ button {
 .page-content {
   padding: 28px;
   flex: 1;
+  min-width: 0;
 }
 
 .hero-card {
@@ -1006,6 +1014,8 @@ button {
   display: grid;
   grid-template-columns: 1.5fr repeat(4, minmax(140px, 1fr));
   gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .quick-view-grid {
@@ -2034,6 +2044,10 @@ tbody td {
   display: flex;
   gap: 8px;
   margin-bottom: 18px;
+  /* Si hay más pestañas de las que caben (ventana no maximizada), se
+     puede deslizar en vez de quedar cortadas sin forma de verlas. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tab-btn {
