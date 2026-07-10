@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { updateLeadRemote } from '../lib/queries/ventas'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -52,11 +53,10 @@ export default function Recontactar({ ventas = [], setVentas, recontactos = [], 
 
   const updateLeadRecontacto = (leadId, patch) => {
     if (typeof setVentas !== 'function') return
-    setVentas((prev) => prev.map((l) => (
-      l.id === leadId
-        ? { ...l, recontacto: { ...recontactoVacio, ...(l.recontacto || {}), ...patch } }
-        : l
-    )))
+    const lead = ventas.find((l) => l.id === leadId)
+    const recontactoMerged = { ...recontactoVacio, ...(lead?.recontacto || {}), ...patch }
+    setVentas((prev) => prev.map((l) => (l.id === leadId ? { ...l, recontacto: recontactoMerged } : l)))
+    updateLeadRemote(leadId, { recontacto: recontactoMerged })
   }
 
   const updateManual = (id, patch) => {

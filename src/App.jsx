@@ -27,7 +27,13 @@ const teamDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/team')
 }
-const ventasDataPromise = () => import('./data/ventas')
+// Ventas: cuarto módulo migrado a Supabase, mismo patrón que SOPs/Comunicación/Equipo.
+const ventasDataPromise = async () => {
+  const { fetchVentas } = await import('./lib/queries/ventas')
+  const remoto = await fetchVentas()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/ventas')
+}
 const seguimientosDataPromise = () => import('./data/seguimientos')
 const settingDataPromise = () => import('./data/setting')
 const adsKpiDataPromise = () => import('./data/adsKpi')

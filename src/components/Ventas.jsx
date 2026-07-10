@@ -3,6 +3,7 @@ import SERVICIOS from '../data/servicios'
 import SettingInstagram from './SettingInstagram'
 import AdsKpi from './AdsKpi'
 import Recontactar from './Recontactar'
+import { insertLeadRemote, updateLeadRemote } from '../lib/queries/ventas'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -102,6 +103,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
 
   const updateLead = (id, patch) => {
     setVentas((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)))
+    updateLeadRemote(id, patch)
   }
 
   const resetDetailUI = () => {
@@ -143,6 +145,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
       creadoEn: todayISO(),
     }
     setVentas((prev) => [nuevo, ...prev])
+    insertLeadRemote(nuevo)
     setLeadForm(initialLeadForm)
     setShowNewLead(false)
   }
