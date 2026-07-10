@@ -2,7 +2,7 @@
 // usadas tanto desde Clientes.jsx (ficha del cliente) como desde
 // Equipo.jsx (resumen por profesional).
 
-export const BLOQUES_SESION = ['DIA', 'A/1', 'B/2', 'C/3', 'D/4', 'Cardio', 'Entrenamiento', 'Evaluación', 'Semanal', 'Mensual', 'Otra']
+export const BLOQUES_SESION = ['DIA', 'A/1', 'B/2', 'C/3', 'D/4', 'E/5', 'F/6', 'Cardio', 'Entrenamiento', 'Evaluación', 'Semanal', 'Mensual', 'Otra']
 
 export const DIAS_SEMANA = [
   { id: 'lunes', label: 'Lunes' },
