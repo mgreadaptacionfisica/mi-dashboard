@@ -34,7 +34,7 @@ create policy "ads_notas_mensuales_update_all" on public.ads_notas_mensuales for
 create policy "ads_notas_mensuales_delete_all" on public.ads_notas_mensuales for delete using (true);
 
 create table if not exists public.anuncios (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key,
   nombre text default '',
   video text default '',
   llamadas integer not null default 0,

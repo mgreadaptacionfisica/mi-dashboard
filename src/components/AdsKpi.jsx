@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { upsertAdsKpiRemote, upsertAdsNotaRemote, insertAnuncioRemote, updateAnuncioRemote, deleteAnuncioRemote } from '../lib/queries/ads'
 
 export const MESES_ADS = [
   'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
@@ -75,14 +76,15 @@ export default function AdsKpi({ adsKpi = [], setAdsKpi, adsNotas = [], setAdsNo
 
   const actualizarSemana = (mes, semana, key, valor) => {
     if (typeof setAdsKpi !== 'function') return
+    const num = valor === '' ? 0 : Number(valor)
+    const existente = adsKpi.find((r) => r.mes === mes && r.semana === semana)
+    const actualizado = existente ? { ...existente, [key]: num } : { mes, semana, ...REGISTRO_VACIO, [key]: num }
     setAdsKpi((prev) => {
       const existe = prev.some((r) => r.mes === mes && r.semana === semana)
-      const num = valor === '' ? 0 : Number(valor)
-      if (existe) {
-        return prev.map((r) => (r.mes === mes && r.semana === semana ? { ...r, [key]: num } : r))
-      }
-      return [...prev, { mes, semana, ...REGISTRO_VACIO, [key]: num }]
+      if (existe) return prev.map((r) => (r.mes === mes && r.semana === semana ? actualizado : r))
+      return [...prev, actualizado]
     })
+    upsertAdsKpiRemote(actualizado)
   }
 
   const notaDelMes = adsNotas.find((n) => n.mes === mesSeleccionado)?.notas || ''
@@ -94,6 +96,7 @@ export default function AdsKpi({ adsKpi = [], setAdsKpi, adsNotas = [], setAdsNo
       if (existe) return prev.map((n) => (n.mes === mes ? { ...n, notas: texto } : n))
       return [...prev, { mes, notas: texto }]
     })
+    upsertAdsNotaRemote(mes, texto)
   }
 
   const totalesMes = useMemo(() => {
@@ -134,22 +137,30 @@ export default function AdsKpi({ adsKpi = [], setAdsKpi, adsNotas = [], setAdsNo
 
   const eliminarAnuncio = (index) => {
     if (typeof setAnuncios !== 'function') return
+    const anuncio = anuncios[index]
     setAnuncios((prev) => prev.filter((_, i) => i !== index))
+    if (anuncio?.id) deleteAnuncioRemote(anuncio.id)
   }
 
   const handleSubmitAnuncio = (event) => {
     event.preventDefault()
     if (typeof setAnuncios !== 'function') return
-    const nuevo = {
+    const base = {
       nombre: anuncioForm.nombre.trim(),
       video: anuncioForm.video.trim(),
       llamadas: Number(anuncioForm.llamadas) || 0,
       ventas: Number(anuncioForm.ventas) || 0,
     }
-    setAnuncios((prev) => {
-      if (editingAnuncioIndex === null) return [nuevo, ...prev]
-      return prev.map((a, i) => (i === editingAnuncioIndex ? nuevo : a))
-    })
+    if (editingAnuncioIndex === null) {
+      const nuevo = { ...base, id: `anuncio-${Date.now()}` }
+      setAnuncios((prev) => [nuevo, ...prev])
+      insertAnuncioRemote(nuevo)
+    } else {
+      const existente = anuncios[editingAnuncioIndex]
+      const actualizado = { ...base, id: existente?.id }
+      setAnuncios((prev) => prev.map((a, i) => (i === editingAnuncioIndex ? actualizado : a)))
+      if (existente?.id) updateAnuncioRemote(existente.id, base)
+    }
     setShowAnuncioForm(false)
     setEditingAnuncioIndex(null)
     setAnuncioForm(initialAnuncioForm)

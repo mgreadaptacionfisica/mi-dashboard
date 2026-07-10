@@ -46,9 +46,24 @@ const settingDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/setting')
 }
-const adsKpiDataPromise = () => import('./data/adsKpi')
-const adsNotasDataPromise = () => import('./data/adsNotasMensuales')
-const anunciosDataPromise = () => import('./data/anuncios')
+const adsKpiDataPromise = async () => {
+  const { fetchAdsKpi } = await import('./lib/queries/ads')
+  const remoto = await fetchAdsKpi()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/adsKpi')
+}
+const adsNotasDataPromise = async () => {
+  const { fetchAdsNotas } = await import('./lib/queries/ads')
+  const remoto = await fetchAdsNotas()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/adsNotasMensuales')
+}
+const anunciosDataPromise = async () => {
+  const { fetchAnuncios } = await import('./lib/queries/ads')
+  const remoto = await fetchAnuncios()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/anuncios')
+}
 const recontactosDataPromise = () => import('./data/recontactos')
 const ingresosPersonalesDataPromise = () => import('./data/ingresosPersonales')
 const gastosPersonalesDataPromise = () => import('./data/gastosPersonales')
