@@ -1,19 +1,44 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
+  Tooltip, ResponsiveContainer, Cell, PieChart, Pie
 } from 'recharts'
 import KPICard from './KPICard'
 import CalendarioAvisos from './CalendarioAvisos'
-import {
-  fetchKPIs,
-  fetchClientesPorServicio,
-  fetchClientesPorFormaPago,
-  fetchProximasRenovaciones,
-} from '../api/index'
+import { parseFechaFlexible } from '../utils/fechasEsp'
+
+// Dashboard con datos reales (clientes + ingresos de empresa), en vez del
+// snapshot congelado de src/api/index.js (exportado de Notion el 29/06/2026
+// y nunca más actualizado). Todo se calcula aquí mismo a partir de los
+// props que ya carga App.jsx desde Supabase.
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444']
-const PAGO_COLORS = { 'Stripe': '#635BFF', 'Bizum': '#00ADEF', 'Transferencia': '#10b981' }
+const PAGO_COLORS = { 'Stripe': '#635BFF', 'Bizum': '#00ADEF', 'Transferencia': '#10b981', 'HOTMART': '#f59e0b' }
+
+function euro(n) {
+  return `${(Number(n) || 0).toLocaleString('es-ES', { maximumFractionDigits: 2 })}€`
+}
+
+// Misma categorización que usa Clientes.jsx: la categoría se deduce del
+// programa contratado, no de un campo "Tipo de cliente" que ya no se pide
+// en el formulario (quedó obsoleto en la migración a Supabase).
+function categoriaPrograma(nombreServicio) {
+  const s = (nombreServicio || '').toUpperCase()
+  if (s.includes('PREVIENE')) return 'Programa Previene'
+  if (s.includes('READAPTATE')) return 'Programa Readáptate'
+  return 'Otro'
+}
+
+function todayISO() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function diasEntre(isoDesde, isoHasta) {
+  const a = new Date(`${isoDesde}T00:00:00`)
+  const b = new Date(`${isoHasta}T00:00:00`)
+  return Math.round((b - a) / 86400000)
+}
 
 function diasLabel(dias) {
   if (dias < 0) return `Venció hace ${Math.abs(dias)}d`
@@ -27,37 +52,62 @@ function diasColor(dias) {
   return '#10b981'
 }
 
-export default function Dashboard({ clientes = [], ventas = [], recontactos = [] }) {
-  const [kpis, setKpis]           = useState(null)
-  const [servicios, setServicios] = useState([])
-  const [formas, setFormas]       = useState([])
-  const [renovaciones, setRenovaciones] = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState(null)
-  const [vistaClientes, setVistaClientes] = useState('renovaciones')
+export default function Dashboard({ clientes = [], ventas = [], recontactos = [], ingresosEmpresa = [] }) {
+  const hoy = todayISO()
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const [k, s, f, r] = await Promise.all([
-        fetchKPIs(),
-        fetchClientesPorServicio(),
-        fetchClientesPorFormaPago(),
-        fetchProximasRenovaciones(),
-      ])
-      setKpis(k)
-      setServicios(s)
-      setFormas(f)
-      setRenovaciones(r)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const stats = useMemo(() => {
+    const activos = clientes.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
+    const noActivos = clientes.length - activos.length
+    const readaptate = activos.filter(c => categoriaPrograma(c['Servicio contratado']) === 'Programa Readáptate').length
+    const previene = activos.filter(c => categoriaPrograma(c['Servicio contratado']) === 'Programa Previene').length
+    const tasaRetencion = clientes.length > 0 ? Math.round((activos.length / clientes.length) * 1000) / 10 : 0
+    return { totalClientes: clientes.length, activos: activos.length, noActivos, readaptate, previene, tasaRetencion }
+  }, [clientes])
 
-  useEffect(() => { loadData() }, [loadData])
+  const totalIngresosEmpresa = useMemo(
+    () => ingresosEmpresa.reduce((sum, e) => sum + (Number(e.importe) || 0), 0),
+    [ingresosEmpresa]
+  )
+
+  const servicios = useMemo(() => {
+    const counts = {}
+    clientes.forEach(c => {
+      if ((c['Estado del cliente'] || '').toUpperCase() !== 'ACTIVO') return
+      const nombre = c['Servicio contratado'] || 'Sin servicio'
+      counts[nombre] = (counts[nombre] || 0) + 1
+    })
+    return Object.entries(counts)
+      .map(([servicio, cantidad]) => ({ servicio, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+  }, [clientes])
+
+  const formas = useMemo(() => {
+    const counts = {}
+    clientes.forEach(c => {
+      const forma = c['Forma de pago'] || 'Sin especificar'
+      counts[forma] = (counts[forma] || 0) + 1
+    })
+    return Object.entries(counts).map(([forma, cantidad]) => ({ forma, cantidad }))
+  }, [clientes])
+
+  const renovaciones = useMemo(() => {
+    return clientes
+      .filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
+      .map(c => {
+        const fechaFinISO = parseFechaFlexible(c['Fecha fin'])
+        return {
+          id: c.id,
+          nombre: c.Nombre,
+          categoria: categoriaPrograma(c['Servicio contratado']),
+          servicio: c['Servicio contratado'],
+          fechaFin: fechaFinISO,
+          diasRestantes: fechaFinISO ? diasEntre(hoy, fechaFinISO) : null,
+        }
+      })
+      .filter(c => c.fechaFin)
+      .sort((a, b) => a.diasRestantes - b.diasRestantes)
+      .slice(0, 15)
+  }, [clientes, hoy])
 
   const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -70,161 +120,143 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
           <div className="topbar-title">Dashboard</div>
           <div className="topbar-subtitle">{today}</div>
         </div>
-        <div className="topbar-right">
-          <button className="refresh-btn" onClick={loadData} disabled={loading}>
-            {loading ? '⏳ Cargando...' : '↻ Actualizar'}
-          </button>
-        </div>
       </header>
 
       <main className="page-content">
-        {error && <div className="error-state">⚠️ {error}</div>}
+        <div className="kpi-grid">
+          <KPICard
+            label="Clientes Activos"
+            value={stats.activos}
+            subtext={`de ${stats.totalClientes} totales`}
+            type="number"
+            icon="✅"
+            iconBg="#d1fae5"
+          />
+          <KPICard
+            label="Readáptate / Previene (Activos)"
+            value={stats.readaptate}
+            subtext={`${stats.previene} Previene activos`}
+            type="number"
+            icon="⭐"
+            iconBg="#fef3c7"
+          />
+          <KPICard
+            label="Ingresos Empresa"
+            value={euro(totalIngresosEmpresa)}
+            subtext="registrados en Finanzas"
+            type="text"
+            icon="💰"
+            iconBg="#dbeafe"
+          />
+          <KPICard
+            label="Tasa de Retención"
+            value={stats.tasaRetencion}
+            subtext={`${stats.noActivos} clientes no activos`}
+            type="percent"
+            icon="🔄"
+            iconBg="#ede9fe"
+          />
+        </div>
 
-        {loading && !kpis ? (
-          <div className="loading-state">
-            <div className="spinner" />
-            <span>Cargando datos...</span>
-          </div>
-        ) : kpis && (
-          <>
-            {/* KPIs */}
-            <div className="kpi-grid">
-              <KPICard
-                label="Clientes Activos"
-                value={kpis.clientes_activos}
-                subtext={`de ${kpis.total_clientes} totales`}
-                type="number"
-                icon="✅"
-                iconBg="#d1fae5"
-              />
-              <KPICard
-                label="High Ticket (Activos)"
-                value={kpis.high_ticket}
-                subtext={`${kpis.low_ticket} Low Ticket activos`}
-                type="number"
-                icon="⭐"
-                iconBg="#fef3c7"
-              />
-              <KPICard
-                label="Ingresos Registrados"
-                value={kpis.ingresos_registrados}
-                subtext="pagos recogidos en Notion"
-                type="currency"
-                icon="💰"
-                iconBg="#dbeafe"
-              />
-              <KPICard
-                label="Tasa de Retención"
-                value={kpis.tasa_retencion}
-                subtext={`${kpis.clientes_no_activos} clientes no activos`}
-                type="percent"
-                icon="🔄"
-                iconBg="#ede9fe"
-              />
-            </div>
-
-            {/* Gráficos */}
-            <div className="charts-grid">
-              {/* Clientes por servicio */}
-              <div className="card">
-                <div className="card-header">
-                  <div>
-                    <div className="card-title">Clientes Activos por Servicio</div>
-                    <div className="card-subtitle">Distribución por tipo de contrato</div>
-                  </div>
-                </div>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={servicios} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="servicio" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="cantidad" name="Clientes" radius={[6,6,0,0]}>
-                      {servicios.map((_, i) => (
-                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Formas de pago */}
-              <div className="card">
-                <div className="card-header">
-                  <div>
-                    <div className="card-title">Forma de Pago</div>
-                    <div className="card-subtitle">Todos los clientes</div>
-                  </div>
-                </div>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={formas}
-                      dataKey="cantidad"
-                      nameKey="forma"
-                      cx="50%" cy="50%"
-                      outerRadius={80}
-                      label={({ forma, percent }) => `${forma} ${(percent*100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {formas.map((entry, i) => (
-                        <Cell key={i} fill={PAGO_COLORS[entry.forma] || COLORS[i]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v, n) => [v, n]} />
-                  </PieChart>
-                </ResponsiveContainer>
+        <div className="charts-grid">
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">Clientes Activos por Servicio</div>
+                <div className="card-subtitle">Distribución por tipo de contrato</div>
               </div>
             </div>
-
-            <CalendarioAvisos clientes={clientes} ventas={ventas} recontactos={recontactos} />
-
-            {/* Tabla renovaciones */}
-            <div className="table-card">
-              <div className="card-header">
-                <div>
-                  <div className="card-title">Próximas Renovaciones</div>
-                  <div className="card-subtitle">Clientes activos ordenados por fecha de fin</div>
-                </div>
-              </div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Tipo</th>
-                    <th>Servicio</th>
-                    <th>Fecha fin</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {renovaciones.map(c => (
-                    <tr key={c.id}>
-                      <td style={{ fontWeight: 500 }}>{c.nombre}</td>
-                      <td>
-                        <span className={`status-pill ${c.tipo === 'HIGH TICKET' ? 'status-activo' : 'status-pendiente'}`}>
-                          {c.tipo === 'HIGH TICKET' ? '⭐ High' : '🔵 Low'}
-                        </span>
-                      </td>
-                      <td>{c.servicio}</td>
-                      <td style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
-                        {c.fecha_fin ? new Date(c.fecha_fin + 'T00:00:00').toLocaleDateString('es-ES') : '—'}
-                      </td>
-                      <td>
-                        <span style={{
-                          fontSize: 12, fontWeight: 600,
-                          color: diasColor(c.dias_restantes)
-                        }}>
-                          {diasLabel(c.dias_restantes)}
-                        </span>
-                      </td>
-                    </tr>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={servicios} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="servicio" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="cantidad" name="Clientes" radius={[6, 6, 0, 0]}>
+                  {servicios.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
-                </tbody>
-              </table>
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">Forma de Pago</div>
+                <div className="card-subtitle">Todos los clientes</div>
+              </div>
             </div>
-          </>
-        )}
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={formas}
+                  dataKey="cantidad"
+                  nameKey="forma"
+                  cx="50%" cy="50%"
+                  outerRadius={80}
+                  label={({ forma, percent }) => `${forma} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false}
+                >
+                  {formas.map((entry, i) => (
+                    <Cell key={i} fill={PAGO_COLORS[entry.forma] || COLORS[i]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v, n) => [v, n]} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <CalendarioAvisos clientes={clientes} ventas={ventas} recontactos={recontactos} />
+
+        <div className="table-card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Próximas Renovaciones</div>
+              <div className="card-subtitle">Clientes activos ordenados por fecha de fin</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Categoría</th>
+                <th>Servicio</th>
+                <th>Fecha fin</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {renovaciones.map(c => (
+                <tr key={c.id}>
+                  <td style={{ fontWeight: 500 }}>{c.nombre}</td>
+                  <td>
+                    <span className={`status-pill ${c.categoria === 'Programa Readáptate' ? 'status-activo' : 'status-pendiente'}`}>
+                      {c.categoria === 'Programa Readáptate' ? '⭐ Readáptate' : c.categoria === 'Programa Previene' ? '🔵 Previene' : c.categoria}
+                    </span>
+                  </td>
+                  <td>{c.servicio}</td>
+                  <td style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
+                    {c.fechaFin ? new Date(c.fechaFin + 'T00:00:00').toLocaleDateString('es-ES') : '—'}
+                  </td>
+                  <td>
+                    <span style={{
+                      fontSize: 12, fontWeight: 600,
+                      color: diasColor(c.diasRestantes)
+                    }}>
+                      {diasLabel(c.diasRestantes)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {renovaciones.length === 0 && (
+                <tr><td colSpan={5} className="lead-log-empty">No hay clientes activos con fecha de fin reconocible.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </main>
     </>
   )

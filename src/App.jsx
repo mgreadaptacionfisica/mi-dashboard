@@ -267,7 +267,7 @@ function InternalApp() {
 
   const renderView = () => {
     switch (activeView) {
-      case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} />
+      case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
@@ -284,7 +284,7 @@ function InternalApp() {
             ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa}
             gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa}
           />
-        : <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} />
+        : <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} />
       case 'onboarding':   return <Onboarding />
       case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} />
       default:             return <Dashboard />
