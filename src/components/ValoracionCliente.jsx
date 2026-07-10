@@ -12,6 +12,7 @@ import {
   mejoraPct,
   indiceSimetria,
 } from '../utils/valoracionHelpers'
+import { insertValoracionRemote, updateValoracionRemote, deleteValoracionRemote } from '../lib/queries/valoracionesClientes'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -141,6 +142,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
   const eliminar = (id) => {
     if (typeof setValoraciones !== 'function') return
     setValoraciones((prev) => prev.filter((v) => v.id !== id))
+    deleteValoracionRemote(id)
   }
 
   const setCampo = (bloqueId, itemId, valor) => {
@@ -151,9 +153,13 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     event.preventDefault()
     if (typeof setValoraciones !== 'function') return
     if (editingId) {
-      setValoraciones((prev) => prev.map((v) => (v.id === editingId ? { ...v, ...formData, clienteNombre: cliente.Nombre } : v)))
+      const patch = { ...formData, clienteNombre: cliente.Nombre }
+      setValoraciones((prev) => prev.map((v) => (v.id === editingId ? { ...v, ...patch } : v)))
+      updateValoracionRemote(editingId, patch)
     } else {
-      setValoraciones((prev) => [...prev, { id: `val-${Date.now()}`, clienteNombre: cliente.Nombre, ...formData }])
+      const nueva = { id: `val-${Date.now()}`, clienteNombre: cliente.Nombre, ...formData }
+      setValoraciones((prev) => [...prev, nueva])
+      insertValoracionRemote(nueva)
     }
     setShowForm(false)
     setEditingId(null)

@@ -55,7 +55,12 @@ const contactosSemanalesDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/contactosSemanales')
 }
-const valoracionesClientesDataPromise = () => import('./data/valoracionesClientes')
+const valoracionesClientesDataPromise = async () => {
+  const { fetchValoraciones } = await import('./lib/queries/valoracionesClientes')
+  const remoto = await fetchValoraciones()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/valoracionesClientes')
+}
 
 // Comunicación: segundo módulo migrado a Supabase, mismo patrón que SOPs
 // (fallback automático al archivo estático si la tabla remota no responde).
