@@ -70,9 +70,24 @@ const recontactosDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/recontactos')
 }
-const ingresosPersonalesDataPromise = () => import('./data/ingresosPersonales')
-const gastosPersonalesDataPromise = () => import('./data/gastosPersonales')
-const gastosProfesionalesDataPromise = () => import('./data/gastosProfesionales')
+const ingresosPersonalesDataPromise = async () => {
+  const { fetchFinanzas } = await import('./lib/queries/finanzas')
+  const remoto = await fetchFinanzas('ingresos_personales')
+  if (remoto !== null) return { default: remoto }
+  return import('./data/ingresosPersonales')
+}
+const gastosPersonalesDataPromise = async () => {
+  const { fetchFinanzas } = await import('./lib/queries/finanzas')
+  const remoto = await fetchFinanzas('gastos_personales')
+  if (remoto !== null) return { default: remoto }
+  return import('./data/gastosPersonales')
+}
+const gastosProfesionalesDataPromise = async () => {
+  const { fetchFinanzas } = await import('./lib/queries/finanzas')
+  const remoto = await fetchFinanzas('gastos_profesionales')
+  if (remoto !== null) return { default: remoto }
+  return import('./data/gastosProfesionales')
+}
 const contenidoIdeasDataPromise = () => import('./data/contenidoIdeas')
 const contactosSemanalesDataPromise = async () => {
   const { fetchContactosSemanales } = await import('./lib/queries/contactosSemanales')

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { insertFinanzaRemote, updateFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -20,7 +21,7 @@ function euro(n) {
 
 const initialForm = { fecha: todayISO(), concepto: '', importe: '', notas: '' }
 
-function LedgerTable({ entradas = [], setEntradas, etiqueta, mostrarOrigenEquipo }) {
+function LedgerTable({ entradas = [], setEntradas, etiqueta, mostrarOrigenEquipo, tabla }) {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState(initialForm)
@@ -62,28 +63,32 @@ function LedgerTable({ entradas = [], setEntradas, etiqueta, mostrarOrigenEquipo
   const eliminar = (id) => {
     if (typeof setEntradas !== 'function') return
     setEntradas((prev) => prev.filter((e) => e.id !== id))
+    deleteFinanzaRemote(tabla, id)
   }
 
   const handleSubmit = (event) => {
     event.preventDefault()
     if (typeof setEntradas !== 'function') return
     if (editingId) {
-      setEntradas((prev) => prev.map((e) => (e.id === editingId ? {
-        ...e,
+      const patch = {
         fecha: formData.fecha,
         concepto: formData.concepto.trim(),
         importe: Number(formData.importe) || 0,
         notas: formData.notas.trim(),
-      } : e)))
+      }
+      setEntradas((prev) => prev.map((e) => (e.id === editingId ? { ...e, ...patch } : e)))
+      updateFinanzaRemote(tabla, editingId, patch)
     } else {
-      setEntradas((prev) => [{
+      const nueva = {
         id: `fin-${Date.now()}`,
         fecha: formData.fecha,
         concepto: formData.concepto.trim(),
         importe: Number(formData.importe) || 0,
         notas: formData.notas.trim(),
         origen: 'manual',
-      }, ...prev])
+      }
+      setEntradas((prev) => [nueva, ...prev])
+      insertFinanzaRemote(tabla, nueva)
     }
     setShowForm(false)
     setEditingId(null)
@@ -264,13 +269,13 @@ export default function Finanzas({
         </div>
 
         {activeTab === 'ingresos' && (
-          <LedgerTable entradas={ingresosPersonales} setEntradas={setIngresosPersonales} etiqueta="Ingresos personales" />
+          <LedgerTable entradas={ingresosPersonales} setEntradas={setIngresosPersonales} etiqueta="Ingresos personales" tabla="ingresos_personales" />
         )}
         {activeTab === 'gastosPersonales' && (
-          <LedgerTable entradas={gastosPersonales} setEntradas={setGastosPersonales} etiqueta="Gastos personales" />
+          <LedgerTable entradas={gastosPersonales} setEntradas={setGastosPersonales} etiqueta="Gastos personales" tabla="gastos_personales" />
         )}
         {activeTab === 'gastosProfesionales' && (
-          <LedgerTable entradas={gastosProfesionales} setEntradas={setGastosProfesionales} etiqueta="Gastos profesionales" mostrarOrigenEquipo />
+          <LedgerTable entradas={gastosProfesionales} setEntradas={setGastosProfesionales} etiqueta="Gastos profesionales" mostrarOrigenEquipo tabla="gastos_profesionales" />
         )}
       </main>
     </>

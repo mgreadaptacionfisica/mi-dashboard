@@ -4,6 +4,7 @@ import ContactoSemanal from './ContactoSemanal'
 import { insertMiembroRemote, updateMiembroRemote, deleteMiembroRemote, deleteAllMiembrosRemote } from '../lib/queries/miembrosEquipo'
 import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, semanaVacia, DIAS_SEMANA } from '../utils/seguimientoHelpers'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
+import { insertFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -200,25 +201,25 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
 
   const marcarPago = (persona, importe, mesKey) => {
     if (typeof setGastosProfesionales !== 'function') return
-    setGastosProfesionales((prev) => [
-      {
-        id: `gasto-equipo-${persona.nombre}-${mesKey}`,
-        fecha: todayISO(),
-        concepto: `Pago equipo - ${persona.nombre} (${mesLabel(mesKey)})`,
-        importe: Number(importe) || 0,
-        categoria: esCloser(persona) ? 'Comisión closer' : 'Pago técnico',
-        notas: '',
-        origen: 'equipo',
-        personaNombre: persona.nombre,
-        mes: mesKey,
-      },
-      ...prev,
-    ])
+    const nuevo = {
+      id: `gasto-equipo-${persona.nombre}-${mesKey}`,
+      fecha: todayISO(),
+      concepto: `Pago equipo - ${persona.nombre} (${mesLabel(mesKey)})`,
+      importe: Number(importe) || 0,
+      categoria: esCloser(persona) ? 'Comisión closer' : 'Pago técnico',
+      notas: '',
+      origen: 'equipo',
+      personaNombre: persona.nombre,
+      mes: mesKey,
+    }
+    setGastosProfesionales((prev) => [nuevo, ...prev])
+    insertFinanzaRemote('gastos_profesionales', nuevo)
   }
 
   const deshacerPago = (persona, mesKey) => {
     if (typeof setGastosProfesionales !== 'function') return
     setGastosProfesionales((prev) => prev.filter((g) => !(g.origen === 'equipo' && g.personaNombre === persona.nombre && g.mes === mesKey)))
+    deleteFinanzaRemote('gastos_profesionales', `gasto-equipo-${persona.nombre}-${mesKey}`)
   }
 
   const comisionPorCloser = useMemo(() => {

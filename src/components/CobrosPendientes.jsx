@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { insertFinanzaRemote } from '../lib/queries/finanzas'
 
 // Vista global de plazos pendientes de cobro, generados desde Clientes al
 // contratar un servicio en 2 o 3 plazos. Al marcar un plazo como cobrado,
@@ -75,14 +76,15 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
     const hoy = todayISO()
     actualizarPlazo(plazo.clienteIndex, plazo.numero, { pagado: true, fechaPago: hoy })
     if (typeof setIngresosPersonales === 'function') {
-      setIngresosPersonales(prev => [{
+      const nuevoIngreso = {
         id: `fin-plazo-${plazo.clienteIndex}-${plazo.numero}-${Date.now()}`,
         fecha: hoy,
         concepto: `Plazo ${plazo.numero}/${plazo.totalPlazos} — ${plazo.clienteNombre}${plazo.servicio ? ' · ' + plazo.servicio : ''}`,
         importe: Number(plazo.importe) || 0,
         notas: 'Cobro automático desde Clientes > Cobros pendientes',
-        origen: 'plazo-cliente',
-      }, ...prev])
+      }
+      setIngresosPersonales(prev => [nuevoIngreso, ...prev])
+      insertFinanzaRemote('ingresos_personales', nuevoIngreso)
     }
   }
 
