@@ -10,6 +10,7 @@ const TODOS_LOS_ITEMS = [
   { id: 'onboarding', icon: '✨', label: 'Onboarding' },
   { id: 'operaciones', icon: '⚙️', label: 'Operaciones' },
   { id: 'tareas', icon: '🗒️', label: 'Mis tareas' },
+  { id: 'manuales', icon: '📚', label: 'Manuales' },
 ]
 
 const ETIQUETA_ROL = {

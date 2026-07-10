@@ -22,6 +22,7 @@ const Finanzas = lazy(() => import('./components/Finanzas'))
 const Operaciones = lazy(() => import('./components/Operaciones'))
 const MuroEquipo = lazy(() => import('./components/MuroEquipo'))
 const MisTareas = lazy(() => import('./components/MisTareas'))
+const Manuales = lazy(() => import('./components/Manuales'))
 // Clientes: último módulo migrado a Supabase. Los 64 clientes reales se
 // recuperaron del estado en memoria del panel (nunca hubo persistencia
 // real antes) y se migraron con supabase-sql/04_clientes.sql + 04b.
@@ -158,6 +159,14 @@ const tareasPersonalesDataPromise = async () => {
   return { default: remoto || [] }
 }
 
+// Manuales: visible para todos los roles, sin fallback estático (los 4 PDFs
+// ya vienen precargados desde supabase-sql/20_manuales.sql).
+const manualesDataPromise = async () => {
+  const { fetchManuales } = await import('./lib/queries/manuales')
+  const remoto = await fetchManuales()
+  return { default: remoto || [] }
+}
+
 function PlaceholderView({ name }) {
   return (
     <>
@@ -226,6 +235,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [mensajesEquipo, setMensajesEquipo] = useState([])
   const [valoracionesClientes, setValoracionesClientes] = useState([])
   const [tareasPersonales, setTareasPersonales] = useState([])
+  const [manuales, setManuales] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
@@ -236,8 +246,8 @@ function InternalApp({ session, rol, onLogout }) {
       recontactosDataPromise(), ingresosPersonalesDataPromise(), gastosPersonalesDataPromise(),
       ingresosEmpresaDataPromise(), gastosEmpresaDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
       contactosSemanalesDataPromise(), mensajesEquipoDataPromise(), valoracionesClientesDataPromise(),
-      tareasPersonalesDataPromise(),
-    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta]) => {
+      tareasPersonalesDataPromise(), manualesDataPromise(),
+    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -258,6 +268,7 @@ function InternalApp({ session, rol, onLogout }) {
       setMensajesEquipo(me.default)
       setValoracionesClientes(vc.default)
       setTareasPersonales(ta.default)
+      setManuales(ma.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -300,6 +311,7 @@ function InternalApp({ session, rol, onLogout }) {
       case 'onboarding':   return <Onboarding />
       case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} miEmail={session?.user?.email} rol={rol} />
       case 'tareas':       return <MisTareas tareas={tareasPersonales} setTareas={setTareasPersonales} />
+      case 'manuales':     return <Manuales manuales={manuales} setManuales={setManuales} rol={rol} />
       default:             return null
     }
   }

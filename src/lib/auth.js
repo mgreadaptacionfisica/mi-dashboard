@@ -8,11 +8,13 @@ import { supabase } from './supabaseClient'
 // navegador. Se fija con SQL directamente sobre auth.users (ver el script
 // que asigna cada rol tras crear el usuario en el Dashboard de Supabase).
 
+// 'manuales' se añade a los 4 roles a propósito: es el único archivo de
+// documentos que ve todo el mundo, sea cual sea su acceso al resto del panel.
 export const SECCIONES_POR_ROL = {
-  admin: ['dashboard', 'ventas', 'clientes', 'equipo', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas'],
-  closer: ['ventas', 'comunicacion'],
-  tecnico: ['clientes', 'comunicacion'],
-  contenido: ['operaciones', 'comunicacion'],
+  admin: ['dashboard', 'ventas', 'clientes', 'equipo', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales'],
+  closer: ['ventas', 'comunicacion', 'manuales'],
+  tecnico: ['clientes', 'comunicacion', 'manuales'],
+  contenido: ['operaciones', 'comunicacion', 'manuales'],
 }
 
 export function getRole(session) {
