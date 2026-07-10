@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { updateLeadRemote } from '../lib/queries/ventas'
+import { insertRecontactoRemote, updateRecontactoRemote, deleteRecontactoRemote } from '../lib/queries/recontactos'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -62,11 +63,13 @@ export default function Recontactar({ ventas = [], setVentas, recontactos = [], 
   const updateManual = (id, patch) => {
     if (typeof setRecontactos !== 'function') return
     setRecontactos((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+    updateRecontactoRemote(id, patch)
   }
 
   const eliminarManual = (id) => {
     if (typeof setRecontactos !== 'function') return
     setRecontactos((prev) => prev.filter((r) => r.id !== id))
+    deleteRecontactoRemote(id)
   }
 
   const handleSubmitManual = (event) => {
@@ -84,6 +87,7 @@ export default function Recontactar({ ventas = [], setVentas, recontactos = [], 
       comprado: null,
     }
     setRecontactos((prev) => [nuevo, ...prev])
+    insertRecontactoRemote(nuevo)
     setShowForm(false)
     setManualForm(initialManualForm)
   }

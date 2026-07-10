@@ -64,7 +64,12 @@ const anunciosDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/anuncios')
 }
-const recontactosDataPromise = () => import('./data/recontactos')
+const recontactosDataPromise = async () => {
+  const { fetchRecontactos } = await import('./lib/queries/recontactos')
+  const remoto = await fetchRecontactos()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/recontactos')
+}
 const ingresosPersonalesDataPromise = () => import('./data/ingresosPersonales')
 const gastosPersonalesDataPromise = () => import('./data/gastosPersonales')
 const gastosProfesionalesDataPromise = () => import('./data/gastosProfesionales')
