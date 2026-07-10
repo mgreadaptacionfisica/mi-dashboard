@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { insertIdeaRemote, updateIdeaRemote, deleteIdeaRemote } from '../lib/queries/contenidoIdeas'
 
 export const REDES_SOCIALES = ['Instagram', 'TikTok', 'Facebook', 'YouTube']
 export const FORMATOS_CONTENIDO = ['Reel', 'Carrusel', 'Foto', 'Vídeo corto', 'Vídeo largo']
@@ -103,6 +104,7 @@ export default function CalendarioContenido({ ideas = [], setIdeas, equipoConten
   const asignarFecha = (id, fechaISO) => {
     if (typeof setIdeas !== 'function') return
     setIdeas((prev) => prev.map((i) => (i.id === id ? { ...i, fecha: fechaISO } : i)))
+    updateIdeaRemote(id, { fecha: fechaISO })
   }
 
   const celdas = useMemo(() => celdasDelMes(cursor.year, cursor.month), [cursor])
@@ -166,6 +168,7 @@ export default function CalendarioContenido({ ideas = [], setIdeas, equipoConten
   const eliminar = (id) => {
     if (typeof setIdeas !== 'function') return
     setIdeas((prev) => prev.filter((i) => i.id !== id))
+    deleteIdeaRemote(id)
     setShowForm(false)
   }
 
@@ -173,13 +176,17 @@ export default function CalendarioContenido({ ideas = [], setIdeas, equipoConten
     event.preventDefault()
     if (typeof setIdeas !== 'function') return
     if (editingId) {
-      setIdeas((prev) => prev.map((i) => (i.id === editingId ? { ...i, ...formData, titulo: formData.titulo.trim() } : i)))
+      const patch = { ...formData, titulo: formData.titulo.trim() }
+      setIdeas((prev) => prev.map((i) => (i.id === editingId ? { ...i, ...patch } : i)))
+      updateIdeaRemote(editingId, patch)
     } else {
-      setIdeas((prev) => [...prev, {
+      const nueva = {
         id: `contenido-${Date.now()}`,
         ...formData,
         titulo: formData.titulo.trim(),
-      }])
+      }
+      setIdeas((prev) => [...prev, nueva])
+      insertIdeaRemote(nueva)
     }
     setShowForm(false)
     setEditingId(null)

@@ -88,7 +88,12 @@ const gastosProfesionalesDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/gastosProfesionales')
 }
-const contenidoIdeasDataPromise = () => import('./data/contenidoIdeas')
+const contenidoIdeasDataPromise = async () => {
+  const { fetchContenidoIdeas } = await import('./lib/queries/contenidoIdeas')
+  const remoto = await fetchContenidoIdeas()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/contenidoIdeas')
+}
 const contactosSemanalesDataPromise = async () => {
   const { fetchContactosSemanales } = await import('./lib/queries/contactosSemanales')
   const remoto = await fetchContactosSemanales()
