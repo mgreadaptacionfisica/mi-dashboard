@@ -34,14 +34,14 @@ create policy "mensajes_setting_insert_all" on public.mensajes_setting for inser
 create policy "mensajes_setting_update_all" on public.mensajes_setting for update using (true);
 create policy "mensajes_setting_delete_all" on public.mensajes_setting for delete using (true);
 
+-- Nota: los textos multi-párrafo se escriben con E'...\n...' (una sola
+-- línea de código con \n escapado) en vez de saltos de línea reales dentro
+-- de las comillas, porque un salto de línea real dentro de la cadena es
+-- frágil al copiar/pegar (puede romper la comilla de cierre sin avisar).
 insert into public.mensajes_setting (id, tipo, plantilla, descripcion, texto) values
-('bienvenida-N1', 'bienvenida', 'N1', 'Probar unas 400 personas', 'Hola! Gracias por sumarte a la cuenta, y espero que te aporte tanto para aprender como para recuperarte de una lesión
-
-Por conocerte un poco mas, la lesión te limita, ¿entrenando o en tu día a día? ¿O ambos?'),
-('bienvenida-N2', 'bienvenida', 'N2', 'Empezar a testear', 'Hola [NOMBRE], soy [TU NOMBRE], encantado/a!
-Por simple curiosidad, y para poder enfocar mejor lo que comparto, ¿estás buscando mejorar en algún aspecto en concreto ahora mismo?'),
-('bienvenida-N3', 'bienvenida', 'N3', 'Tercera opción de testeo y ver datos', 'Buenas [NOMBRE], gracias por seguirme, espero que te esté gustando lo que comparto por aquí.
-¿Quería preguntarte si te interesa más la parte de alimentación o entrenamiento?'),
+('bienvenida-N1', 'bienvenida', 'N1', 'Probar unas 400 personas', E'Hola! Gracias por sumarte a la cuenta, y espero que te aporte tanto para aprender como para recuperarte de una lesión\n\nPor conocerte un poco mas, la lesión te limita, ¿entrenando o en tu día a día? ¿O ambos?'),
+('bienvenida-N2', 'bienvenida', 'N2', 'Empezar a testear', E'Hola [NOMBRE], soy [TU NOMBRE], encantado/a!\nPor simple curiosidad, y para poder enfocar mejor lo que comparto, ¿estás buscando mejorar en algún aspecto en concreto ahora mismo?'),
+('bienvenida-N3', 'bienvenida', 'N3', 'Tercera opción de testeo y ver datos', E'Buenas [NOMBRE], gracias por seguirme, espero que te esté gustando lo que comparto por aquí.\n¿Quería preguntarte si te interesa más la parte de alimentación o entrenamiento?'),
 ('fup-N1', 'fup', 'N1', 'Probar unas 400 personas', 'Buenas de nuevo, no sé si viste el mensaje o dijiste ya le respondo luego, ese luego que dura semanas 😅'),
 ('fup-N2', 'fup', 'N2', 'Empezar a testear', 'Hola!! Vengo a resurgir entre los mensajes olvidados 👋 ¿Pudiste leer el último que te envié?'),
 ('fup-N3', 'fup', 'N3', 'Tercera opción de testeo y ver datos', 'Buenaaas, ¿qué tal estás?, ¿has podido leer mi mensaje? Estoy por aquí atento, un saludo!')
