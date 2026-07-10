@@ -40,7 +40,12 @@ const seguimientosDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/seguimientos')
 }
-const settingDataPromise = () => import('./data/setting')
+const settingDataPromise = async () => {
+  const { fetchSetting } = await import('./lib/queries/settingInstagram')
+  const remoto = await fetchSetting()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/setting')
+}
 const adsKpiDataPromise = () => import('./data/adsKpi')
 const adsNotasDataPromise = () => import('./data/adsNotasMensuales')
 const anunciosDataPromise = () => import('./data/anuncios')

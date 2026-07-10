@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { MENSAJES_BIENVENIDA, MENSAJES_FUP } from '../data/mensajesSetting'
+import { upsertSettingRemote, deleteSettingRemote } from '../lib/queries/settingInstagram'
 
 const MENSAJE_IDS = ['N1', 'N2', 'N3']
 
@@ -96,6 +97,7 @@ export default function SettingInstagram({ setting = [], setSetting }) {
   const eliminarRegistro = (fecha) => {
     if (typeof setSetting !== 'function') return
     setSetting((prev) => prev.filter((r) => r.fecha !== fecha))
+    deleteSettingRemote(fecha)
   }
 
   const handleSubmit = (event) => {
@@ -127,6 +129,7 @@ export default function SettingInstagram({ setting = [], setSetting }) {
       }
       return [nuevoRegistro, ...prev]
     })
+    upsertSettingRemote(nuevoRegistro, editingFecha)
 
     setShowForm(false)
     setEditingFecha(null)
