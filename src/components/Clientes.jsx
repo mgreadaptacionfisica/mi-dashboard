@@ -3,6 +3,7 @@ import SERVICIOS from '../data/servicios'
 import RENOVACIONES from '../data/renovaciones'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
+import CobrosPendientes from './CobrosPendientes'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
 
@@ -21,6 +22,37 @@ const initialForm = {
   otraRenovacion: '',
   importeRenovacion: RENOVACIONES[0].precio,
   fechaRenovacion: '',
+  pago: 'COMPLETO',
+  importeTotal: '',
+  plazosDetalle: [],
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+// Genera el plan de cobros: 1 pago único si es COMPLETO, o 2/3 plazos
+// repartiendo el importe total a partes iguales, con fechas mensuales a
+// partir de hoy. Todos empiezan como pendientes y se marcan como
+// cobrados después desde "Cobros pendientes" (que es lo que crea el
+// ingreso automático en Finanzas).
+function generarPlazos(pago, importeTotal) {
+  const total = Number(importeTotal) || 0
+  if (total <= 0) return []
+  const n = pago === '3 PLAZOS' ? 3 : pago === '2 PLAZOS' ? 2 : 1
+  const base = Math.round((total / n) * 100) / 100
+  const hoy = new Date()
+  return Array.from({ length: n }, (_, i) => {
+    const fecha = new Date(hoy)
+    fecha.setMonth(fecha.getMonth() + i)
+    return {
+      numero: i + 1,
+      importe: base,
+      fecha: fecha.toISOString().slice(0, 10),
+      pagado: false,
+      fechaPago: null,
+    }
+  })
 }
 
 // El valor "Renueva" de los clientes sincronizados de Notion venía en inglés
@@ -86,7 +118,8 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function Clientes({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones }) {
+export default function Clientes({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, ingresosPersonales = [], setIngresosPersonales }) {
+  const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
   const [estado, setEstado] = useState('Todos')
   const [servicio, setServicio] = useState('Todos')
@@ -165,6 +198,11 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
     return { activos, noActivos, readaptate, previene, renuevan }
   }, [clientesConTrabajador])
 
+  const plazosPendientesCount = useMemo(
+    () => clientes.reduce((sum, c) => sum + (c.Plazos || []).filter(p => !p.pagado).length, 0),
+    [clientes]
+  )
+
   const handleSubmit = (event) => {
     event.preventDefault()
     const servicioSeleccionado = SERVICIOS.find(s => s.id === formData.servicioId)
@@ -181,6 +219,14 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
     // la asignación de profesionales del equipo técnico.
     const trabajadoresFinal = formData.estado === 'NO ACTIVO' ? [] : (formData.trabajadores || [])
 
+    // El plan de plazos solo se genera la primera vez (cliente nuevo, o
+    // cliente editado que todavía no tenía uno). Si ya existe un plan
+    // (con plazos quizá ya cobrados), no se toca aquí para no perder ese
+    // historial: las correcciones de importe/fecha se hacen desde
+    // "Cobros pendientes".
+    const planExistente = isEditing && editingIndex !== null ? (clientes[editingIndex].Plazos || []) : []
+    const plazosFinal = planExistente.length > 0 ? planExistente : generarPlazos(formData.pago, formData.importeTotal)
+
     const clienteActualizado = {
       Nombre: formData.nombre,
       Email: formData.email,
@@ -194,6 +240,9 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
       'Forma de renovación': formData.renueva === 'Sí' ? nombreRenovacion : '',
       'Importe renovación': formData.renueva === 'Sí' ? formData.importeRenovacion : '',
       'Fecha renovación': formData.renueva === 'Sí' ? formData.fechaRenovacion : '',
+      Pago: formData.pago,
+      'Importe total': formData.importeTotal,
+      Plazos: plazosFinal,
     }
 
     if (isEditing && editingIndex !== null) {
@@ -236,6 +285,9 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
       otraRenovacion: renovacionActual && !renovacionEncontrada ? renovacionActual : '',
       importeRenovacion: cliente['Importe renovación'] || RENOVACIONES[0].precio,
       fechaRenovacion: cliente['Fecha renovación'] || '',
+      pago: cliente.Pago || 'COMPLETO',
+      importeTotal: cliente['Importe total'] || '',
+      plazosDetalle: cliente.Plazos || [],
     })
     setIsEditing(true)
     setEditingIndex(index)
@@ -252,6 +304,33 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
       </header>
 
       <main className="page-content">
+        <div className="tabs-bar">
+          <button
+            type="button"
+            className={`tab-btn ${vista === 'listado' ? 'tab-btn-active' : ''}`}
+            onClick={() => setVista('listado')}
+          >
+            👥 Listado
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${vista === 'cobros' ? 'tab-btn-active' : ''}`}
+            onClick={() => setVista('cobros')}
+          >
+            💳 Cobros pendientes{plazosPendientesCount > 0 ? ` (${plazosPendientesCount})` : ''}
+          </button>
+        </div>
+
+        {vista === 'cobros' && (
+          <CobrosPendientes
+            clientes={clientes}
+            setClientes={setClientes}
+            setIngresosPersonales={setIngresosPersonales}
+          />
+        )}
+
+        {vista === 'listado' && (
+        <>
         <div className="kpi-grid">
           <div className="kpi-card">
             <div className="kpi-card-header">
@@ -472,6 +551,8 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
             </table>
           </div>
         </div>
+        </>
+        )}
       </main>
 
       {showModal && (
@@ -499,7 +580,18 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
                 onChange={event => setFormData({ ...formData, email: event.target.value })}
               />
               <label className="lead-detail-label">Programa contratado</label>
-              <select value={formData.servicioId} onChange={event => setFormData({ ...formData, servicioId: event.target.value })}>
+              <select
+                value={formData.servicioId}
+                onChange={event => {
+                  const nuevoId = event.target.value
+                  const servicioElegido = SERVICIOS.find(s => s.id === nuevoId)
+                  setFormData({
+                    ...formData,
+                    servicioId: nuevoId,
+                    importeTotal: servicioElegido ? servicioElegido.precio : formData.importeTotal,
+                  })
+                }}
+              >
                 {SERVICIOS.map(s => (
                   <option key={s.id} value={s.id}>{s.nombre} — {s.precio}€</option>
                 ))}
@@ -511,6 +603,33 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
                   value={formData.otroServicio}
                   onChange={event => setFormData({ ...formData, otroServicio: event.target.value })}
                 />
+              )}
+              <label className="lead-detail-label">Importe total del servicio (€)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Importe total (€)"
+                value={formData.importeTotal}
+                onChange={event => setFormData({ ...formData, importeTotal: event.target.value })}
+              />
+              <label className="lead-detail-label">Tipo de pago</label>
+              <select value={formData.pago} onChange={event => setFormData({ ...formData, pago: event.target.value })}>
+                <option value="COMPLETO">COMPLETO (pago único)</option>
+                <option value="2 PLAZOS">2 PLAZOS</option>
+                <option value="3 PLAZOS">3 PLAZOS</option>
+              </select>
+              {formData.plazosDetalle.length > 0 ? (
+                <p className="plan-subtitle-inline" style={{ fontSize: 12 }}>
+                  Ya existe un plan de cobro para este cliente ({formData.plazosDetalle.filter(p => p.pagado).length}/{formData.plazosDetalle.length} cobrados).
+                  Para corregir importes o fechas pendientes, ve a Clientes → Cobros pendientes.
+                </p>
+              ) : (
+                formData.pago !== 'COMPLETO' && Number(formData.importeTotal) > 0 && (
+                  <p className="plan-subtitle-inline" style={{ fontSize: 12 }}>
+                    Al guardar se creará un plan de {formData.pago === '3 PLAZOS' ? 3 : 2} pagos de aprox. {Math.round((Number(formData.importeTotal) / (formData.pago === '3 PLAZOS' ? 3 : 2)) * 100) / 100}€ cada uno, visible en "Cobros pendientes".
+                  </p>
+                )
               )}
               <select
                 value={formData.estado}
