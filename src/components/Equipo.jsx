@@ -3,6 +3,7 @@ import SeguimientoCliente from './SeguimientoCliente'
 import ContactoSemanal from './ContactoSemanal'
 import { insertMiembroRemote, updateMiembroRemote, deleteMiembroRemote, deleteAllMiembrosRemote } from '../lib/queries/miembrosEquipo'
 import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, semanaVacia, DIAS_SEMANA } from '../utils/seguimientoHelpers'
+import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -402,23 +403,21 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
     const horaTexto = `${revisionForm.hora}:${revisionForm.minuto} ${revisionForm.ampm}`
     const nuevaRevision = { persona: revisionForm.persona, dia: revisionForm.dia, hora: horaTexto, fecha: todayISO() }
 
+    const existente = seguimientos.find((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual)
+    const actualizado = existente
+      ? { ...existente, revisiones: [nuevaRevision, ...(existente.revisiones || [])] }
+      : { clienteNombre: revisionForm.clienteNombre, semana: semanaActual, dias: semanaVacia(), comentarios: '', revisiones: [nuevaRevision] }
+
     setSeguimientos((prev) => {
       const existe = prev.some((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual)
       if (existe) {
         return prev.map((s) =>
-          (s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual)
-            ? { ...s, revisiones: [nuevaRevision, ...(s.revisiones || [])] }
-            : s
+          (s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual) ? actualizado : s
         )
       }
-      return [...prev, {
-        clienteNombre: revisionForm.clienteNombre,
-        semana: semanaActual,
-        dias: semanaVacia(),
-        comentarios: '',
-        revisiones: [nuevaRevision],
-      }]
+      return [...prev, actualizado]
     })
+    upsertSeguimientoRemote(actualizado)
   }
 
   const abrirDetalleTecnico = (persona) => {

@@ -7,6 +7,7 @@ import {
   progresoContacto,
   PUNTOS_CONTACTO,
 } from '../utils/seguimientoHelpers'
+import { upsertContactoSemanalRemote } from '../lib/queries/contactosSemanales'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -45,18 +46,18 @@ export default function ContactoSemanal({ clientes, contactos, setContactos }) {
 
   const actualizarPunto = (clienteNombre, puntoId, patch) => {
     if (typeof setContactos !== 'function') return
+    const existente = contactos.find((c) => c.clienteNombre === clienteNombre && c.semana === mondayISO)
+    const base = existente ? { ...existente } : { clienteNombre, semana: mondayISO, ...contactoVacio() }
+    const actualizado = { ...base, [puntoId]: { ...contactoVacio()[puntoId], ...base[puntoId], ...patch } }
+
     setContactos((prev) => {
       const existe = prev.some((c) => c.clienteNombre === clienteNombre && c.semana === mondayISO)
       if (existe) {
-        return prev.map((c) => {
-          if (c.clienteNombre !== clienteNombre || c.semana !== mondayISO) return c
-          return { ...c, [puntoId]: { ...contactoVacio()[puntoId], ...c[puntoId], ...patch } }
-        })
+        return prev.map((c) => (c.clienteNombre === clienteNombre && c.semana === mondayISO) ? actualizado : c)
       }
-      const base = contactoVacio()
-      base[puntoId] = { ...base[puntoId], ...patch }
-      return [...prev, { clienteNombre, semana: mondayISO, ...base }]
+      return [...prev, actualizado]
     })
+    upsertContactoSemanalRemote(actualizado)
   }
 
   const togglePunto = (clienteNombre, puntoId, actual) => {

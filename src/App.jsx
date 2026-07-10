@@ -34,7 +34,12 @@ const ventasDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/ventas')
 }
-const seguimientosDataPromise = () => import('./data/seguimientos')
+const seguimientosDataPromise = async () => {
+  const { fetchSeguimientos } = await import('./lib/queries/seguimientos')
+  const remoto = await fetchSeguimientos()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/seguimientos')
+}
 const settingDataPromise = () => import('./data/setting')
 const adsKpiDataPromise = () => import('./data/adsKpi')
 const adsNotasDataPromise = () => import('./data/adsNotasMensuales')
@@ -44,7 +49,12 @@ const ingresosPersonalesDataPromise = () => import('./data/ingresosPersonales')
 const gastosPersonalesDataPromise = () => import('./data/gastosPersonales')
 const gastosProfesionalesDataPromise = () => import('./data/gastosProfesionales')
 const contenidoIdeasDataPromise = () => import('./data/contenidoIdeas')
-const contactosSemanalesDataPromise = () => import('./data/contactosSemanales')
+const contactosSemanalesDataPromise = async () => {
+  const { fetchContactosSemanales } = await import('./lib/queries/contactosSemanales')
+  const remoto = await fetchContactosSemanales()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/contactosSemanales')
+}
 const valoracionesClientesDataPromise = () => import('./data/valoracionesClientes')
 
 // Comunicación: segundo módulo migrado a Supabase, mismo patrón que SOPs

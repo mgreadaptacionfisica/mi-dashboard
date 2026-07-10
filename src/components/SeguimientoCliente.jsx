@@ -9,6 +9,7 @@ import {
   semanaVacia,
   progresoSemana,
 } from '../utils/seguimientoHelpers'
+import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -33,21 +34,18 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
   const progreso = progresoSemana(registro)
 
   const actualizarSemana = (patch) => {
+    const base = registro || { clienteNombre: cliente.Nombre, semana: mondayISO, dias: semanaVacia(), comentarios: '', revisiones: [] }
+    const actualizado = { ...base, ...patch }
     setSeguimientos((prev) => {
       const existe = prev.some((s) => s.clienteNombre === cliente.Nombre && s.semana === mondayISO)
       if (existe) {
         return prev.map((s) =>
-          (s.clienteNombre === cliente.Nombre && s.semana === mondayISO) ? { ...s, ...patch } : s
+          (s.clienteNombre === cliente.Nombre && s.semana === mondayISO) ? actualizado : s
         )
       }
-      return [...prev, {
-        clienteNombre: cliente.Nombre,
-        semana: mondayISO,
-        dias: semanaVacia(),
-        comentarios: '',
-        ...patch,
-      }]
+      return [...prev, actualizado]
     })
+    upsertSeguimientoRemote(actualizado)
   }
 
   const addTarea = (diaId) => {
