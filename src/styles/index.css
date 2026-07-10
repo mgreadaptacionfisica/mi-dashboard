@@ -1909,11 +1909,26 @@ tbody td {
 
 .seguimiento-add-tarea {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .seguimiento-add-tarea select {
   flex: 1;
+  min-width: 70px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+/* Campo de texto libre para "Otra": ocupa su propia línea (flex-basis:
+   100%) para que el botón "+" nunca quede empujado fuera de la tarjeta
+   en las columnas más estrechas del grid semanal. */
+.seguimiento-add-tarea input[type="text"] {
+  flex: 1 1 100%;
+  width: auto;
+  min-width: 0;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 6px 8px;

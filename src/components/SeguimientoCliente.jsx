@@ -136,7 +136,6 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
                       placeholder="Escribe la tarea..."
                       value={tareaOtroDraft[dia.id] || ''}
                       onChange={(e) => setTareaOtroDraft({ ...tareaOtroDraft, [dia.id]: e.target.value })}
-                      style={{ width: 120 }}
                     />
                   )}
                   <button type="button" className="secondary-action" onClick={() => addTarea(dia.id)}>＋</button>
