@@ -7,10 +7,10 @@ function formatValue(value, type) {
   return value.toLocaleString('es-MX')
 }
 
-export default function KPICard({ label, value, change, subtext, type = 'number', icon, iconBg }) {
+export default function KPICard({ label, value, change, subtext, type = 'number', icon, iconBg, accent }) {
   const isUp = change >= 0
   return (
-    <div className="kpi-card">
+    <div className="kpi-card" style={accent ? { borderTop: `3px solid ${accent}` } : undefined}>
       <div className="kpi-card-header">
         <span className="kpi-card-label">{label}</span>
         <div className="kpi-icon" style={{ background: iconBg }}>

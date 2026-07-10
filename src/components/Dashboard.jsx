@@ -131,6 +131,7 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
             type="number"
             icon="✅"
             iconBg="#d1fae5"
+            accent="#10b981"
           />
           <KPICard
             label="Readáptate / Previene (Activos)"
@@ -139,6 +140,7 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
             type="number"
             icon="⭐"
             iconBg="#fef3c7"
+            accent="#f59e0b"
           />
           <KPICard
             label="Ingresos Empresa"
@@ -147,6 +149,7 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
             type="text"
             icon="💰"
             iconBg="#dbeafe"
+            accent="#3b82f6"
           />
           <KPICard
             label="Tasa de Retención"
@@ -155,6 +158,7 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
             type="percent"
             icon="🔄"
             iconBg="#ede9fe"
+            accent="#8b5cf6"
           />
         </div>
 
