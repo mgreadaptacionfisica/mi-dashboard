@@ -373,7 +373,7 @@ button {
 
 .refresh-btn {
   padding: 8px 14px;
-  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: #fff;
   border: none;
   border-radius: 999px;
@@ -859,6 +859,17 @@ button {
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
 }
 
+/* Franja superior de color, igual que en el Dashboard, aplicada a todas las
+   tarjetas KPI del panel (Clientes, Ventas, Finanzas, Operaciones...) que no
+   traigan ya su propio "accent" en línea. Rota entre los colores del
+   sistema para que cada bloque de indicadores tenga su propio acento sin
+   tener que tocar cada componente uno a uno. */
+.kpi-grid > .kpi-card:not([style*="border-top"]):nth-child(5n+1) { border-top: 3px solid var(--color-primary); }
+.kpi-grid > .kpi-card:not([style*="border-top"]):nth-child(5n+2) { border-top: 3px solid var(--color-orange); }
+.kpi-grid > .kpi-card:not([style*="border-top"]):nth-child(5n+3) { border-top: 3px solid var(--color-blue); }
+.kpi-grid > .kpi-card:not([style*="border-top"]):nth-child(5n+4) { border-top: 3px solid var(--color-purple); }
+.kpi-grid > .kpi-card:not([style*="border-top"]):nth-child(5n+5) { border-top: 3px solid #06b6d4; }
+
 .kpi-card-header {
   display: flex;
   align-items: center;
@@ -1298,7 +1309,7 @@ tbody td {
 
 .add-team-btn {
   border: none;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: white;
   padding: 10px 16px;
   border-radius: 999px;
