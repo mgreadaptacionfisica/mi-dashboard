@@ -94,6 +94,12 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, on
       <div className="team-card-body">
         <p><strong>Email:</strong> {persona.email}</p>
         <p><strong>Teléfono:</strong> {persona.telefono}</p>
+        {persona.carpetaDrive && (
+          <p>
+            <strong>Carpeta Drive:</strong>{' '}
+            <a href={persona.carpetaDrive} target="_blank" rel="noopener noreferrer">Abrir 📁</a>
+          </p>
+        )}
         {esCloser(persona) && (
           <>
             <p><strong>Comisión:</strong> {persona.comision != null ? `${persona.comision}%` : 'Sin definir'}</p>
@@ -176,6 +182,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
     area: 'tecnico',
     comision: '',
     fijo: '',
+    carpetaDrive: '',
   })
   const isEditing = Boolean(editingMember)
 
@@ -461,6 +468,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
         comision: formData.comision === '' ? undefined : Number(formData.comision),
         fijo: formData.fijo === '' ? undefined : Number(formData.fijo),
       } : {}),
+      ...(formData.area === 'contenido' ? { carpetaDrive: formData.carpetaDrive || '' } : {}),
     }
 
     if (isEditing && editingMember) {
@@ -482,13 +490,13 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
       insertMiembroRemote(miembroActualizado, formData.area)
     }
 
-    setFormData({ nombre: '', rol: '', email: '', telefono: '', area: 'tecnico', comision: '', fijo: '' })
+    setFormData({ nombre: '', rol: '', email: '', telefono: '', area: 'tecnico', comision: '', fijo: '', carpetaDrive: '' })
     setEditingMember(null)
     setShowModal(false)
   }
 
   const openNewMemberModal = (area = 'tecnico') => {
-    setFormData({ nombre: '', rol: '', email: '', telefono: '', area, comision: '', fijo: '' })
+    setFormData({ nombre: '', rol: '', email: '', telefono: '', area, comision: '', fijo: '', carpetaDrive: '' })
     setEditingMember(null)
     setShowModal(true)
   }
@@ -503,6 +511,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
       area,
       comision: persona.comision != null ? String(persona.comision) : '',
       fijo: persona.fijo != null ? String(persona.fijo) : '',
+      carpetaDrive: persona.carpetaDrive || '',
     })
     setEditingMember({ area, index })
     setShowModal(true)
@@ -661,6 +670,14 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     onChange={event => setFormData({ ...formData, fijo: event.target.value })}
                   />
                 </>
+              )}
+              {formData.area === 'contenido' && (
+                <input
+                  type="url"
+                  placeholder="Carpeta de Google Drive (enlace) — donde deja los vídeos en bruto"
+                  value={formData.carpetaDrive}
+                  onChange={event => setFormData({ ...formData, carpetaDrive: event.target.value })}
+                />
               )}
               <div className="modal-actions">
                 <button type="button" className="secondary-action" onClick={() => setShowModal(false)}>Cancelar</button>

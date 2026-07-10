@@ -9,6 +9,7 @@ function fromRow(row) {
     telefono: row.telefono || '',
     comision: row.comision,
     fijo: row.fijo,
+    carpetaDrive: row.carpeta_drive || '',
   }
 }
 
@@ -22,6 +23,7 @@ function toRow(persona, area) {
     area,
     comision: persona.comision ?? null,
     fijo: persona.fijo ?? null,
+    carpeta_drive: persona.carpetaDrive || '',
   }
 }
 

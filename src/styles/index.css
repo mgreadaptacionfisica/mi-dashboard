@@ -1453,6 +1453,26 @@ tbody td {
   color: #7c2d12;
 }
 
+.contenido-aviso-banner {
+  background: linear-gradient(135deg, #ecfeff, #cffafe);
+  border: 1px solid #67e8f9;
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+
+.contenido-aviso-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: #155e75;
+  margin-bottom: 6px;
+}
+
+.contenido-aviso-item {
+  font-size: 13px;
+  color: #164e63;
+}
+
 .loading-state {
   display: flex;
   flex-direction: column;

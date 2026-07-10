@@ -52,7 +52,7 @@ function diasColor(dias) {
   return '#10b981'
 }
 
-export default function Dashboard({ clientes = [], ventas = [], recontactos = [], ingresosEmpresa = [], tareasPersonales = [] }) {
+export default function Dashboard({ clientes = [], ventas = [], recontactos = [], ingresosEmpresa = [], tareasPersonales = [], contenidoIdeas = [] }) {
   const hoy = todayISO()
 
   // Aviso de tareas: el panel no puede mandar notificaciones fuera de sí
@@ -63,6 +63,14 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
       .filter((t) => !t.hecha && t.fecha && t.fecha <= hoy)
       .sort((a, b) => a.fecha.localeCompare(b.fecha))
   }, [tareasPersonales, hoy])
+
+  // Mismo mecanismo para vídeos ya editados por el equipo de contenido:
+  // en vez de un mensaje externo (el panel no puede mandarlos), se avisa
+  // aquí cuando hay algo en estado "Editado" esperando que Raúl lo programe.
+  const videosEditadosAviso = useMemo(
+    () => contenidoIdeas.filter((i) => i.estado === 'Editado'),
+    [contenidoIdeas]
+  )
 
   const stats = useMemo(() => {
     const activos = clientes.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
@@ -145,6 +153,22 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
                   </span>
                 ))}
                 {tareasAviso.length > 4 && <span className="tareas-aviso-item">+{tareasAviso.length - 4} más</span>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {videosEditadosAviso.length > 0 && (
+          <div className="contenido-aviso-banner">
+            <div>
+              <div className="contenido-aviso-titulo">
+                🎬 {videosEditadosAviso.length} vídeo{videosEditadosAviso.length === 1 ? '' : 's'} editado{videosEditadosAviso.length === 1 ? '' : 's'}, listo{videosEditadosAviso.length === 1 ? '' : 's'} para programar
+              </div>
+              <div className="tareas-aviso-lista">
+                {videosEditadosAviso.slice(0, 4).map((i) => (
+                  <span key={i.id} className="contenido-aviso-item">📌 {i.titulo || 'Sin título'}</span>
+                ))}
+                {videosEditadosAviso.length > 4 && <span className="contenido-aviso-item">+{videosEditadosAviso.length - 4} más</span>}
               </div>
             </div>
           </div>
