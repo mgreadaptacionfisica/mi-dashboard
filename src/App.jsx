@@ -1,5 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import Onboarding from './components/Onboarding'
+import AdminLogin from './components/AdminLogin'
+import { getSession, onAuthChange, signOut } from './lib/auth'
 
 // Rutas públicas: se sirven solas, sin sidebar ni el resto del panel interno,
 // y sin cargar los módulos que contienen datos de clientes.
@@ -181,6 +183,18 @@ function InternalApp() {
   const [valoracionesClientes, setValoracionesClientes] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
+  // Acceso admin: por ahora solo Raúl tiene cuenta. El resto del equipo
+  // sigue usando el panel sin login; esto solo desbloquea Finanzas.
+  const [session, setSession] = useState(null)
+  const [showLogin, setShowLogin] = useState(false)
+  const isAdmin = !!session
+
+  useEffect(() => {
+    getSession().then(setSession)
+    const unsubscribe = onAuthChange(setSession)
+    return unsubscribe
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     Promise.all([
@@ -220,7 +234,13 @@ function InternalApp() {
       case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
       case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} />
-      case 'finanzas':     return <Finanzas ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales} gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} />
+      // Finanzas: datos personales de Raúl. Aunque el sidebar ya la oculta
+      // sin sesión admin, se protege también aquí por si activeView llegara
+      // a valer 'finanzas' sin sesión (defensa en profundidad; la protección
+      // real de los datos vive en las políticas RLS de Supabase).
+      case 'finanzas':     return isAdmin
+        ? <Finanzas ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales} gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales} gastosProfesionales={gastosProfesionales} setGastosProfesionales={setGastosProfesionales} />
+        : <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} />
       case 'onboarding':   return <Onboarding />
       case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} />
       default:             return <Dashboard />
@@ -229,10 +249,22 @@ function InternalApp() {
 
   return (
     <div className="app-layout">
-      <Sidebar activeView={activeView} onNavigate={setActiveView} />
+      <Sidebar
+        activeView={activeView}
+        onNavigate={setActiveView}
+        isAdmin={isAdmin}
+        onLoginClick={() => setShowLogin(true)}
+        onLogout={() => { signOut(); setActiveView('dashboard') }}
+      />
       <div className="main-content">
         {renderView()}
       </div>
+      {showLogin && (
+        <AdminLogin
+          onClose={() => setShowLogin(false)}
+          onSuccess={() => setShowLogin(false)}
+        />
+      )}
     </div>
   )
 }
