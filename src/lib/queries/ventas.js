@@ -48,11 +48,18 @@ const CAMPO_A_COLUMNA = {
   recontacto: 'recontacto',
 }
 
+// fecha_agenda y creado_en son columnas "date" en Supabase: un '' (fecha sin
+// rellenar en el formulario) hace que el insert falle en silencio (Postgres
+// rechaza '' como fecha), así que el lead se veía en pantalla pero
+// desaparecía al refrescar porque nunca llegó a guardarse de verdad.
+const COLUMNAS_FECHA = new Set(['fecha_agenda', 'creado_en'])
+
 function toColumns(obj) {
   const row = {}
   Object.entries(obj).forEach(([key, value]) => {
     const columna = CAMPO_A_COLUMNA[key]
-    if (columna) row[columna] = value
+    if (!columna) return
+    row[columna] = COLUMNAS_FECHA.has(columna) && value === '' ? null : value
   })
   return row
 }
