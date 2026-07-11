@@ -89,7 +89,14 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
   const [showResultadoNoRealizada, setShowResultadoNoRealizada] = useState(false)
   const [resultadoDraft, setResultadoDraft] = useState('no_show')
 
-  const closers = useMemo(() => (team?.ventas || []).filter((p) => p.rol === 'Closer'), [team])
+  // Antes exigía que "rol" fuera exactamente "Closer", así que a alguien con
+  // rol "CEO / Closer" (ej. Raúl) no le salía en el desplegable de asignar
+  // closer. Mismo criterio (substring, sin importar mayúsculas) que ya se usa
+  // en Equipo.jsx para distinguir closers de técnicos.
+  const closers = useMemo(
+    () => (team?.ventas || []).filter((p) => (p.rol || '').toLowerCase().includes('closer')),
+    [team]
+  )
   const activeLead = useMemo(() => ventas.find((l) => l.id === activeLeadId) || null, [ventas, activeLeadId])
 
   const stats = useMemo(() => {
