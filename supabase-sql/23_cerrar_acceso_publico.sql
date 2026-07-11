@@ -143,35 +143,28 @@ create policy "recontactos_update_all" on public.recontactos for update using (a
 drop policy if exists "recontactos_delete_all" on public.recontactos;
 create policy "recontactos_delete_all" on public.recontactos for delete using (auth.uid() is not null);
 
--- ingresos_personales
-drop policy if exists "ingresos_personales_select_all" on public.ingresos_personales;
-create policy "ingresos_personales_select_all" on public.ingresos_personales for select using (auth.uid() is not null);
-drop policy if exists "ingresos_personales_insert_all" on public.ingresos_personales;
-create policy "ingresos_personales_insert_all" on public.ingresos_personales for insert with check (auth.uid() is not null);
-drop policy if exists "ingresos_personales_update_all" on public.ingresos_personales;
-create policy "ingresos_personales_update_all" on public.ingresos_personales for update using (auth.uid() is not null);
-drop policy if exists "ingresos_personales_delete_all" on public.ingresos_personales;
-create policy "ingresos_personales_delete_all" on public.ingresos_personales for delete using (auth.uid() is not null);
+-- ingresos_personales (tabla nueva creada en 15_finanzas_empresa_personal.sql,
+-- ya protegida ahí mismo con "ingresos_personales_admin_only" para las 4
+-- operaciones — no se toca aquí para no crear políticas duplicadas).
 
--- gastos_personales
-drop policy if exists "gastos_personales_select_all" on public.gastos_personales;
-create policy "gastos_personales_select_all" on public.gastos_personales for select using (auth.uid() is not null);
-drop policy if exists "gastos_personales_insert_all" on public.gastos_personales;
-create policy "gastos_personales_insert_all" on public.gastos_personales for insert with check (auth.uid() is not null);
-drop policy if exists "gastos_personales_update_all" on public.gastos_personales;
-create policy "gastos_personales_update_all" on public.gastos_personales for update using (auth.uid() is not null);
-drop policy if exists "gastos_personales_delete_all" on public.gastos_personales;
-create policy "gastos_personales_delete_all" on public.gastos_personales for delete using (auth.uid() is not null);
+-- gastos_personales: ya protegida en 14_auth_finanzas.sql con la política
+-- única "gastos_personales_admin_only" (4 operaciones) — no se toca aquí.
 
--- gastos_profesionales
-drop policy if exists "gastos_profesionales_select_all" on public.gastos_profesionales;
-create policy "gastos_profesionales_select_all" on public.gastos_profesionales for select using (auth.uid() is not null);
-drop policy if exists "gastos_profesionales_insert_all" on public.gastos_profesionales;
-create policy "gastos_profesionales_insert_all" on public.gastos_profesionales for insert with check (auth.uid() is not null);
-drop policy if exists "gastos_profesionales_update_all" on public.gastos_profesionales;
-create policy "gastos_profesionales_update_all" on public.gastos_profesionales for update using (auth.uid() is not null);
-drop policy if exists "gastos_profesionales_delete_all" on public.gastos_profesionales;
-create policy "gastos_profesionales_delete_all" on public.gastos_profesionales for delete using (auth.uid() is not null);
+-- gastos_empresa (antes "gastos_profesionales", renombrada en
+-- 15_finanzas_empresa_personal.sql; el rename no renombra las políticas, así
+-- que las políticas siguen llamándose "gastos_profesionales_*" aunque la
+-- tabla ya es gastos_empresa). NO se cierra aquí: 14_auth_finanzas.sql dejó
+-- esta tabla abierta a propósito porque Equipo > "Marcar pago" escribía sin
+-- login. Si ya no hace falta (todo el panel exige login ahora), avisa y se
+-- cierra en un archivo aparte para no tocar finanzas sin confirmarlo antes.
+
+-- ingresos_empresa (antes "ingresos_personales" original, renombrada en
+-- 15_finanzas_empresa_personal.sql). select/update/delete ya están cerradas
+-- desde 14_auth_finanzas.sql (políticas "ingresos_personales_select_admin"/
+-- "_update_admin"/"_delete_admin"). El INSERT ("ingresos_personales_insert_all")
+-- se dejó abierto a propósito: Clientes > Cobros pendientes crea el ingreso
+-- al marcar un plazo cobrado. Igual que arriba, no se toca aquí sin
+-- confirmarlo contigo primero.
 
 -- contenido_ideas
 drop policy if exists "contenido_ideas_select_all" on public.contenido_ideas;
