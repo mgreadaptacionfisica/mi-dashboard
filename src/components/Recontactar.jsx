@@ -99,6 +99,12 @@ export default function Recontactar({ ventas = [], setVentas, recontactos = [], 
       nombre: lead.nombre,
       closer: lead.closer,
       ...recontactoVacio,
+      // El canal por defecto es WhatsApp, así que se rellena el contacto con
+      // el teléfono que ya tiene el lead (antes quedaba vacío y había que
+      // escribirlo a mano aunque el dato ya existiera). Si el recontacto
+      // guardado trae ya un "contacto" propio (p. ej. porque se cambió a
+      // Instagram y se puso un usuario), ese valor manda sobre el teléfono.
+      contacto: lead.telefono || '',
       ...(lead.recontacto || {}),
     }))
     const manuales = recontactos.map((r) => ({
