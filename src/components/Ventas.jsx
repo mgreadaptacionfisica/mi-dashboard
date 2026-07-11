@@ -3,7 +3,7 @@ import SERVICIOS from '../data/servicios'
 import SettingInstagram from './SettingInstagram'
 import AdsKpi from './AdsKpi'
 import Recontactar from './Recontactar'
-import { insertLeadRemote, updateLeadRemote } from '../lib/queries/ventas'
+import { insertLeadRemote, updateLeadRemote, uploadInformePrellamada, getInformePrellamadaUrl } from '../lib/queries/ventas'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -88,6 +88,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
   const [reagendarForm, setReagendarForm] = useState({ fecha: '', hora: '' })
   const [showResultadoNoRealizada, setShowResultadoNoRealizada] = useState(false)
   const [resultadoDraft, setResultadoDraft] = useState('no_show')
+  const [uploadingInforme, setUploadingInforme] = useState(false)
 
   // Antes exigía que "rol" fuera exactamente "Closer", así que a alguien con
   // rol "CEO / Closer" (ej. Raúl) no le salía en el desplegable de asignar
@@ -304,6 +305,22 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
 
     setShowVentaForm(false)
     setVentaForm(initialVentaForm)
+  }
+
+  const handleInformeUpload = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !activeLead) return
+    setUploadingInforme(true)
+    const path = await uploadInformePrellamada(activeLead.id, file)
+    setUploadingInforme(false)
+    if (path) updateLead(activeLead.id, { informePrellamadaPath: path })
+  }
+
+  const handleVerInforme = async () => {
+    if (!activeLead?.informePrellamadaPath) return
+    const url = await getInformePrellamadaUrl(activeLead.informePrellamadaPath)
+    if (url) window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const confirmarPerdida = (event) => {
@@ -529,6 +546,25 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
 
               <div className="lead-detail-row" style={{ gridTemplateColumns: '1fr' }}>
                 <span className="status-pill status-activo">{ETAPAS.find((e) => e.id === activeLead.etapa)?.label}</span>
+              </div>
+
+              <div>
+                <label className="lead-detail-label">📄 Informe prellamada (ZeroChats, Calendly...)</label>
+                <div className="lead-detail-actions">
+                  {activeLead.informePrellamadaPath && (
+                    <button type="button" className="secondary-action" onClick={handleVerInforme}>Ver informe</button>
+                  )}
+                  <label className="secondary-action" style={{ cursor: 'pointer' }}>
+                    {uploadingInforme ? 'Subiendo…' : (activeLead.informePrellamadaPath ? 'Reemplazar PDF' : 'Subir PDF')}
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      disabled={uploadingInforme}
+                      onChange={handleInformeUpload}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
               </div>
 
               {activeLead.etapa !== 'agendada' && (

@@ -21,6 +21,7 @@ function fromRow(row) {
     motivoPerdida: row.motivo_perdida,
     venta: row.venta,
     recontacto: row.recontacto,
+    informePrellamadaPath: row.informe_prellamada_path || '',
   }
 }
 
@@ -46,6 +47,7 @@ const CAMPO_A_COLUMNA = {
   motivoPerdida: 'motivo_perdida',
   venta: 'venta',
   recontacto: 'recontacto',
+  informePrellamadaPath: 'informe_prellamada_path',
 }
 
 // fecha_agenda y creado_en son columnas "date" en Supabase: un '' (fecha sin
@@ -95,4 +97,30 @@ export async function deleteLeadRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('ventas').delete().eq('id', id)
   if (error) console.error('[ventas] delete error:', error.message)
+}
+
+// Informe prellamada (PDF de ZeroChats, Calendly...) adjunto a un lead.
+// Bucket privado: se sube con un nombre único dentro de una carpeta por
+// lead, y se lee siempre con URL firmada (caduca en 1h), nunca con enlace
+// público permanente — ver 25_informes_leads.sql.
+export async function uploadInformePrellamada(leadId, file) {
+  if (!supabase || !leadId || !file) return null
+  const extension = (file.name.split('.').pop() || 'pdf').toLowerCase()
+  const path = `${leadId}/informe-${Date.now()}.${extension}`
+  const { error } = await supabase.storage.from('informes-leads').upload(path, file, { upsert: true })
+  if (error) {
+    console.error('[ventas] upload informe error:', error.message)
+    return null
+  }
+  return path
+}
+
+export async function getInformePrellamadaUrl(path) {
+  if (!supabase || !path) return null
+  const { data, error } = await supabase.storage.from('informes-leads').createSignedUrl(path, 3600)
+  if (error) {
+    console.error('[ventas] signed url informe error:', error.message)
+    return null
+  }
+  return data?.signedUrl || null
 }
