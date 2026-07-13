@@ -5,6 +5,7 @@ import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
 import CobrosPendientes from './CobrosPendientes'
 import { insertClienteRemote, updateClienteRemote } from '../lib/queries/clientes'
+import { generarPlazosPorNumero } from '../lib/plazos'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
 
@@ -38,22 +39,8 @@ function todayISO() {
 // cobrados después desde "Cobros pendientes" (que es lo que crea el
 // ingreso automático en Finanzas).
 function generarPlazos(pago, importeTotal) {
-  const total = Number(importeTotal) || 0
-  if (total <= 0) return []
   const n = pago === '3 PLAZOS' ? 3 : pago === '2 PLAZOS' ? 2 : 1
-  const base = Math.round((total / n) * 100) / 100
-  const hoy = new Date()
-  return Array.from({ length: n }, (_, i) => {
-    const fecha = new Date(hoy)
-    fecha.setMonth(fecha.getMonth() + i)
-    return {
-      numero: i + 1,
-      importe: base,
-      fecha: fecha.toISOString().slice(0, 10),
-      pagado: false,
-      fechaPago: null,
-    }
-  })
+  return generarPlazosPorNumero(n, importeTotal)
 }
 
 // El valor "Renueva" de los clientes sincronizados de Notion venía en inglés

@@ -43,7 +43,7 @@ function TriEstado({ value, onChange }) {
   )
 }
 
-export default function Recontactar({ ventas = [], setVentas, recontactos = [], setRecontactos }) {
+export default function Recontactar({ ventas = [], setVentas, recontactos = [], setRecontactos, onAbrirLead }) {
   const [showForm, setShowForm] = useState(false)
   const [manualForm, setManualForm] = useState(initialManualForm)
 
@@ -55,7 +55,18 @@ export default function Recontactar({ ventas = [], setVentas, recontactos = [], 
   const updateLeadRecontacto = (leadId, patch) => {
     if (typeof setVentas !== 'function') return
     const lead = ventas.find((l) => l.id === leadId)
-    const recontactoMerged = { ...recontactoVacio, ...(lead?.recontacto || {}), ...patch }
+    // Mismo default de "contacto" = teléfono del lead que se usa en `filas`
+    // más abajo. Sin este default aquí también, en cuanto se tocaba
+    // cualquier otro campo de la fila (marcar "Contactado", cambiar canal,
+    // poner fecha...) se guardaba recontacto.contacto = '' de verdad (el de
+    // `filas` solo era para mostrarlo, nunca se llegaba a persistir), y a
+    // partir de ahí el teléfono desaparecía también en pantalla.
+    const recontactoMerged = {
+      ...recontactoVacio,
+      contacto: lead?.telefono || '',
+      ...(lead?.recontacto || {}),
+      ...patch,
+    }
     setVentas((prev) => prev.map((l) => (l.id === leadId ? { ...l, recontacto: recontactoMerged } : l)))
     updateLeadRemote(leadId, { recontacto: recontactoMerged })
   }
@@ -247,7 +258,24 @@ export default function Recontactar({ ventas = [], setVentas, recontactos = [], 
                       <TriEstado value={fila.respondido} onChange={(v) => onPatch({ respondido: v })} />
                     </td>
                     <td>
-                      <TriEstado value={fila.comprado} onChange={(v) => onPatch({ comprado: v })} />
+                      <TriEstado
+                        value={fila.comprado}
+                        onChange={(v) => {
+                          // Antes esto solo marcaba una casilla suelta: no
+                          // creaba el cliente ni movía el lead a "Ganada"/
+                          // "Perdida" en el pipeline, así que quedaba
+                          // desconectado de Ventas. Para un lead real, "Sí"
+                          // o "No" abren su ficha en el Pipeline para
+                          // resolverlo por el mismo camino de siempre
+                          // (confirmar venta o marcar perdida), que es el
+                          // único sitio que de verdad crea el cliente.
+                          if (fila.origenTipo === 'lead' && v !== null && typeof onAbrirLead === 'function') {
+                            onAbrirLead(fila.id)
+                            return
+                          }
+                          onPatch({ comprado: v })
+                        }}
+                      />
                     </td>
                     <td>
                       {fila.origenTipo === 'manual' && (

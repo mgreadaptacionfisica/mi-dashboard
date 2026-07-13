@@ -4,6 +4,8 @@ import SettingInstagram from './SettingInstagram'
 import AdsKpi from './AdsKpi'
 import Recontactar from './Recontactar'
 import { insertLeadRemote, updateLeadRemote, deleteLeadRemote, uploadInformePrellamada, getInformePrellamadaUrl } from '../lib/queries/ventas'
+import { insertClienteRemote } from '../lib/queries/clientes'
+import { generarPlazosPorNumero } from '../lib/plazos'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -285,6 +287,11 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
     const importePorPlazo = numPlazosNum > 0 ? Math.round((importeNum / numPlazosNum) * 100) / 100 : importeNum
 
     const nuevoCliente = {
+      // Sin id no había forma de guardar el cliente en Supabase
+      // (insertClienteRemote exige cliente.id): la venta se quedaba solo en
+      // memoria del navegador y desaparecía al refrescar, igual que pasó
+      // antes con los leads de Ventas.
+      id: `cliente-${Date.now()}`,
       Nombre: activeLead.nombre,
       Email: activeLead.email,
       'Tipo de cliente': ventaForm.tipoCliente,
@@ -309,11 +316,17 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
       'Importe total': importeNum,
       'Nº de plazos': numPlazosNum,
       'Lead origen': activeLead.id,
+      // Plan de cobro real que usa Clientes > Cobros pendientes (antes no
+      // se generaba aquí, así que una venta cerrada desde el pipeline nunca
+      // aparecía como cobro pendiente ni generaba el ingreso automático en
+      // Finanzas > Ingresos empresa).
+      Plazos: generarPlazosPorNumero(numPlazosNum, importeNum),
     }
 
     if (typeof setClientes === 'function') {
       setClientes((prev) => [nuevoCliente, ...prev])
     }
+    insertClienteRemote(nuevoCliente)
 
     updateLead(activeLead.id, {
       etapa: 'ganada',
@@ -429,6 +442,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
             setVentas={setVentas}
             recontactos={recontactos}
             setRecontactos={setRecontactos}
+            onAbrirLead={(leadId) => { setActiveTab('pipeline'); setActiveLeadId(leadId) }}
           />
         )}
 
