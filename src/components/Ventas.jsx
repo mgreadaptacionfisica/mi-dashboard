@@ -3,7 +3,7 @@ import SERVICIOS from '../data/servicios'
 import SettingInstagram from './SettingInstagram'
 import AdsKpi from './AdsKpi'
 import Recontactar from './Recontactar'
-import { insertLeadRemote, updateLeadRemote, uploadInformePrellamada, getInformePrellamadaUrl } from '../lib/queries/ventas'
+import { insertLeadRemote, updateLeadRemote, deleteLeadRemote, uploadInformePrellamada, getInformePrellamadaUrl } from '../lib/queries/ventas'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -132,6 +132,30 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
     resetDetailUI()
   }
 
+  // Elimina el lead entero del pipeline (no existía ninguna forma de
+  // borrar, solo de crear y mover de etapa). Pide confirmación porque es
+  // irreversible, igual que el resto de "eliminar" de la app (Manuales,
+  // Equipo).
+  const eliminarLead = () => {
+    if (!activeLead) return
+    if (!window.confirm(`¿Eliminar a "${activeLead.nombre}" del pipeline? Esta acción no se puede deshacer.`)) return
+    const id = activeLead.id
+    setVentas((prev) => prev.filter((l) => l.id !== id))
+    deleteLeadRemote(id)
+    closeDetail()
+  }
+
+  // Revierte el lead a la etapa en la que estaba justo antes del último
+  // cambio (por si se marcó "llamada realizada", "compró"/"no compró", etc.
+  // por error). Cada acción que avanza de etapa guarda primero la etapa
+  // actual en etapaAnterior; aquí simplemente se vuelve a ella y se olvida,
+  // para no encadenar varios "atrás" seguidos de forma confusa.
+  const volverEtapaAnterior = () => {
+    if (!activeLead?.etapaAnterior) return
+    updateLead(activeLead.id, { etapa: activeLead.etapaAnterior, etapaAnterior: null })
+    resetDetailUI()
+  }
+
   const handleCreateLead = (event) => {
     event.preventDefault()
     const nuevo = {
@@ -167,7 +191,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
 
   const marcarLlamadaRealizada = () => {
     if (!activeLead) return
-    updateLead(activeLead.id, { etapa: 'realizada', resultadoLlamada: 'realizada' })
+    updateLead(activeLead.id, { etapa: 'realizada', etapaAnterior: activeLead.etapa, resultadoLlamada: 'realizada' })
   }
 
   const confirmarNoRealizada = () => {
@@ -195,7 +219,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
     if (compro) {
       setShowVentaForm(true)
     } else {
-      updateLead(activeLead.id, { compraEnLlamada: false, etapa: 'seguimiento' })
+      updateLead(activeLead.id, { compraEnLlamada: false, etapa: 'seguimiento', etapaAnterior: activeLead.etapa })
     }
   }
 
@@ -229,6 +253,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
       updateLead(activeLead.id, {
         seguimiento: { ...activeLead.seguimiento, compraTrasSeguimiento: false },
         etapa: 'perdida',
+        etapaAnterior: activeLead.etapa,
         motivoPerdida: 'No compró tras seguimiento',
       })
     }
@@ -292,6 +317,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
 
     updateLead(activeLead.id, {
       etapa: 'ganada',
+      etapaAnterior: activeLead.etapa,
       compraEnLlamada: activeLead.etapa === 'realizada' ? true : activeLead.compraEnLlamada,
       venta: {
         servicio: servicioNombre,
@@ -326,7 +352,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
   const confirmarPerdida = (event) => {
     event.preventDefault()
     if (!activeLead) return
-    updateLead(activeLead.id, { etapa: 'perdida', motivoPerdida: lostReason || 'Sin motivo especificado' })
+    updateLead(activeLead.id, { etapa: 'perdida', etapaAnterior: activeLead.etapa, motivoPerdida: lostReason || 'Sin motivo especificado' })
     setShowLostForm(false)
     setLostReason('')
   }
@@ -520,7 +546,10 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
                   {activeLead.telefono || 'Sin teléfono'} · {activeLead.email || 'Sin email'}
                 </div>
               </div>
-              <button className="close-modal-btn" onClick={closeDetail}>✕</button>
+              <div className="lead-detail-actions" style={{ gap: 8 }}>
+                <button type="button" className="danger-action" onClick={eliminarLead}>🗑 Eliminar lead</button>
+                <button className="close-modal-btn" onClick={closeDetail}>✕</button>
+              </div>
             </div>
 
             <div className="lead-detail-body">
@@ -544,8 +573,13 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
                 </div>
               </div>
 
-              <div className="lead-detail-row" style={{ gridTemplateColumns: '1fr' }}>
+              <div className="lead-detail-row" style={{ gridTemplateColumns: activeLead.etapaAnterior && activeLead.etapa !== 'ganada' ? '1fr auto' : '1fr' }}>
                 <span className="status-pill status-activo">{ETAPAS.find((e) => e.id === activeLead.etapa)?.label}</span>
+                {activeLead.etapaAnterior && activeLead.etapa !== 'ganada' && (
+                  <button type="button" className="secondary-action" onClick={volverEtapaAnterior}>
+                    ⬅ Volver a "{ETAPAS.find((e) => e.id === activeLead.etapaAnterior)?.label}"
+                  </button>
+                )}
               </div>
 
               <div>
