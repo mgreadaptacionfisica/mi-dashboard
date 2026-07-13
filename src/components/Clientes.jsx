@@ -4,7 +4,7 @@ import RENOVACIONES from '../data/renovaciones'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
 import CobrosPendientes from './CobrosPendientes'
-import { insertClienteRemote, updateClienteRemote } from '../lib/queries/clientes'
+import { insertClienteRemote, updateClienteRemote, deleteClienteRemote } from '../lib/queries/clientes'
 import { generarPlazosPorNumero } from '../lib/plazos'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
@@ -293,6 +293,20 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
     setShowModal(true)
   }
 
+  // Por si se crea un cliente de más (ej. explicando el proceso a alguien
+  // y se guarda sin querer). No existía ninguna forma de borrar un
+  // cliente, solo de crear/editar.
+  const eliminarCliente = () => {
+    if (editingIndex === null) return
+    const cliente = clientes[editingIndex]
+    if (!window.confirm(`¿Eliminar a "${cliente?.Nombre || 'este cliente'}"? Esta acción no se puede deshacer.`)) return
+    setClientes(prev => prev.filter((_, index) => index !== editingIndex))
+    if (cliente?.id) deleteClienteRemote(cliente.id)
+    setShowModal(false)
+    setIsEditing(false)
+    setEditingIndex(null)
+  }
+
   return (
     <>
       <header className="topbar">
@@ -565,7 +579,12 @@ export default function Clientes({ clientes, setClientes, team, seguimientos = [
                 <div className="card-title">{isEditing ? 'Editar cliente' : 'Añadir cliente'}</div>
                 <div className="card-subtitle">{isEditing ? 'Actualiza los datos del cliente' : 'Registra un nuevo cliente desde aquí'}</div>
               </div>
-              <button className="close-modal-btn" onClick={() => { setShowModal(false); setIsEditing(false); setEditingIndex(null) }}>✕</button>
+              <div className="lead-detail-actions" style={{ gap: 8 }}>
+                {isEditing && (
+                  <button type="button" className="danger-action" onClick={eliminarCliente}>🗑 Eliminar cliente</button>
+                )}
+                <button className="close-modal-btn" onClick={() => { setShowModal(false); setIsEditing(false); setEditingIndex(null) }}>✕</button>
+              </div>
             </div>
 
             <form className="modal-form" onSubmit={handleSubmit}>
