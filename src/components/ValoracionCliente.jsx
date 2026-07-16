@@ -7,6 +7,7 @@ import {
   TAMPA_ITEMS,
   TAMPA_INTERPRETACION,
   FASES,
+  REFERENCIA_FUERZA_POR_FASE,
   SEMAFORO_OPCIONES,
   DOMINANCIA_OPCIONES,
   PATRON_LUMBAR_OPCIONES,
@@ -595,7 +596,12 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                             label={item.label}
                             value={formData[bloque.id]?.[item.id]}
                             onChange={(v) => setCampo(bloque.id, item.id, v)}
-                            nota={item.nota}
+                            nota={[
+                              item.nota,
+                              faseParaCatalogo && REFERENCIA_FUERZA_POR_FASE[item.id]?.[faseParaCatalogo]
+                                ? `Referencia para Fase ${faseParaCatalogo}: ${REFERENCIA_FUERZA_POR_FASE[item.id][faseParaCatalogo]}`
+                                : null,
+                            ].filter(Boolean).join(' ')}
                           />
                         ) : (
                           <CampoNumerico

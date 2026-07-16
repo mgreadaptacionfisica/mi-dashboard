@@ -42,6 +42,20 @@ export const REFERENCIA_FUERZA = {
   reMancuernaDx: { mujeres: '10%BW', hombres: '10%BW' },
 }
 
+// Referencia de fuerza PROGRESIVA por fase (solo Press militar, que es el
+// ejercicio que se usa como termómetro de fuerza a lo largo de las 4 fases
+// — ver SOP "4. Preparación del programa"). El valor de REFERENCIA_FUERZA
+// de arriba es el objetivo final (Fase 4); esto muestra el objetivo
+// intermedio según en qué fase esté el cliente ahora mismo.
+export const REFERENCIA_FUERZA_POR_FASE = {
+  pressMilitar: {
+    1: '15-20% BW (press militar unilateral)',
+    2: '20-30% BW (press militar unilateral)',
+    3: '30-50% BW (RM, bilateral)',
+    4: '50-80% BW (RM, bilateral)',
+  },
+}
+
 export const ITEMS_PLIOMETRIA = [
   { id: 'plioLanzBilateral', label: 'Lanzamiento bilateral sentado', unidad: 'cm' },
   { id: 'plioLanzOverhead', label: 'Lanzamiento overhead sentado', unidad: 'cm' },
@@ -156,7 +170,7 @@ export function compararSemaforo(colorPrimero, colorUltimo) {
 // movilidad, que se registran por color en vez de en grados.
 export const BLOQUES = [
   { id: 'fuerza', label: 'Fuerza', items: ITEMS_FUERZA, referencia: REFERENCIA_FUERZA },
-  { id: 'pliometria', label: 'Pliometría', items: ITEMS_PLIOMETRIA, referencia: REFERENCIA_PLIOMETRIA, nota: 'Se valora a partir del inicio de la Fase 3 — no hace falta rellenarlo antes.' },
+  { id: 'pliometria', label: 'Pliometría', items: ITEMS_PLIOMETRIA, referencia: REFERENCIA_PLIOMETRIA, nota: 'Se introduce en la transición Fase 2 → Fase 3: empieza con pliometría básica (horizontal, sin contramovimiento) hacia el final de la Fase 2, como preparación para la Fase 3. No hace falta rellenarlo antes.' },
   { id: 'fuerzaCervical', label: 'Fuerza cervical', items: ITEMS_FUERZA_CERVICAL },
   { id: 'movilidadHombro', label: 'Movilidad de hombro', items: ITEMS_MOVILIDAD_HOMBRO, esSemaforo: true },
   { id: 'movilidadCervical', label: 'Movilidad cervical', items: ITEMS_MOVILIDAD_CERVICAL, esSemaforo: true },
