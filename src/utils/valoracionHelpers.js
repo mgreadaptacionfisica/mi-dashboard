@@ -279,6 +279,7 @@ export function valoracionVacia() {
     fase: null,
     objetivo: '',
     objetivosSeleccionados: [],
+    objetivosCumplidos: [],
   }
   BLOQUES.forEach((b) => { base[b.id] = {} })
   return base

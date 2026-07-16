@@ -24,6 +24,7 @@ function fromRow(row) {
     fase: row.fase ?? null,
     objetivo: row.objetivo || '',
     objetivosSeleccionados: row.objetivos_seleccionados || [],
+    objetivosCumplidos: row.objetivos_cumplidos || [],
   }
 }
 
@@ -47,6 +48,7 @@ function toRow(v) {
     fase: v.fase ?? null,
     objetivo: v.objetivo || '',
     objetivos_seleccionados: v.objetivosSeleccionados || [],
+    objetivos_cumplidos: v.objetivosCumplidos || [],
   }
 }
 

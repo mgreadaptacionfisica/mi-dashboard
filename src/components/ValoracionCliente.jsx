@@ -264,6 +264,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     base.fase = valoracion.fase ?? null
     base.objetivo = valoracion.objetivo || ''
     base.objetivosSeleccionados = valoracion.objetivosSeleccionados || []
+    base.objetivosCumplidos = valoracion.objetivosCumplidos || []
     setEditingId(valoracion.id)
     setFormData(base)
     setShowForm(true)
@@ -284,6 +285,17 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
       const actuales = prev.objetivosSeleccionados || []
       const yaEsta = actuales.includes(id)
       return { ...prev, objetivosSeleccionados: yaEsta ? actuales.filter((x) => x !== id) : [...actuales, id] }
+    })
+  }
+
+  // Marca (o desmarca) si un objetivo de la valoración ANTERIOR se cumplió
+  // de verdad, al hacer esta valoración nueva. Es lo que permite comprobar
+  // si tocaba subir de fase o no — ver el aviso más abajo en el formulario.
+  const toggleObjetivoCumplido = (id) => {
+    setFormData((prev) => {
+      const actuales = prev.objetivosCumplidos || []
+      const yaEsta = actuales.includes(id)
+      return { ...prev, objetivosCumplidos: yaEsta ? actuales.filter((x) => x !== id) : [...actuales, id] }
     })
   }
 
@@ -340,6 +352,17 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
   const objetivosDeFaseActual = objetivosFase
     .filter((o) => o.fase === faseParaCatalogo)
     .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+
+  // Objetivos de la valoración anterior (excluyendo la que se está editando,
+  // si aplica) — se revisan aquí para marcar cuáles se cumplieron de verdad
+  // antes de decidir si toca subir de fase.
+  const valoracionAnterior = historialDesc.filter((v) => v.id !== editingId)[0] || null
+  const objetivosAnterior = valoracionAnterior?.objetivosSeleccionados?.length
+    ? objetivosFase.filter((o) => valoracionAnterior.objetivosSeleccionados.includes(o.id))
+    : []
+  const subiendoFase = Boolean(valoracionAnterior?.fase && formData.fase && formData.fase > valoracionAnterior.fase)
+  const objetivosAnteriorSinMarcar = objetivosAnterior.filter((o) => !(formData.objetivosCumplidos || []).includes(o.id))
+  const avisoSubidaFase = subiendoFase && objetivosAnteriorSinMarcar.length > 0
 
   return (
     <div className="client-modal-overlay" onClick={onClose}>
@@ -495,6 +518,11 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                           return <div key={it.id}>{it.label}: <strong>{val}{it.unidad || ''}</strong></div>
                         }))}
                         {v.fase && <p style={{ marginTop: 6 }}>📍 Fase {v.fase}{objetivoCombinado(v, objetivosFase) ? ` — ${objetivoCombinado(v, objetivosFase)}` : ''}</p>}
+                        {v.objetivosCumplidos?.length > 0 && (
+                          <p style={{ marginTop: 6 }}>
+                            ✅ Cumplidos de la fase anterior: {v.objetivosCumplidos.map((id) => objetivosFase.find((o) => o.id === id)?.texto).filter(Boolean).join(' · ')}
+                          </p>
+                        )}
                         {v.notasDolor && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🩹 Dolor: {v.notasDolor}</p>}
                         {v.notasEvaluacionInicial && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>📝 Evaluación inicial: {v.notasEvaluacionInicial}</p>}
                       </div>
@@ -587,6 +615,24 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
 
               <h4 className="team-activity-subtitle">Fase y objetivo</h4>
 
+              {objetivosAnterior.length > 0 && (
+                <div className="valoracion-campo">
+                  <span>Objetivos marcados en la valoración anterior (Fase {valoracionAnterior.fase || '—'}) — ¿se cumplieron?</span>
+                  <div className="valoracion-objetivos-catalogo">
+                    {objetivosAnterior.map((o) => (
+                      <label key={o.id} className="valoracion-objetivo-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={(formData.objetivosCumplidos || []).includes(o.id)}
+                          onChange={() => toggleObjetivoCumplido(o.id)}
+                        />
+                        <span>{o.texto}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {spadiTotalForm === 0 && (
                 <label className="valoracion-campo">
                   <span>¿Dolor en gestos de su deporte?</span>
@@ -625,6 +671,12 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                   )}
                 </div>
               </label>
+
+              {avisoSubidaFase && (
+                <p className="valoracion-aviso-fase">
+                  ⚠️ Vas a subir de Fase {valoracionAnterior.fase} a Fase {formData.fase}, pero hay {objetivosAnteriorSinMarcar.length} objetivo{objetivosAnteriorSinMarcar.length === 1 ? '' : 's'} de la fase anterior sin marcar como cumplido{objetivosAnteriorSinMarcar.length === 1 ? '' : 's'} (arriba). Confirma que realmente toca subir antes de guardar.
+                </p>
+              )}
 
               <div className="valoracion-campo">
                 <span>Objetivos para esta fase{faseParaCatalogo ? ` (Fase ${faseParaCatalogo})` : ''}</span>

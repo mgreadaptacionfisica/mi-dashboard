@@ -16,7 +16,8 @@
 //   dolorEnDeporte: true|false|null (solo relevante si SPADI=0, distingue fase 3 de fase 4),
 //   fase: 1|2|3|4|null (confirmada por el técnico; el panel la sugiere a partir del SPADI),
 //   objetivo: '' (texto libre adicional),
-//   objetivosSeleccionados: ['obj-fase1-1', ...] (ids del catálogo objetivos_fase) }
+//   objetivosSeleccionados: ['obj-fase1-1', ...] (ids del catálogo objetivos_fase, marcados como META en esta valoración),
+//   objetivosCumplidos: ['obj-fase1-1', ...] (subconjunto de los objetivosSeleccionados de la valoración ANTERIOR que se marcan como cumplidos al hacer esta valoración nueva) }
 //
 // Nota: la columna "dinamometria" existe todavía en Supabase (datos históricos)
 // pero ya no se usa desde el panel — el bloque se eliminó.

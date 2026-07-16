@@ -47,7 +47,15 @@ Para la valoración clínica específica de hombro (diagnóstico diferencial com
     id: 'sop-sistema-3-fases',
     titulo: '3. Establecer fase y objetivos',
     categoria: 'Sistema de trabajo con clientes',
-    contenido: `Fases (según irritabilidad y movilidad, medido con SPADI):
+    contenido: `REGLA DE TRANSICIÓN (leer antes de subir a alguien de fase):
+No se sube de fase solo porque mejore el SPADI o el dolor. Se sube de fase cuando se cumplen las DOS cosas:
+1) El criterio de dolor/SPADI de la fase siguiente (ver más abajo).
+2) Los objetivos concretos marcados para la fase actual (ver "Objetivos por fase" más abajo) — no solo "ha mejorado", sino que el objetivo que se marcó se ha cumplido de verdad.
+En el panel, al crear una nueva valoración se marcan como cumplidos los objetivos de la valoración anterior. Si subes de fase sin haberlos marcado todos, el panel avisa (no bloquea — la decisión sigue siendo tuya, pero revisa que sea correcto antes de continuar).
+
+Cadencia de reevaluación: reevaluar cada 2-3 semanas, o antes si sospechas que ya se han cumplido los objetivos de la fase actual. No dejar pasar más de un mes sin repetir la valoración — cuanto más se tarde en detectar que toca cambiar de fase (para bien o para mal), más margen de error hay.
+
+Fases (según irritabilidad y movilidad, medido con SPADI):
 - FASE 1: irritabilidad alta-moderada, baja movilidad (SPADI <50), dolor entre sesiones. Objetivo: ejercicios para reducir dolor y ganar movilidad.
 - FASE 2: irritabilidad baja (SPADI <10), solo molestia en sesiones, sin dolor entre sesiones. Objetivo: ejercicios de fuerza.
 - FASE 3: dolor solo ante picos de carga (SPADI 0), dolor solo en gestos del deporte. Objetivo: introducir movimientos específicos del deporte.
@@ -59,7 +67,7 @@ Objetivos por fase:
 - FASE 3: objetivos según el deporte — hablar con la persona y ser muy concreto (ej: conseguir hacer snatch sin dolor).
 - FASE 4: objetivos de rendimiento — hablar con la persona y ser muy concreto (ej: conseguir un snatch con 100kg).`,
     enlace: '',
-    actualizadoEn: '2026-07-09',
+    actualizadoEn: '2026-07-16',
   },
   {
     id: 'sop-sistema-4-programa',
