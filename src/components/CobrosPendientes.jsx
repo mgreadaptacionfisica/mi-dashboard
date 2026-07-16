@@ -30,6 +30,8 @@ function idIngresoPlazo(clienteId, numero) {
 
 export default function CobrosPendientes({ clientes = [], setClientes, setIngresosEmpresa }) {
   const [editando, setEditando] = useState(null) // `${clienteIndex}-${numero}`
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [nuevoCobro, setNuevoCobro] = useState({ clienteId: '', concepto: '', importe: '', fecha: todayISO() })
 
   const pendientes = useMemo(() => {
     const lista = []
@@ -49,6 +51,32 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
     })
     return lista.sort((a, b) => (a.fecha || '') < (b.fecha || '') ? -1 : 1)
   }, [clientes])
+
+  // Añadir un cobro pendiente manualmente, sin pasar por el alta de cliente
+  // ni por el cierre de venta en Ventas — para ajustes, cobros sueltos o
+  // servicios adicionales facturados a un cliente ya existente.
+  const añadirCobroManual = () => {
+    const clienteIndex = clientes.findIndex((c) => c.id === nuevoCobro.clienteId)
+    if (clienteIndex === -1) return
+    const cliente = clientes[clienteIndex]
+    const importe = Number(nuevoCobro.importe)
+    if (!importe || importe <= 0) return
+    const existentes = cliente.Plazos || []
+    const siguienteNumero = existentes.length ? Math.max(...existentes.map((p) => p.numero || 0)) + 1 : 1
+    const nuevoPlazo = {
+      numero: siguienteNumero,
+      importe,
+      fecha: nuevoCobro.fecha || todayISO(),
+      pagado: false,
+      fechaPago: null,
+      concepto: nuevoCobro.concepto || '',
+    }
+    const plazosActualizados = [...existentes, nuevoPlazo]
+    setClientes(prev => prev.map((c, i) => i === clienteIndex ? { ...c, Plazos: plazosActualizados } : c))
+    if (cliente.id) updateClienteRemote(cliente.id, { Plazos: plazosActualizados })
+    setNuevoCobro({ clienteId: '', concepto: '', importe: '', fecha: todayISO() })
+    setMostrarForm(false)
+  }
 
   const cobradosRecientes = useMemo(() => {
     const lista = []
@@ -136,7 +164,66 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
             <div className="card-title">Plazos pendientes de cobro</div>
             <div className="card-subtitle">Ordenados por fecha prevista. Al marcar "Cobrado" se añade automáticamente a Finanzas &gt; Ingresos empresa.</div>
           </div>
+          <button type="button" className="secondary-action" onClick={() => setMostrarForm(v => !v)}>
+            {mostrarForm ? 'Cancelar' : '➕ Añadir cobro pendiente'}
+          </button>
         </div>
+
+        {mostrarForm && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', padding: '12px 16px', borderBottom: '1px solid var(--color-border, #e5e7eb)' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12, gap: 4 }}>
+              Cliente
+              <select
+                value={nuevoCobro.clienteId}
+                onChange={(e) => setNuevoCobro(prev => ({ ...prev, clienteId: e.target.value }))}
+                style={{ minWidth: 180 }}
+              >
+                <option value="">Selecciona...</option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.Nombre}</option>
+                ))}
+              </select>
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12, gap: 4 }}>
+              Concepto (opcional)
+              <input
+                type="text"
+                placeholder="Ej. Sesión extra, ajuste..."
+                value={nuevoCobro.concepto}
+                onChange={(e) => setNuevoCobro(prev => ({ ...prev, concepto: e.target.value }))}
+                style={{ minWidth: 160 }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12, gap: 4 }}>
+              Importe (€)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={nuevoCobro.importe}
+                onChange={(e) => setNuevoCobro(prev => ({ ...prev, importe: e.target.value }))}
+                style={{ width: 100 }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12, gap: 4 }}>
+              Fecha prevista
+              <input
+                type="date"
+                value={nuevoCobro.fecha}
+                onChange={(e) => setNuevoCobro(prev => ({ ...prev, fecha: e.target.value }))}
+              />
+            </label>
+            <button
+              type="button"
+              className="row-action-btn"
+              disabled={!nuevoCobro.clienteId || !nuevoCobro.importe}
+              onClick={añadirCobroManual}
+            >
+              Añadir
+            </button>
+          </div>
+        )}
+
         <div className="table-wrapper">
           <table>
             <thead>
@@ -156,7 +243,7 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
                 return (
                   <tr key={key}>
                     <td style={{ fontWeight: 600 }}>{plazo.clienteNombre || '—'}</td>
-                    <td>{plazo.servicio || '—'}</td>
+                    <td>{plazo.concepto || plazo.servicio || '—'}</td>
                     <td>{plazo.numero}/{plazo.totalPlazos}</td>
                     <td>
                       {enEdicion ? (
