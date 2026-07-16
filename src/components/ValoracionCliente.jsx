@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import {
   BLOQUES,
   SIMETRIA_PARES,
@@ -7,6 +7,9 @@ import {
   TAMPA_ITEMS,
   TAMPA_INTERPRETACION,
   FASES,
+  SEMAFORO_OPCIONES,
+  DOMINANCIA_OPCIONES,
+  PATRON_LUMBAR_OPCIONES,
   valoracionVacia,
   spadiTotal,
   tampaTotal,
@@ -14,8 +17,12 @@ import {
   indiceSimetria,
   calcularFaseSugerida,
   faseInfo,
+  semaforoInfo,
+  compararSemaforo,
+  objetivoCombinado,
 } from '../utils/valoracionHelpers'
 import { insertValoracionRemote, updateValoracionRemote, deleteValoracionRemote } from '../lib/queries/valoracionesClientes'
+import { insertObjetivoFaseRemote, updateObjetivoFaseRemote, deleteObjetivoFaseRemote } from '../lib/queries/objetivosFase'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -25,11 +32,6 @@ function formatFecha(iso) {
   if (!iso) return '—'
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
-}
-
-function unidadDe(bloque, item) {
-  if (item.unidad !== undefined) return item.unidad
-  return bloque.unidadGrados ? 'º' : ''
 }
 
 // Fila numérica genérica: label + input number + unidad opcional.
@@ -50,50 +52,143 @@ function CampoNumerico({ label, unidad, value, onChange }) {
   )
 }
 
-export default function ValoracionCliente({ cliente, valoraciones, setValoraciones, onClose }) {
+// Ejercicios de carga (rotación externa mancuerna, elevaciones laterales,
+// press vertical unilateral, press militar): peso Y repeticiones reales de
+// la sesión, no un RM fijo.
+function CampoPesoReps({ label, value, onChange, nota }) {
+  const v = value || {}
+  return (
+    <label className="valoracion-campo">
+      <span>{label}</span>
+      <div className="valoracion-campo-input" style={{ gap: 6 }}>
+        <input
+          type="number" step="any" placeholder="kg"
+          value={v.peso ?? ''}
+          onChange={(e) => onChange({ ...v, peso: e.target.value === '' ? '' : Number(e.target.value) })}
+          style={{ width: 70 }}
+        />
+        <span className="valoracion-campo-unidad">kg</span>
+        <input
+          type="number" step="1" placeholder="reps"
+          value={v.reps ?? ''}
+          onChange={(e) => onChange({ ...v, reps: e.target.value === '' ? '' : Number(e.target.value) })}
+          style={{ width: 60 }}
+        />
+        <span className="valoracion-campo-unidad">reps</span>
+      </div>
+      {nota && <span className="valoracion-referencia" style={{ display: 'block' }}>⚠️ {nota}</span>}
+    </label>
+  )
+}
+
+// Semáforo de movilidad (verde/amarillo/rojo), con un desplegable extra para
+// los ítems que lo necesitan (dominancia cadera/rodilla en sentadillas,
+// patrón lumbar en Toe Touch).
+function CampoSemaforo({ label, item, value, onChange }) {
+  const v = value || {}
+  return (
+    <div className="valoracion-campo">
+      <span>{label}</span>
+      <div className="semaforo-botones">
+        {SEMAFORO_OPCIONES.map((op) => (
+          <button
+            key={op.valor}
+            type="button"
+            className={`semaforo-btn semaforo-${op.valor} ${v.color === op.valor ? 'semaforo-btn-activo' : ''}`}
+            title={op.descripcion}
+            onClick={() => onChange({ ...v, color: op.valor })}
+          >
+            {op.emoji} {op.label}
+          </button>
+        ))}
+      </div>
+      {item.extra === 'dominancia' && (
+        <select value={v.dominancia || ''} onChange={(e) => onChange({ ...v, dominancia: e.target.value || null })}>
+          <option value="">¿Dominancia?</option>
+          {DOMINANCIA_OPCIONES.map((o) => <option key={o.valor} value={o.valor}>{o.label}</option>)}
+        </select>
+      )}
+      {item.extra === 'patronLumbar' && (
+        <select value={v.patron || ''} onChange={(e) => onChange({ ...v, patron: e.target.value || null })}>
+          <option value="">¿Patrón lumbar?</option>
+          {PATRON_LUMBAR_OPCIONES.map((o) => <option key={o.valor} value={o.valor}>{o.label}</option>)}
+        </select>
+      )}
+    </div>
+  )
+}
+
+export default function ValoracionCliente({ cliente, valoraciones, setValoraciones, objetivosFase = [], setObjetivosFase, esAdmin = false, onClose }) {
   const [vista, setVista] = useState('evolucion')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [expandido, setExpandido] = useState(null)
   const [formData, setFormData] = useState({ fecha: todayISO(), ...valoracionVacia() })
+  const [gestionandoCatalogo, setGestionandoCatalogo] = useState(false)
+  const [nuevoObjetivoPorFase, setNuevoObjetivoPorFase] = useState({})
+  const [editandoObjetivoId, setEditandoObjetivoId] = useState(null)
+  const [editandoObjetivoTexto, setEditandoObjetivoTexto] = useState('')
 
-  const historial = useMemo(() => {
-    return valoraciones
-      .filter((v) => v.clienteNombre === cliente.Nombre)
-      .slice()
-      .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''))
-  }, [valoraciones, cliente])
+  const historial = valoraciones
+    .filter((v) => v.clienteNombre === cliente.Nombre)
+    .slice()
+    .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''))
 
-  const historialDesc = useMemo(() => historial.slice().reverse(), [historial])
+  const historialDesc = historial.slice().reverse()
 
   // Fase/objetivo vigente: la valoración confirmada con fase más reciente
   // (no necesariamente la última valoración en fecha, si esa última todavía
   // no tiene fase confirmada).
-  const faseVigente = useMemo(() => historialDesc.find((v) => v.fase), [historialDesc])
+  const faseVigente = historialDesc.find((v) => v.fase)
 
-  // Evolución por bloque: para cada ítem con al menos un valor registrado, primera vs última medición.
-  const evolucionPorBloque = useMemo(() => {
-    return BLOQUES.map((bloque) => {
-      const filas = bloque.items.map((item) => {
-        const conValor = historial.filter((v) => v[bloque.id]?.[item.id] !== undefined && v[bloque.id][item.id] !== '')
+  // Evolución por bloque: para cada ítem con al menos un valor registrado,
+  // primera vs última medición. Distingue 3 formas de valor: numérico simple,
+  // peso+reps (ejercicios de carga) y semáforo (movilidad).
+  const evolucionPorBloque = BLOQUES.map((bloque) => {
+    const filas = bloque.items.map((item) => {
+      if (bloque.esSemaforo) {
+        const conValor = historial.filter((v) => v[bloque.id]?.[item.id]?.color)
         if (conValor.length === 0) return null
         const primero = conValor[0]
         const ultimo = conValor[conValor.length - 1]
+        const colorPrimero = primero[bloque.id][item.id].color
+        const colorUltimo = ultimo[bloque.id][item.id].color
         return {
-          item,
-          unidad: unidadDe(bloque, item),
-          primero: primero[bloque.id][item.id],
-          primeroFecha: primero.fecha,
-          ultimo: ultimo[bloque.id][item.id],
-          ultimoFecha: ultimo.fecha,
-          pct: mejoraPct(primero[bloque.id][item.id], ultimo[bloque.id][item.id]),
+          item, tipo: 'semaforo',
+          colorPrimero, primeroFecha: primero.fecha,
+          colorUltimo, ultimoFecha: ultimo.fecha,
+          comparacion: compararSemaforo(colorPrimero, colorUltimo),
         }
-      }).filter(Boolean)
-      return { bloque, filas }
-    }).filter((b) => b.filas.length > 0)
-  }, [historial])
+      }
+      if (item.pesoReps) {
+        const conValor = historial.filter((v) => v[bloque.id]?.[item.id]?.peso !== undefined && v[bloque.id][item.id].peso !== '')
+        if (conValor.length === 0) return null
+        const primero = conValor[0]
+        const ultimo = conValor[conValor.length - 1]
+        const pesoPrimero = primero[bloque.id][item.id].peso
+        const pesoUltimo = ultimo[bloque.id][item.id].peso
+        return {
+          item, tipo: 'pesoReps',
+          primero: pesoPrimero, primeroReps: primero[bloque.id][item.id].reps, primeroFecha: primero.fecha,
+          ultimo: pesoUltimo, ultimoReps: ultimo[bloque.id][item.id].reps, ultimoFecha: ultimo.fecha,
+          pct: mejoraPct(pesoPrimero, pesoUltimo),
+        }
+      }
+      const conValor = historial.filter((v) => v[bloque.id]?.[item.id] !== undefined && v[bloque.id][item.id] !== '')
+      if (conValor.length === 0) return null
+      const primero = conValor[0]
+      const ultimo = conValor[conValor.length - 1]
+      return {
+        item, tipo: 'numero', unidad: item.unidad || '',
+        primero: primero[bloque.id][item.id], primeroFecha: primero.fecha,
+        ultimo: ultimo[bloque.id][item.id], ultimoFecha: ultimo.fecha,
+        pct: mejoraPct(primero[bloque.id][item.id], ultimo[bloque.id][item.id]),
+      }
+    }).filter(Boolean)
+    return { bloque, filas }
+  }).filter((b) => b.filas.length > 0)
 
-  const evolucionCuestionarios = useMemo(() => {
+  const evolucionCuestionarios = (() => {
     const conSpadi = historial.filter((v) => spadiTotal(v.spadi) !== null)
     const conTampa = historial.filter((v) => tampaTotal(v.tampa) !== null)
     const filas = []
@@ -114,21 +209,26 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
       })
     }
     return filas
-  }, [historial])
+  })()
 
-  // Índices de simetría: usan la valoración más reciente que tenga ambos lados rellenados.
-  const indicesSimetria = useMemo(() => {
-    return SIMETRIA_PARES.map((par) => {
-      const conAmbos = historial.filter((v) =>
-        v[par.bloque]?.[par.dxId] !== undefined && v[par.bloque][par.dxId] !== '' &&
-        v[par.bloque]?.[par.izqId] !== undefined && v[par.bloque][par.izqId] !== ''
-      )
-      if (conAmbos.length === 0) return null
-      const ultima = conAmbos[conAmbos.length - 1]
-      const indice = indiceSimetria(ultima[par.bloque][par.dxId], ultima[par.bloque][par.izqId])
-      return { par, indice, fecha: ultima.fecha }
-    }).filter(Boolean)
-  }, [historial])
+  // Índices de simetría: usan la valoración más reciente que tenga ambos
+  // lados rellenados. Para pares "pesoReps" compara el campo .peso de cada lado.
+  const indicesSimetria = SIMETRIA_PARES.map((par) => {
+    const extraer = (v, id) => {
+      const raw = v[par.bloque]?.[id]
+      if (raw === undefined || raw === '') return undefined
+      return par.pesoReps ? raw.peso : raw
+    }
+    const conAmbos = historial.filter((v) => {
+      const dx = extraer(v, par.dxId)
+      const izq = extraer(v, par.izqId)
+      return dx !== undefined && dx !== '' && izq !== undefined && izq !== ''
+    })
+    if (conAmbos.length === 0) return null
+    const ultima = conAmbos[conAmbos.length - 1]
+    const indice = indiceSimetria(extraer(ultima, par.dxId), extraer(ultima, par.izqId))
+    return { par, indice, fecha: ultima.fecha }
+  }).filter(Boolean)
 
   const openNew = () => {
     setEditingId(null)
@@ -141,10 +241,12 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     BLOQUES.forEach((b) => { base[b.id] = valoracion[b.id] || {} })
     base.spadi = valoracion.spadi || {}
     base.tampa = valoracion.tampa || {}
-    base.notas = valoracion.notas || ''
+    base.notasDolor = valoracion.notasDolor || ''
+    base.notasEvaluacionInicial = valoracion.notasEvaluacionInicial || ''
     base.dolorEnDeporte = valoracion.dolorEnDeporte ?? null
     base.fase = valoracion.fase ?? null
     base.objetivo = valoracion.objetivo || ''
+    base.objetivosSeleccionados = valoracion.objetivosSeleccionados || []
     setEditingId(valoracion.id)
     setFormData(base)
     setShowForm(true)
@@ -158,6 +260,14 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
 
   const setCampo = (bloqueId, itemId, valor) => {
     setFormData((prev) => ({ ...prev, [bloqueId]: { ...prev[bloqueId], [itemId]: valor } }))
+  }
+
+  const toggleObjetivoSeleccionado = (id) => {
+    setFormData((prev) => {
+      const actuales = prev.objetivosSeleccionados || []
+      const yaEsta = actuales.includes(id)
+      return { ...prev, objetivosSeleccionados: yaEsta ? actuales.filter((x) => x !== id) : [...actuales, id] }
+    })
   }
 
   const handleSubmit = (event) => {
@@ -176,11 +286,43 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     setEditingId(null)
   }
 
+  // Gestión del catálogo de objetivos por fase (solo admin, ver botón
+  // "⚙️ Gestionar catálogo" más abajo).
+  const agregarObjetivoCatalogo = (faseNumero) => {
+    const texto = (nuevoObjetivoPorFase[faseNumero] || '').trim()
+    if (typeof setObjetivosFase !== 'function' || !texto) return
+    const ordenActual = objetivosFase.filter((o) => o.fase === faseNumero).length
+    const nuevo = { id: `obj-${Date.now()}`, fase: faseNumero, texto, orden: ordenActual + 1 }
+    setObjetivosFase((prev) => [...prev, nuevo])
+    insertObjetivoFaseRemote(nuevo)
+    setNuevoObjetivoPorFase((prev) => ({ ...prev, [faseNumero]: '' }))
+  }
+
+  const editarObjetivoCatalogo = (id) => {
+    if (typeof setObjetivosFase !== 'function' || !editandoObjetivoTexto.trim()) return
+    const texto = editandoObjetivoTexto.trim()
+    setObjetivosFase((prev) => prev.map((o) => (o.id === id ? { ...o, texto } : o)))
+    updateObjetivoFaseRemote(id, { texto })
+    setEditandoObjetivoId(null)
+    setEditandoObjetivoTexto('')
+  }
+
+  const eliminarObjetivoCatalogo = (id) => {
+    if (typeof setObjetivosFase !== 'function') return
+    setObjetivosFase((prev) => prev.filter((o) => o.id !== id))
+    deleteObjetivoFaseRemote(id)
+    setFormData((prev) => ({ ...prev, objetivosSeleccionados: (prev.objetivosSeleccionados || []).filter((x) => x !== id) }))
+  }
+
   const spadiTotalForm = spadiTotal(formData.spadi)
   const tampaTotalForm = tampaTotal(formData.tampa)
   const faseSugeridaForm = calcularFaseSugerida(spadiTotalForm, formData.dolorEnDeporte)
   const faseSugeridaInfo = faseInfo(faseSugeridaForm)
   const faseConfirmadaInfo = faseInfo(formData.fase)
+  const faseParaCatalogo = formData.fase || faseSugeridaForm
+  const objetivosDeFaseActual = objetivosFase
+    .filter((o) => o.fase === faseParaCatalogo)
+    .sort((a, b) => (a.orden || 0) - (b.orden || 0))
 
   return (
     <div className="client-modal-overlay" onClick={onClose}>
@@ -197,7 +339,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
           {faseVigente ? (
             <>
               📍 <strong>Fase {faseVigente.fase}</strong> — {faseInfo(faseVigente.fase)?.criterio}
-              {faseVigente.objetivo && <> · Objetivo: {faseVigente.objetivo}</>}
+              {objetivoCombinado(faseVigente, objetivosFase) && <> · Objetivo: {objetivoCombinado(faseVigente, objetivosFase)}</>}
               <span style={{ color: 'var(--color-text-secondary)' }}> (desde {formatFecha(faseVigente.fecha)})</span>
             </>
           ) : (
@@ -251,14 +393,34 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                 <h4 className="team-activity-subtitle">{bloque.label}</h4>
                 <div className="valoracion-evolucion-table">
                   <div className="valoracion-evolucion-row valoracion-evolucion-header">
-                    <span>Ítem</span><span>Primera</span><span>Última</span><span>% mejoría</span>
+                    <span>Ítem</span><span>Primera</span><span>Última</span><span>Evolución</span>
                   </div>
                   {filas.map((fila) => (
                     <div className="valoracion-evolucion-row" key={fila.item.id}>
                       <span>{fila.item.label}</span>
-                      <span>{fila.primero}{fila.unidad} ({formatFecha(fila.primeroFecha)})</span>
-                      <span>{fila.ultimo}{fila.unidad} ({formatFecha(fila.ultimoFecha)})</span>
-                      <span className={fila.pct != null && fila.pct >= 0 ? 'valoracion-mejora-positiva' : ''}>{fila.pct != null ? `${fila.pct}%` : '—'}</span>
+                      {fila.tipo === 'semaforo' && (
+                        <>
+                          <span>{semaforoInfo(fila.colorPrimero)?.emoji} ({formatFecha(fila.primeroFecha)})</span>
+                          <span>{semaforoInfo(fila.colorUltimo)?.emoji} ({formatFecha(fila.ultimoFecha)})</span>
+                          <span className={fila.comparacion === 'mejora' ? 'valoracion-mejora-positiva' : fila.comparacion === 'empeora' ? 'valoracion-simetria-baja' : ''}>
+                            {fila.comparacion === 'mejora' ? '↑ mejora' : fila.comparacion === 'empeora' ? '↓ empeora' : fila.comparacion === 'igual' ? '= igual' : '—'}
+                          </span>
+                        </>
+                      )}
+                      {fila.tipo === 'pesoReps' && (
+                        <>
+                          <span>{fila.primero}kg×{fila.primeroReps ?? '—'} ({formatFecha(fila.primeroFecha)})</span>
+                          <span>{fila.ultimo}kg×{fila.ultimoReps ?? '—'} ({formatFecha(fila.ultimoFecha)})</span>
+                          <span className={fila.pct != null && fila.pct >= 0 ? 'valoracion-mejora-positiva' : ''}>{fila.pct != null ? `${fila.pct}%` : '—'}</span>
+                        </>
+                      )}
+                      {fila.tipo === 'numero' && (
+                        <>
+                          <span>{fila.primero}{fila.unidad} ({formatFecha(fila.primeroFecha)})</span>
+                          <span>{fila.ultimo}{fila.unidad} ({formatFecha(fila.ultimoFecha)})</span>
+                          <span className={fila.pct != null && fila.pct >= 0 ? 'valoracion-mejora-positiva' : ''}>{fila.pct != null ? `${fila.pct}%` : '—'}</span>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -295,13 +457,29 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                     </div>
                     {expandido === v.id && (
                       <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
-                        {BLOQUES.map((bloque) => (
-                          bloque.items.filter((it) => v[bloque.id]?.[it.id] !== undefined && v[bloque.id][it.id] !== '').map((it) => (
-                            <div key={it.id}>{it.label}: <strong>{v[bloque.id][it.id]}{unidadDe(bloque, it)}</strong></div>
-                          ))
-                        ))}
-                        {v.fase && <p style={{ marginTop: 6 }}>📍 Fase {v.fase}{v.objetivo ? ` — ${v.objetivo}` : ''}</p>}
-                        {v.notas && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>📝 {v.notas}</p>}
+                        {BLOQUES.map((bloque) => bloque.items.map((it) => {
+                          const val = v[bloque.id]?.[it.id]
+                          if (val === undefined || val === null || val === '') return null
+                          if (bloque.esSemaforo) {
+                            if (!val.color) return null
+                            const info = semaforoInfo(val.color)
+                            return (
+                              <div key={it.id}>
+                                {it.label}: <strong>{info?.emoji} {info?.label}</strong>
+                                {val.dominancia && ` · ${DOMINANCIA_OPCIONES.find((d) => d.valor === val.dominancia)?.label}`}
+                                {val.patron && ` · ${PATRON_LUMBAR_OPCIONES.find((p) => p.valor === val.patron)?.label}`}
+                              </div>
+                            )
+                          }
+                          if (it.pesoReps) {
+                            if (val.peso === undefined || val.peso === '') return null
+                            return <div key={it.id}>{it.label}: <strong>{val.peso}kg × {val.reps ?? '—'} reps</strong></div>
+                          }
+                          return <div key={it.id}>{it.label}: <strong>{val}{it.unidad || ''}</strong></div>
+                        }))}
+                        {v.fase && <p style={{ marginTop: 6 }}>📍 Fase {v.fase}{objetivoCombinado(v, objetivosFase) ? ` — ${objetivoCombinado(v, objetivosFase)}` : ''}</p>}
+                        {v.notasDolor && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🩹 Dolor: {v.notasDolor}</p>}
+                        {v.notasEvaluacionInicial && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>📝 Evaluación inicial: {v.notasEvaluacionInicial}</p>}
                       </div>
                     )}
                   </li>
@@ -335,12 +513,28 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                   <div className="valoracion-grid">
                     {bloque.items.map((item) => (
                       <div key={item.id}>
-                        <CampoNumerico
-                          label={item.label}
-                          unidad={unidadDe(bloque, item)}
-                          value={formData[bloque.id]?.[item.id]}
-                          onChange={(v) => setCampo(bloque.id, item.id, v)}
-                        />
+                        {bloque.esSemaforo ? (
+                          <CampoSemaforo
+                            label={item.label}
+                            item={item}
+                            value={formData[bloque.id]?.[item.id]}
+                            onChange={(v) => setCampo(bloque.id, item.id, v)}
+                          />
+                        ) : item.pesoReps ? (
+                          <CampoPesoReps
+                            label={item.label}
+                            value={formData[bloque.id]?.[item.id]}
+                            onChange={(v) => setCampo(bloque.id, item.id, v)}
+                            nota={item.nota}
+                          />
+                        ) : (
+                          <CampoNumerico
+                            label={item.label}
+                            unidad={item.unidad || ''}
+                            value={formData[bloque.id]?.[item.id]}
+                            onChange={(v) => setCampo(bloque.id, item.id, v)}
+                          />
+                        )}
                         {bloque.referencia?.[item.id] && (
                           <span className="valoracion-referencia">Ref: {bloque.referencia[item.id].mujeres} (mujeres) / {bloque.referencia[item.id].hombres} (hombres)</span>
                         )}
@@ -414,8 +608,31 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                 </div>
               </label>
 
+              <div className="valoracion-campo">
+                <span>Objetivos para esta fase{faseParaCatalogo ? ` (Fase ${faseParaCatalogo})` : ''}</span>
+                {faseParaCatalogo ? (
+                  <div className="valoracion-objetivos-catalogo">
+                    {objetivosDeFaseActual.length === 0 && (
+                      <p className="lead-log-empty" style={{ margin: '4px 0' }}>Todavía no hay objetivos guardados para la Fase {faseParaCatalogo}.</p>
+                    )}
+                    {objetivosDeFaseActual.map((o) => (
+                      <label key={o.id} className="valoracion-objetivo-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={(formData.objetivosSeleccionados || []).includes(o.id)}
+                          onChange={() => toggleObjetivoSeleccionado(o.id)}
+                        />
+                        <span>{o.texto}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="lead-log-empty" style={{ margin: '4px 0' }}>Confirma o deja que se sugiera una fase para ver su catálogo de objetivos.</p>
+                )}
+              </div>
+
               <label className="valoracion-campo">
-                <span>Objetivo para esta fase</span>
+                <span>Objetivo adicional (texto libre)</span>
                 <textarea
                   rows={2}
                   value={formData.objetivo}
@@ -424,9 +641,70 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                 />
               </label>
 
+              {esAdmin && (
+                <div className="valoracion-catalogo-admin">
+                  <button type="button" className="row-action-btn" onClick={() => setGestionandoCatalogo((v) => !v)}>
+                    {gestionandoCatalogo ? 'Ocultar gestión del catálogo' : '⚙️ Gestionar catálogo de objetivos'}
+                  </button>
+                  {gestionandoCatalogo && (
+                    <div className="valoracion-catalogo-editor">
+                      {FASES.map((f) => (
+                        <div key={f.numero} className="valoracion-catalogo-fase">
+                          <strong>Fase {f.numero}</strong>
+                          <ul>
+                            {objetivosFase.filter((o) => o.fase === f.numero).sort((a, b) => (a.orden || 0) - (b.orden || 0)).map((o) => (
+                              <li key={o.id}>
+                                {editandoObjetivoId === o.id ? (
+                                  <>
+                                    <input type="text" value={editandoObjetivoTexto} onChange={(e) => setEditandoObjetivoTexto(e.target.value)} style={{ width: '65%' }} />
+                                    <button type="button" className="row-action-btn" onClick={() => editarObjetivoCatalogo(o.id)}>Guardar</button>
+                                    <button type="button" className="row-action-btn" onClick={() => setEditandoObjetivoId(null)}>Cancelar</button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>{o.texto}</span>
+                                    <button type="button" className="row-action-btn" onClick={() => { setEditandoObjetivoId(o.id); setEditandoObjetivoTexto(o.texto) }}>Editar</button>
+                                    <button type="button" className="row-action-btn" onClick={() => eliminarObjetivoCatalogo(o.id)}>Eliminar</button>
+                                  </>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <input
+                              type="text"
+                              placeholder={`Nuevo objetivo para Fase ${f.numero}...`}
+                              value={nuevoObjetivoPorFase[f.numero] || ''}
+                              onChange={(e) => setNuevoObjetivoPorFase((prev) => ({ ...prev, [f.numero]: e.target.value }))}
+                              style={{ flex: 1 }}
+                            />
+                            <button type="button" className="row-action-btn" onClick={() => agregarObjetivoCatalogo(f.numero)}>Añadir</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <label className="valoracion-campo" style={{ marginTop: 8 }}>
-                <span>Notas</span>
-                <textarea rows={3} value={formData.notas} onChange={(e) => setFormData({ ...formData, notas: e.target.value })} placeholder="Observaciones de esta valoración..." />
+                <span>Notas de evaluación del dolor</span>
+                <textarea
+                  rows={3}
+                  value={formData.notasDolor}
+                  onChange={(e) => setFormData({ ...formData, notasDolor: e.target.value })}
+                  placeholder="Pega aquí lo relevante del formulario externo de dolor..."
+                />
+              </label>
+
+              <label className="valoracion-campo">
+                <span>Notas de evaluación inicial</span>
+                <textarea
+                  rows={3}
+                  value={formData.notasEvaluacionInicial}
+                  onChange={(e) => setFormData({ ...formData, notasEvaluacionInicial: e.target.value })}
+                  placeholder="Observaciones de la evaluación inicial..."
+                />
               </label>
 
               <div className="modal-actions">

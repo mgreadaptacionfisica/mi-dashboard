@@ -1,12 +1,15 @@
 import { supabase } from '../supabaseClient'
 
+// Nota: la columna "dinamometria" sigue existiendo en la tabla (datos
+// históricos de cuando se usaba), pero ya no se lee ni se escribe desde
+// aquí — el bloque se eliminó del panel (ver valoracionHelpers.js). Al no
+// incluir la clave en fromRow/toRow, un update() nunca la toca.
 function fromRow(row) {
   return {
     id: row.id,
     clienteNombre: row.cliente_nombre,
     fecha: row.fecha,
     fuerza: row.fuerza || {},
-    dinamometria: row.dinamometria || {},
     pliometria: row.pliometria || {},
     fuerzaCervical: row.fuerza_cervical || {},
     movilidadHombro: row.movilidad_hombro || {},
@@ -15,10 +18,12 @@ function fromRow(row) {
     movilidadGeneral: row.movilidad_general || {},
     spadi: row.spadi || {},
     tampa: row.tampa || {},
-    notas: row.notas || '',
+    notasDolor: row.notas_dolor || '',
+    notasEvaluacionInicial: row.notas_evaluacion_inicial || '',
     dolorEnDeporte: row.dolor_en_deporte ?? null,
     fase: row.fase ?? null,
     objetivo: row.objetivo || '',
+    objetivosSeleccionados: row.objetivos_seleccionados || [],
   }
 }
 
@@ -28,7 +33,6 @@ function toRow(v) {
     cliente_nombre: v.clienteNombre,
     fecha: v.fecha,
     fuerza: v.fuerza || {},
-    dinamometria: v.dinamometria || {},
     pliometria: v.pliometria || {},
     fuerza_cervical: v.fuerzaCervical || {},
     movilidad_hombro: v.movilidadHombro || {},
@@ -37,10 +41,12 @@ function toRow(v) {
     movilidad_general: v.movilidadGeneral || {},
     spadi: v.spadi || {},
     tampa: v.tampa || {},
-    notas: v.notas || '',
+    notas_dolor: v.notasDolor || '',
+    notas_evaluacion_inicial: v.notasEvaluacionInicial || '',
     dolor_en_deporte: v.dolorEnDeporte ?? null,
     fase: v.fase ?? null,
     objetivo: v.objetivo || '',
+    objetivos_seleccionados: v.objetivosSeleccionados || [],
   }
 }
 

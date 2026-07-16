@@ -10,13 +10,13 @@ import {
   progresoSemana,
 } from '../utils/seguimientoHelpers'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
-import { ultimaFaseCliente, faseInfo } from '../utils/valoracionHelpers'
+import { ultimaFaseCliente, faseInfo, objetivoCombinado } from '../utils/valoracionHelpers'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, valoraciones = [], onClose }) {
+export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, valoraciones = [], objetivosFase = [], onClose }) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [tareaDraft, setTareaDraft] = useState({})
   // Texto libre cuando se elige "Otra" en el desplegable de bloques, para
@@ -97,7 +97,7 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
         {faseVigente ? (
           <div className="valoracion-fase-banner">
             📍 <strong>Fase {faseVigente.fase}</strong> — {faseInfo(faseVigente.fase)?.criterio}
-            {faseVigente.objetivo && <> · Objetivo: {faseVigente.objetivo}</>}
+            {objetivoCombinado(faseVigente, objetivosFase) && <> · Objetivo: {objetivoCombinado(faseVigente, objetivosFase)}</>}
           </div>
         ) : (
           <div className="valoracion-fase-banner" style={{ color: 'var(--color-text-secondary)' }}>

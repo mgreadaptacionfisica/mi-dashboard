@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
-import { ultimaFaseCliente } from '../utils/valoracionHelpers'
+import { ultimaFaseCliente, objetivoCombinado } from '../utils/valoracionHelpers'
 
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
 // propósito de ClientesAdmin.jsx (sidebar item "Clientes"), que lleva toda
@@ -19,7 +19,7 @@ function formatDate(value) {
   return value || '—'
 }
 
-export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones }) {
+export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosFase = [], setObjetivosFase }) {
   const [search, setSearch] = useState('')
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
@@ -122,7 +122,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           {esAdmin && <td>{trabajadores.length ? trabajadores.join(', ') : '—'}</td>}
                           <td>
                             {fase ? (
-                              <span className="status-pill status-activo" title={fase.objetivo || ''}>Fase {fase.fase}</span>
+                              <span className="status-pill status-activo" title={objetivoCombinado(fase, objetivosFase)}>Fase {fase.fase}</span>
                             ) : (
                               <span style={{ color: 'var(--color-text-secondary)' }}>—</span>
                             )}
@@ -160,6 +160,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           seguimientos={seguimientos}
           setSeguimientos={setSeguimientos}
           valoraciones={valoraciones}
+          objetivosFase={objetivosFase}
           onClose={() => setSeguimientoCliente(null)}
         />
       )}
@@ -169,6 +170,9 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           cliente={valoracionCliente}
           valoraciones={valoraciones}
           setValoraciones={setValoraciones}
+          objetivosFase={objetivosFase}
+          setObjetivosFase={setObjetivosFase}
+          esAdmin={esAdmin}
           onClose={() => setValoracionCliente(null)}
         />
       )}

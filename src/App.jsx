@@ -132,6 +132,13 @@ const valoracionesClientesDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/valoracionesClientes')
 }
+// Catálogo de objetivos por fase (Valoración): mismo patrón fallback que SOPs.
+const objetivosFaseDataPromise = async () => {
+  const { fetchObjetivosFase } = await import('./lib/queries/objetivosFase')
+  const remoto = await fetchObjetivosFase()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/objetivosFase')
+}
 
 // Comunicación: segundo módulo migrado a Supabase, mismo patrón que SOPs
 // (fallback automático al archivo estático si la tabla remota no responde).
@@ -235,6 +242,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [contactosSemanales, setContactosSemanales] = useState([])
   const [mensajesEquipo, setMensajesEquipo] = useState([])
   const [valoracionesClientes, setValoracionesClientes] = useState([])
+  const [objetivosFase, setObjetivosFase] = useState([])
   const [tareasPersonales, setTareasPersonales] = useState([])
   const [manuales, setManuales] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
@@ -247,8 +255,8 @@ function InternalApp({ session, rol, onLogout }) {
       recontactosDataPromise(), ingresosPersonalesDataPromise(), gastosPersonalesDataPromise(),
       ingresosEmpresaDataPromise(), gastosEmpresaDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
       contactosSemanalesDataPromise(), mensajesEquipoDataPromise(), valoracionesClientesDataPromise(),
-      tareasPersonalesDataPromise(), manualesDataPromise(),
-    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma]) => {
+      tareasPersonalesDataPromise(), manualesDataPromise(), objetivosFaseDataPromise(),
+    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -270,6 +278,7 @@ function InternalApp({ session, rol, onLogout }) {
       setValoracionesClientes(vc.default)
       setTareasPersonales(ta.default)
       setManuales(ma.default)
+      setObjetivosFase(of.default)
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -293,8 +302,8 @@ function InternalApp({ session, rol, onLogout }) {
     switch (vista) {
       case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} tareasPersonales={tareasPersonales} contenidoIdeas={contenidoIdeas} />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
-      case 'clientes':     return <ClientesAdmin clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} />
-      case 'clientes-equipo': return <ClientesEquipo clientes={clientes} team={team} miEmail={session?.user?.email} rol={rol} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} />
+      case 'clientes':     return <ClientesAdmin clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} objetivosFase={objetivosFase} setObjetivosFase={setObjetivosFase} />
+      case 'clientes-equipo': return <ClientesEquipo clientes={clientes} team={team} miEmail={session?.user?.email} rol={rol} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} objetivosFase={objetivosFase} setObjetivosFase={setObjetivosFase} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
       case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} miEmail={session?.user?.email} rol={rol} />
       // Finanzas: datos personales de Raúl + datos de empresa (alimentados

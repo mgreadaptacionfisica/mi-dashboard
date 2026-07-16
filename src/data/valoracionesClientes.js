@@ -1,17 +1,25 @@
-// Valoraciones funcionales de clientes (migrado completo del Excel "VALORACIÓN Y SEGUIMIENTO").
-// A diferencia del Excel original (3 fechas fijas por ítem), aquí el historial es abierto:
-// se añade una valoración nueva cada vez que se reevalúa al cliente, sin límite.
+// Valoraciones funcionales de clientes (migrado completo del Excel "VALORACIÓN Y SEGUIMIENTO",
+// ampliado después con el rediseño de julio 2026: fuerza con peso+reps, semáforos de
+// movilidad, notas separadas y objetivos por fase). A diferencia del Excel original
+// (3 fechas fijas por ítem), aquí el historial es abierto: se añade una valoración
+// nueva cada vez que se reevalúa al cliente, sin límite.
 //
 // { id, clienteNombre, fecha: 'YYYY-MM-DD',
-//   fuerza: { [itemId]: number }, dinamometria: { [itemId]: number }, pliometria: { [itemId]: number },
-//   fuerzaCervical: { [itemId]: number }, movilidadHombro: { [itemId]: number },
-//   movilidadCervical: { [itemId]: number }, movilidadEscapular: { [itemId]: number },
-//   movilidadGeneral: { [itemId]: number },
+//   fuerza: { [itemId]: number | { peso: number, reps: number } },  // ver ITEMS_FUERZA (pesoReps)
+//   pliometria: { [itemId]: number }, fuerzaCervical: { [itemId]: number },
+//   movilidadHombro: { [itemId]: { color: 'verde'|'amarillo'|'rojo' } },
+//   movilidadCervical: { [itemId]: { color } }, movilidadEscapular: { [itemId]: { color } },
+//   movilidadGeneral: { [itemId]: { color, dominancia?: 'cadera'|'rodilla', patron?: 'flexion'|'extension' } },
 //   spadi: { 1: number, ..., 13: number }, tampa: { 1: number, ..., 11: number },
-//   notas: '',
+//   notasDolor: '' (pegado del formulario externo de dolor),
+//   notasEvaluacionInicial: '',
 //   dolorEnDeporte: true|false|null (solo relevante si SPADI=0, distingue fase 3 de fase 4),
 //   fase: 1|2|3|4|null (confirmada por el técnico; el panel la sugiere a partir del SPADI),
-//   objetivo: '' (objetivo concreto de esa fase, ver SOP "3. Establecer fase y objetivos") }
+//   objetivo: '' (texto libre adicional),
+//   objetivosSeleccionados: ['obj-fase1-1', ...] (ids del catálogo objetivos_fase) }
+//
+// Nota: la columna "dinamometria" existe todavía en Supabase (datos históricos)
+// pero ya no se usa desde el panel — el bloque se eliminó.
 // Ver src/utils/valoracionHelpers.js para el listado completo de ítems por bloque,
 // los índices de simetría (pares Dx/Izq) y el cálculo de totales SPADI/TAMPA.
 const valoracionesClientes = []
