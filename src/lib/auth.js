@@ -10,10 +10,15 @@ import { supabase } from './supabaseClient'
 
 // 'manuales' se añade a los 4 roles a propósito: es el único archivo de
 // documentos que ve todo el mundo, sea cual sea su acceso al resto del panel.
+// 'clientes' (ClientesAdmin.jsx: contabilidad, contratos, cobros) y
+// 'clientes-equipo' (ClientesEquipo.jsx: solo sus clientes asignados,
+// Seguimiento y Valoración) son dos vistas distintas a propósito — un
+// técnico no debe ver importes ni poder editar/borrar clientes, solo
+// trabajar con los suyos.
 export const SECCIONES_POR_ROL = {
   admin: ['dashboard', 'ventas', 'clientes', 'equipo', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales'],
   closer: ['ventas', 'comunicacion', 'manuales'],
-  tecnico: ['clientes', 'comunicacion', 'manuales'],
+  tecnico: ['clientes-equipo', 'comunicacion', 'manuales'],
   contenido: ['operaciones', 'comunicacion', 'manuales'],
 }
 

@@ -4,6 +4,7 @@ const TODOS_LOS_ITEMS = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard' },
   { id: 'ventas', icon: '💰', label: 'Ventas' },
   { id: 'clientes', icon: '👥', label: 'Clientes' },
+  { id: 'clientes-equipo', icon: '👥', label: 'Clientes' },
   { id: 'equipo', icon: '👔', label: 'Equipo' },
   { id: 'comunicacion', icon: '💬', label: 'Comunicación' },
   { id: 'finanzas', icon: '💶', label: 'Finanzas' },

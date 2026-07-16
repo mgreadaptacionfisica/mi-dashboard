@@ -15,7 +15,8 @@ const isPublicRoute = Object.keys(PUBLIC_PATHS).includes(window.location.pathnam
 // para que la vista pública /onboarding no incluya sus datos en el bundle descargado.
 const Sidebar = lazy(() => import('./components/Sidebar'))
 const Dashboard = lazy(() => import('./components/Dashboard'))
-const Clientes = lazy(() => import('./components/Clientes'))
+const ClientesAdmin = lazy(() => import('./components/ClientesAdmin'))
+const ClientesEquipo = lazy(() => import('./components/ClientesEquipo'))
 const Equipo = lazy(() => import('./components/Equipo'))
 const Ventas = lazy(() => import('./components/Ventas'))
 const Finanzas = lazy(() => import('./components/Finanzas'))
@@ -292,7 +293,8 @@ function InternalApp({ session, rol, onLogout }) {
     switch (vista) {
       case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} tareasPersonales={tareasPersonales} contenidoIdeas={contenidoIdeas} />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
-      case 'clientes':     return <Clientes clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} />
+      case 'clientes':     return <ClientesAdmin clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} />
+      case 'clientes-equipo': return <ClientesEquipo clientes={clientes} team={team} miEmail={session?.user?.email} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
       case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} miEmail={session?.user?.email} rol={rol} />
       // Finanzas: datos personales de Raúl + datos de empresa (alimentados
