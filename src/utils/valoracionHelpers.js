@@ -275,6 +275,7 @@ export function valoracionVacia() {
     tampa: {},
     notasDolor: '',
     notasEvaluacionInicial: '',
+    notasPreferenciasEntrenamiento: '',
     dolorEnDeporte: null,
     fase: null,
     objetivo: '',

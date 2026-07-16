@@ -249,7 +249,15 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
 
   const openNew = () => {
     setEditingId(null)
-    setFormData({ fecha: todayISO(), ...valoracionVacia() })
+    // Las preferencias de entrenamiento (días, material, gustos) casi nunca
+    // cambian de una valoración a otra, así que se arrastran automáticamente
+    // de la última — el técnico solo las edita si algo ha cambiado.
+    const anterior = historialDesc[0]
+    setFormData({
+      fecha: todayISO(),
+      ...valoracionVacia(),
+      notasPreferenciasEntrenamiento: anterior?.notasPreferenciasEntrenamiento || '',
+    })
     setShowForm(true)
   }
 
@@ -260,6 +268,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     base.tampa = valoracion.tampa || {}
     base.notasDolor = valoracion.notasDolor || ''
     base.notasEvaluacionInicial = valoracion.notasEvaluacionInicial || ''
+    base.notasPreferenciasEntrenamiento = valoracion.notasPreferenciasEntrenamiento || ''
     base.dolorEnDeporte = valoracion.dolorEnDeporte ?? null
     base.fase = valoracion.fase ?? null
     base.objetivo = valoracion.objetivo || ''
@@ -525,6 +534,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                         )}
                         {v.notasDolor && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🩹 Dolor: {v.notasDolor}</p>}
                         {v.notasEvaluacionInicial && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>📝 Evaluación inicial: {v.notasEvaluacionInicial}</p>}
+                        {v.notasPreferenciasEntrenamiento && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🗓️ Preferencias: {v.notasPreferenciasEntrenamiento}</p>}
                       </div>
                     )}
                   </li>
@@ -774,6 +784,16 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                   value={formData.notasEvaluacionInicial}
                   onChange={(e) => setFormData({ ...formData, notasEvaluacionInicial: e.target.value })}
                   placeholder="Observaciones de la evaluación inicial..."
+                />
+              </label>
+
+              <label className="valoracion-campo">
+                <span>Preferencias de entrenamiento</span>
+                <textarea
+                  rows={3}
+                  value={formData.notasPreferenciasEntrenamiento}
+                  onChange={(e) => setFormData({ ...formData, notasPreferenciasEntrenamiento: e.target.value })}
+                  placeholder="Días disponibles, material del que dispone, gustos con los ejercicios..."
                 />
               </label>
 

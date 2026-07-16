@@ -13,6 +13,7 @@
 //   spadi: { 1: number, ..., 13: number }, tampa: { 1: number, ..., 11: number },
 //   notasDolor: '' (pegado del formulario externo de dolor),
 //   notasEvaluacionInicial: '',
+//   notasPreferenciasEntrenamiento: '' (días disponibles, material, gustos — se arrastra automáticamente de la valoración anterior al crear una nueva),
 //   dolorEnDeporte: true|false|null (solo relevante si SPADI=0, distingue fase 3 de fase 4),
 //   fase: 1|2|3|4|null (confirmada por el técnico; el panel la sugiere a partir del SPADI),
 //   objetivo: '' (texto libre adicional),
