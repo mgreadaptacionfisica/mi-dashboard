@@ -2,19 +2,18 @@ import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
 
-// Vista de Clientes para el equipo técnico: separada a propósito de
-// ClientesAdmin.jsx, que lleva toda la parte de contabilidad/gestión
-// (importes, plazos, cobros, altas/bajas, renovaciones). Un técnico no
-// necesita ni debe ver esos datos — solo los suyos: quién es, qué programa
-// tiene, y las dos herramientas de trabajo real con el cliente: Seguimiento
-// y Valoración. Se identifica quién ha iniciado sesión cruzando su email
-// con su ficha en Equipo, mismo patrón que MuroEquipo/VideosParaEditar.
-function StatusPill({ estado }) {
-  const normalized = (estado || '').toLowerCase()
-  const className = normalized === 'activo' ? 'status-activo' : 'status-inactivo'
-  return <span className={`status-pill ${className}`}>{estado || 'Sin estado'}</span>
-}
-
+// Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
+// propósito de ClientesAdmin.jsx (sidebar item "Clientes"), que lleva toda
+// la parte de contabilidad/gestión (importes, plazos, cobros, altas/bajas,
+// renovaciones). Un técnico no necesita ni debe ver esos datos — solo los
+// suyos: quién es, qué programa tiene, y las dos herramientas de trabajo
+// real con el cliente: Seguimiento y Valoración. Se identifica quién ha
+// iniciado sesión cruzando su email con su ficha en Equipo, mismo patrón
+// que MuroEquipo/VideosParaEditar.
+//
+// Solo se muestran clientes ACTIVOS aquí: no tiene sentido hacer
+// seguimiento/valoración de alguien que ya no es cliente. Los no activos
+// solo se gestionan desde ClientesAdmin (altas/bajas).
 function formatDate(value) {
   return value || '—'
 }
@@ -37,12 +36,16 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   const miNombre = miPersona?.nombre || null
 
   const misClientes = useMemo(() => {
-    if (esAdmin) return clientes
-    if (!miNombre) return []
-    return clientes.filter((c) => {
-      const trabajadores = c.Trabajadores || (c.Trabajador ? [c.Trabajador] : [])
-      return trabajadores.includes(miNombre)
-    })
+    const base = esAdmin
+      ? clientes
+      : (miNombre
+        ? clientes.filter((c) => {
+          const trabajadores = c.Trabajadores || (c.Trabajador ? [c.Trabajador] : [])
+          return trabajadores.includes(miNombre)
+        })
+        : [])
+    // Solo activos: seguimiento/valoración no aplica a quien ya no es cliente.
+    return base.filter((c) => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
   }, [clientes, miNombre, esAdmin])
 
   const filtrados = useMemo(() => {
@@ -52,17 +55,12 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
       .some((value) => (value || '').toLowerCase().includes(term)))
   }, [misClientes, search])
 
-  const stats = useMemo(() => {
-    const activos = misClientes.filter((c) => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO').length
-    return { total: misClientes.length, activos, noActivos: misClientes.length - activos }
-  }, [misClientes])
-
   return (
     <>
       <header className="topbar">
         <div>
-          <div className="topbar-title">Clientes</div>
-          <div className="topbar-subtitle">{esAdmin ? 'Todos los clientes: seguimiento y valoración' : 'Tus clientes: seguimiento y valoración'}</div>
+          <div className="topbar-title">Seguimiento y Valoración</div>
+          <div className="topbar-subtitle">{esAdmin ? 'Clientes activos de todo el equipo' : 'Tus clientes activos'}</div>
         </div>
       </header>
 
@@ -78,31 +76,17 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
             <div className="kpi-grid">
               <div className="kpi-card">
                 <div className="kpi-card-header">
-                  <span className="kpi-card-label">{esAdmin ? 'Total clientes' : 'Mis clientes'}</span>
-                  <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)' }}>👥</div>
-                </div>
-                <div className="kpi-card-value">{stats.total}</div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-card-header">
-                  <span className="kpi-card-label">Activos</span>
+                  <span className="kpi-card-label">{esAdmin ? 'Clientes activos (todos)' : 'Mis clientes activos'}</span>
                   <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)' }}>✅</div>
                 </div>
-                <div className="kpi-card-value">{stats.activos}</div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-card-header">
-                  <span className="kpi-card-label">No activos</span>
-                  <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fee2e2, #fecaca)' }}>⏸️</div>
-                </div>
-                <div className="kpi-card-value">{stats.noActivos}</div>
+                <div className="kpi-card-value">{misClientes.length}</div>
               </div>
             </div>
 
             <div className="table-card">
               <div className="card-header">
                 <div>
-                  <div className="card-title">{esAdmin ? 'Todos los clientes' : 'Tus clientes'}</div>
+                  <div className="card-title">{esAdmin ? 'Clientes activos' : 'Tus clientes activos'}</div>
                   <div className="card-subtitle">{filtrados.length} de {misClientes.length} mostrados</div>
                 </div>
                 <input
@@ -120,7 +104,6 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       <th>Nombre</th>
                       <th>Servicio</th>
                       {esAdmin && <th>Entrenador</th>}
-                      <th>Estado</th>
                       <th>Inicio</th>
                       <th>Contacto</th>
                       <th>Acciones</th>
@@ -134,7 +117,6 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           <td style={{ fontWeight: 600 }}>{cliente.Nombre || '—'}</td>
                           <td>{cliente['Servicio contratado'] || '—'}</td>
                           {esAdmin && <td>{trabajadores.length ? trabajadores.join(', ') : '—'}</td>}
-                          <td><StatusPill estado={cliente['Estado del cliente']} /></td>
                           <td>{formatDate(cliente['Fecha inicio'])}</td>
                           <td style={{ color: 'var(--color-text-secondary)' }}>
                             {cliente.Email || '—'}{cliente.Teléfono ? ` · ${cliente.Teléfono}` : ''}
@@ -150,8 +132,8 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       )
                     })}
                     {filtrados.length === 0 && (
-                      <tr><td colSpan={esAdmin ? 7 : 6} className="lead-log-empty">
-                        {misClientes.length === 0 ? 'Todavía no tienes clientes asignados.' : 'Sin resultados con ese filtro.'}
+                      <tr><td colSpan={esAdmin ? 6 : 5} className="lead-log-empty">
+                        {misClientes.length === 0 ? 'No hay clientes activos asignados.' : 'Sin resultados con ese filtro.'}
                       </td></tr>
                     )}
                   </tbody>
