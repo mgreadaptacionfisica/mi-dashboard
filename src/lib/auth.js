@@ -16,7 +16,7 @@ import { supabase } from './supabaseClient'
 // técnico no debe ver importes ni poder editar/borrar clientes, solo
 // trabajar con los suyos.
 export const SECCIONES_POR_ROL = {
-  admin: ['dashboard', 'ventas', 'clientes', 'equipo', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales'],
+  admin: ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales'],
   closer: ['ventas', 'comunicacion', 'manuales'],
   tecnico: ['clientes-equipo', 'comunicacion', 'manuales'],
   contenido: ['operaciones', 'comunicacion', 'manuales'],
