@@ -28,6 +28,23 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
+// Leyenda del semáforo de movilidad: se muestra una sola vez, justo antes
+// del primer bloque que lo usa, para que quede claro cómo elegir cada color
+// sin depender solo del tooltip de cada botón.
+function LeyendaSemaforo() {
+  return (
+    <div className="semaforo-leyenda">
+      <span className="semaforo-leyenda-titulo">🚦 Cómo elegir el semáforo de movilidad:</span>
+      {SEMAFORO_OPCIONES.map((op) => (
+        <div key={op.valor} className="semaforo-leyenda-item">
+          <span className={`semaforo-leyenda-punto semaforo-${op.valor}`}>{op.emoji}</span>
+          <span><strong>{op.label}</strong> — {op.descripcion}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function formatFecha(iso) {
   if (!iso) return '—'
   const [y, m, d] = iso.split('-')
@@ -507,8 +524,9 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                 <input type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
               </label>
 
-              {BLOQUES.map((bloque) => (
+              {BLOQUES.map((bloque, idx) => (
                 <div key={bloque.id}>
+                  {bloque.esSemaforo && !BLOQUES.slice(0, idx).some((b) => b.esSemaforo) && <LeyendaSemaforo />}
                   <h4 className="team-activity-subtitle">{bloque.label}</h4>
                   <div className="valoracion-grid">
                     {bloque.items.map((item) => (
