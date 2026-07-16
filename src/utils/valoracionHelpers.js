@@ -156,7 +156,7 @@ export function compararSemaforo(colorPrimero, colorUltimo) {
 // movilidad, que se registran por color en vez de en grados.
 export const BLOQUES = [
   { id: 'fuerza', label: 'Fuerza', items: ITEMS_FUERZA, referencia: REFERENCIA_FUERZA },
-  { id: 'pliometria', label: 'Pliometría', items: ITEMS_PLIOMETRIA, referencia: REFERENCIA_PLIOMETRIA },
+  { id: 'pliometria', label: 'Pliometría', items: ITEMS_PLIOMETRIA, referencia: REFERENCIA_PLIOMETRIA, nota: 'Se valora a partir del inicio de la Fase 3 — no hace falta rellenarlo antes.' },
   { id: 'fuerzaCervical', label: 'Fuerza cervical', items: ITEMS_FUERZA_CERVICAL },
   { id: 'movilidadHombro', label: 'Movilidad de hombro', items: ITEMS_MOVILIDAD_HOMBRO, esSemaforo: true },
   { id: 'movilidadCervical', label: 'Movilidad cervical', items: ITEMS_MOVILIDAD_CERVICAL, esSemaforo: true },

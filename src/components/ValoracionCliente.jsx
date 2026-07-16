@@ -247,7 +247,19 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     return { par, indice, fecha: ultima.fecha }
   }).filter(Boolean)
 
+  // No hace falta rellenar todo en una sola sesión: se puede evaluar hoy
+  // una parte, guardar, y añadir el resto otro día — el historial se va
+  // completando con cada valoración, y Evolución compara la primera y la
+  // última medición de CADA ítem por separado, sin importar en qué fecha se
+  // registró cada una. Para no acabar con dos filas del mismo día si
+  // vuelves a pulsar "Nueva valoración" el mismo día, se reabre la de hoy
+  // en modo edición en vez de crear una segunda.
   const openNew = () => {
+    const deHoy = historial.find((v) => v.fecha === todayISO())
+    if (deHoy) {
+      openEdit(deHoy)
+      return
+    }
     setEditingId(null)
     // Las preferencias de entrenamiento (días, material, gustos) casi nunca
     // cambian de una valoración a otra, así que se arrastran automáticamente
@@ -440,6 +452,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
             {evolucionPorBloque.map(({ bloque, filas }) => (
               <div key={bloque.id}>
                 <h4 className="team-activity-subtitle">{bloque.label}</h4>
+                {bloque.nota && <p className="valoracion-referencia" style={{ marginBottom: 6 }}>ℹ️ {bloque.nota}</p>}
                 <div className="valoracion-evolucion-table">
                   <div className="valoracion-evolucion-row valoracion-evolucion-header">
                     <span>Ítem</span><span>Primera</span><span>Última</span><span>Evolución</span>
@@ -566,6 +579,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                 <div key={bloque.id}>
                   {bloque.esSemaforo && !BLOQUES.slice(0, idx).some((b) => b.esSemaforo) && <LeyendaSemaforo />}
                   <h4 className="team-activity-subtitle">{bloque.label}</h4>
+                  {bloque.nota && <p className="valoracion-referencia" style={{ marginBottom: 6 }}>ℹ️ {bloque.nota}</p>}
                   <div className="valoracion-grid">
                     {bloque.items.map((item) => (
                       <div key={item.id}>
