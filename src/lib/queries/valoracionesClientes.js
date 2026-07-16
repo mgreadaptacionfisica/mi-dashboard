@@ -16,6 +16,9 @@ function fromRow(row) {
     spadi: row.spadi || {},
     tampa: row.tampa || {},
     notas: row.notas || '',
+    dolorEnDeporte: row.dolor_en_deporte ?? null,
+    fase: row.fase ?? null,
+    objetivo: row.objetivo || '',
   }
 }
 
@@ -35,6 +38,9 @@ function toRow(v) {
     spadi: v.spadi || {},
     tampa: v.tampa || {},
     notas: v.notas || '',
+    dolor_en_deporte: v.dolorEnDeporte ?? null,
+    fase: v.fase ?? null,
+    objetivo: v.objetivo || '',
   }
 }
 

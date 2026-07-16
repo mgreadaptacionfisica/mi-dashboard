@@ -10,12 +10,13 @@ import {
   progresoSemana,
 } from '../utils/seguimientoHelpers'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
+import { ultimaFaseCliente, faseInfo } from '../utils/valoracionHelpers'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, onClose }) {
+export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, valoraciones = [], onClose }) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [tareaDraft, setTareaDraft] = useState({})
   // Texto libre cuando se elige "Otra" en el desplegable de bloques, para
@@ -80,6 +81,8 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
     actualizarSemana({ comentarios: texto })
   }
 
+  const faseVigente = useMemo(() => ultimaFaseCliente(valoraciones, cliente.Nombre), [valoraciones, cliente])
+
   return (
     <div className="client-modal-overlay" onClick={onClose}>
       <div className="client-modal seguimiento-modal" onClick={(e) => e.stopPropagation()}>
@@ -90,6 +93,17 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
           </div>
           <button className="close-modal-btn" onClick={onClose}>✕</button>
         </div>
+
+        {faseVigente ? (
+          <div className="valoracion-fase-banner">
+            📍 <strong>Fase {faseVigente.fase}</strong> — {faseInfo(faseVigente.fase)?.criterio}
+            {faseVigente.objetivo && <> · Objetivo: {faseVigente.objetivo}</>}
+          </div>
+        ) : (
+          <div className="valoracion-fase-banner" style={{ color: 'var(--color-text-secondary)' }}>
+            Sin fase confirmada todavía — revísala en Valoración.
+          </div>
+        )}
 
         <div className="seguimiento-week-nav">
           <button type="button" className="secondary-action" onClick={() => setWeekOffset((w) => w - 1)}>← Semana anterior</button>

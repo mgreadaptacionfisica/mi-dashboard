@@ -182,8 +182,72 @@ export const SPADI_ENLACE = 'https://drive.google.com/file/d/1TEIN5xHLOPuvU8mhqO
 export const TAMPA_ITEMS = Array.from({ length: 11 }, (_, i) => i + 1)
 export const TAMPA_INTERPRETACION = 'Mínimo 11 (sin kinesiofobia) — Máximo 44 (miedo extremo al movimiento). Por encima de 37 suele indicar un nivel alto/severo de kinesiofobia.'
 
+// Fases y objetivos (SOP "3. Establecer fase y objetivos"): permite calcular
+// una fase sugerida a partir del SPADI de la valoración (dato objetivo) y,
+// cuando el SPADI es 0, de si hay dolor en gestos del propio deporte
+// (fases 3 y 4 comparten SPADI 0 y solo se distinguen por esa pregunta).
+// El técnico siempre puede confirmar o cambiar la fase sugerida a mano —
+// esto es una ayuda, no reemplaza el criterio clínico.
+export const FASES = [
+  {
+    numero: 1,
+    titulo: 'Fase 1',
+    criterio: 'Irritabilidad alta-moderada, SPADI ≥10 (dolor entre sesiones)',
+    objetivoEjemplo: 'Reducir irritabilidad y ganar la movilidad concreta que le falte — solo los ejercicios necesarios, sin saturar.',
+  },
+  {
+    numero: 2,
+    titulo: 'Fase 2',
+    criterio: 'Irritabilidad baja, SPADI 1-9 (molestia solo en sesión, sin dolor entre sesiones)',
+    objetivoEjemplo: 'Reducir irritabilidad y ganar fuerza. Marcar objetivo de carga para pasar a la siguiente fase.',
+  },
+  {
+    numero: 3,
+    titulo: 'Fase 3',
+    criterio: 'SPADI 0, dolor solo ante gestos de su deporte',
+    objetivoEjemplo: 'Objetivo según el deporte, muy concreto (ej: conseguir hacer snatch sin dolor).',
+  },
+  {
+    numero: 4,
+    titulo: 'Fase 4',
+    criterio: 'SPADI 0, sin dolor en su deporte',
+    objetivoEjemplo: 'Objetivo de rendimiento, muy concreto (ej: conseguir un snatch con 100kg).',
+  },
+]
+
+export function faseInfo(numero) {
+  return FASES.find((f) => f.numero === Number(numero)) || null
+}
+
+// Calcula la fase sugerida solo a partir de datos objetivos: el SPADI de la
+// valoración actual y, si el SPADI es 0, la respuesta a "¿dolor en gestos de
+// su deporte?" (dolorEnDeporte: true/false). Devuelve null si faltan datos
+// para decidir (sin SPADI, o SPADI=0 sin haber respondido esa pregunta).
+export function calcularFaseSugerida(spadi, dolorEnDeporte) {
+  if (spadi === null || spadi === undefined || spadi === '') return null
+  const valor = Number(spadi)
+  if (valor === 0) {
+    if (dolorEnDeporte === true) return 3
+    if (dolorEnDeporte === false) return 4
+    return null
+  }
+  if (valor < 10) return 2
+  return 1
+}
+
+// Última fase confirmada de un cliente (la valoración con fase más
+// reciente por fecha, no necesariamente la última valoración registrada si
+// esa todavía no tiene fase confirmada). Se usa en ClientesEquipo.jsx
+// (columna Fase) y SeguimientoCliente.jsx (recordatorio de objetivo).
+export function ultimaFaseCliente(valoraciones, clienteNombre) {
+  const conFase = (valoraciones || [])
+    .filter((v) => v.clienteNombre === clienteNombre && v.fase)
+    .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''))
+  return conFase.length ? conFase[conFase.length - 1] : null
+}
+
 export function valoracionVacia() {
-  const base = { spadi: {}, tampa: {}, notas: '' }
+  const base = { spadi: {}, tampa: {}, notas: '', dolorEnDeporte: null, fase: null, objetivo: '' }
   BLOQUES.forEach((b) => { base[b.id] = {} })
   return base
 }

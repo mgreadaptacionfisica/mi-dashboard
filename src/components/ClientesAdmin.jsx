@@ -753,6 +753,7 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
           cliente={seguimientoCliente}
           seguimientos={seguimientos}
           setSeguimientos={setSeguimientos}
+          valoraciones={valoraciones}
           onClose={() => setSeguimientoCliente(null)}
         />
       )}

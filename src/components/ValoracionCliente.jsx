@@ -6,11 +6,14 @@ import {
   SPADI_ENLACE,
   TAMPA_ITEMS,
   TAMPA_INTERPRETACION,
+  FASES,
   valoracionVacia,
   spadiTotal,
   tampaTotal,
   mejoraPct,
   indiceSimetria,
+  calcularFaseSugerida,
+  faseInfo,
 } from '../utils/valoracionHelpers'
 import { insertValoracionRemote, updateValoracionRemote, deleteValoracionRemote } from '../lib/queries/valoracionesClientes'
 
@@ -62,6 +65,11 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
   }, [valoraciones, cliente])
 
   const historialDesc = useMemo(() => historial.slice().reverse(), [historial])
+
+  // Fase/objetivo vigente: la valoración confirmada con fase más reciente
+  // (no necesariamente la última valoración en fecha, si esa última todavía
+  // no tiene fase confirmada).
+  const faseVigente = useMemo(() => historialDesc.find((v) => v.fase), [historialDesc])
 
   // Evolución por bloque: para cada ítem con al menos un valor registrado, primera vs última medición.
   const evolucionPorBloque = useMemo(() => {
@@ -134,6 +142,9 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     base.spadi = valoracion.spadi || {}
     base.tampa = valoracion.tampa || {}
     base.notas = valoracion.notas || ''
+    base.dolorEnDeporte = valoracion.dolorEnDeporte ?? null
+    base.fase = valoracion.fase ?? null
+    base.objetivo = valoracion.objetivo || ''
     setEditingId(valoracion.id)
     setFormData(base)
     setShowForm(true)
@@ -167,6 +178,9 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
 
   const spadiTotalForm = spadiTotal(formData.spadi)
   const tampaTotalForm = tampaTotal(formData.tampa)
+  const faseSugeridaForm = calcularFaseSugerida(spadiTotalForm, formData.dolorEnDeporte)
+  const faseSugeridaInfo = faseInfo(faseSugeridaForm)
+  const faseConfirmadaInfo = faseInfo(formData.fase)
 
   return (
     <div className="client-modal-overlay" onClick={onClose}>
@@ -177,6 +191,18 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
             <div className="card-subtitle">{historial.length} evaluació{historial.length === 1 ? 'n' : 'nes'} registrada{historial.length === 1 ? '' : 's'}</div>
           </div>
           <button className="close-modal-btn" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="valoracion-fase-banner">
+          {faseVigente ? (
+            <>
+              📍 <strong>Fase {faseVigente.fase}</strong> — {faseInfo(faseVigente.fase)?.criterio}
+              {faseVigente.objetivo && <> · Objetivo: {faseVigente.objetivo}</>}
+              <span style={{ color: 'var(--color-text-secondary)' }}> (desde {formatFecha(faseVigente.fecha)})</span>
+            </>
+          ) : (
+            <span style={{ color: 'var(--color-text-secondary)' }}>Todavía no hay una fase confirmada para este cliente — se establece al guardar una valoración.</span>
+          )}
         </div>
 
         <div className="tabs-bar">
@@ -260,6 +286,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                         {expandido === v.id ? '▾' : '▸'} {formatFecha(v.fecha)}
                         {sTotal != null && ` · SPADI ${sTotal}`}
                         {tTotal != null && ` · TAMPA ${tTotal}`}
+                        {v.fase && ` · Fase ${v.fase}`}
                       </button>
                       <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                         <button type="button" className="row-action-btn" onClick={() => openEdit(v)}>Editar</button>
@@ -273,6 +300,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                             <div key={it.id}>{it.label}: <strong>{v[bloque.id][it.id]}{unidadDe(bloque, it)}</strong></div>
                           ))
                         ))}
+                        {v.fase && <p style={{ marginTop: 6 }}>📍 Fase {v.fase}{v.objetivo ? ` — ${v.objetivo}` : ''}</p>}
                         {v.notas && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>📝 {v.notas}</p>}
                       </div>
                     )}
@@ -344,6 +372,57 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
               </div>
               <p className="valoracion-total-live">Total TAMPA: <strong>{tampaTotalForm != null ? `${tampaTotalForm} / 44` : 'Sin datos'}</strong></p>
               <p className="valoracion-interpretacion">{TAMPA_INTERPRETACION}</p>
+
+              <h4 className="team-activity-subtitle">Fase y objetivo</h4>
+
+              {spadiTotalForm === 0 && (
+                <label className="valoracion-campo">
+                  <span>¿Dolor en gestos de su deporte?</span>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <input type="radio" name="dolorEnDeporte" checked={formData.dolorEnDeporte === true} onChange={() => setFormData({ ...formData, dolorEnDeporte: true })} /> Sí
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <input type="radio" name="dolorEnDeporte" checked={formData.dolorEnDeporte === false} onChange={() => setFormData({ ...formData, dolorEnDeporte: false })} /> No
+                    </label>
+                  </div>
+                </label>
+              )}
+
+              <p className="valoracion-total-live">
+                Fase sugerida: <strong>{faseSugeridaForm ? `Fase ${faseSugeridaForm}` : 'Sin datos suficientes'}</strong>
+                {faseSugeridaInfo && <span style={{ fontWeight: 400 }}> — {faseSugeridaInfo.criterio}</span>}
+              </p>
+
+              <label className="valoracion-campo">
+                <span>Fase confirmada</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select
+                    value={formData.fase ?? ''}
+                    onChange={(e) => setFormData({ ...formData, fase: e.target.value === '' ? null : Number(e.target.value) })}
+                  >
+                    <option value="">Sin definir</option>
+                    {FASES.map((f) => (
+                      <option key={f.numero} value={f.numero}>{f.titulo}</option>
+                    ))}
+                  </select>
+                  {faseSugeridaForm && formData.fase !== faseSugeridaForm && (
+                    <button type="button" className="row-action-btn" onClick={() => setFormData({ ...formData, fase: faseSugeridaForm })}>
+                      Usar sugerida (Fase {faseSugeridaForm})
+                    </button>
+                  )}
+                </div>
+              </label>
+
+              <label className="valoracion-campo">
+                <span>Objetivo para esta fase</span>
+                <textarea
+                  rows={2}
+                  value={formData.objetivo}
+                  onChange={(e) => setFormData({ ...formData, objetivo: e.target.value })}
+                  placeholder={faseConfirmadaInfo?.objetivoEjemplo || faseSugeridaInfo?.objetivoEjemplo || 'Objetivo concreto para esta fase...'}
+                />
+              </label>
 
               <label className="valoracion-campo" style={{ marginTop: 8 }}>
                 <span>Notas</span>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
+import { ultimaFaseCliente } from '../utils/valoracionHelpers'
 
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
 // propósito de ClientesAdmin.jsx (sidebar item "Clientes"), que lleva toda
@@ -104,6 +105,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       <th>Nombre</th>
                       <th>Servicio</th>
                       {esAdmin && <th>Entrenador</th>}
+                      <th>Fase</th>
                       <th>Inicio</th>
                       <th>Contacto</th>
                       <th>Acciones</th>
@@ -112,11 +114,19 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                   <tbody>
                     {filtrados.map((cliente, index) => {
                       const trabajadores = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
+                      const fase = ultimaFaseCliente(valoraciones, cliente.Nombre)
                       return (
                         <tr key={`${cliente.id || cliente.Nombre}-${index}`}>
                           <td style={{ fontWeight: 600 }}>{cliente.Nombre || '—'}</td>
                           <td>{cliente['Servicio contratado'] || '—'}</td>
                           {esAdmin && <td>{trabajadores.length ? trabajadores.join(', ') : '—'}</td>}
+                          <td>
+                            {fase ? (
+                              <span className="status-pill status-activo" title={fase.objetivo || ''}>Fase {fase.fase}</span>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-secondary)' }}>—</span>
+                            )}
+                          </td>
                           <td>{formatDate(cliente['Fecha inicio'])}</td>
                           <td style={{ color: 'var(--color-text-secondary)' }}>
                             {cliente.Email || '—'}{cliente.Teléfono ? ` · ${cliente.Teléfono}` : ''}
@@ -132,7 +142,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       )
                     })}
                     {filtrados.length === 0 && (
-                      <tr><td colSpan={esAdmin ? 6 : 5} className="lead-log-empty">
+                      <tr><td colSpan={esAdmin ? 7 : 6} className="lead-log-empty">
                         {misClientes.length === 0 ? 'No hay clientes activos asignados.' : 'Sin resultados con ese filtro.'}
                       </td></tr>
                     )}
@@ -149,6 +159,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           cliente={seguimientoCliente}
           seguimientos={seguimientos}
           setSeguimientos={setSeguimientos}
+          valoraciones={valoraciones}
           onClose={() => setSeguimientoCliente(null)}
         />
       )}
