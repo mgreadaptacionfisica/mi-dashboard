@@ -19,10 +19,16 @@ function formatDate(value) {
   return value || '—'
 }
 
-export default function ClientesEquipo({ clientes = [], team, miEmail, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones }) {
+export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones }) {
   const [search, setSearch] = useState('')
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
+
+  // Admin: acceso a Seguimiento/Valoración de TODOS los clientes (no solo
+  // los suyos), porque necesita poder supervisar el trabajo de cualquier
+  // entrenador. Técnico: solo ve los suyos, cruzando su email de login con
+  // su ficha en Equipo (team.tecnico) para saber su nombre real.
+  const esAdmin = rol === 'admin'
 
   const miPersona = useMemo(
     () => (team?.tecnico || []).find((p) => p.email && miEmail && p.email.toLowerCase() === miEmail.toLowerCase()),
@@ -31,12 +37,13 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, seguimien
   const miNombre = miPersona?.nombre || null
 
   const misClientes = useMemo(() => {
+    if (esAdmin) return clientes
     if (!miNombre) return []
     return clientes.filter((c) => {
       const trabajadores = c.Trabajadores || (c.Trabajador ? [c.Trabajador] : [])
       return trabajadores.includes(miNombre)
     })
-  }, [clientes, miNombre])
+  }, [clientes, miNombre, esAdmin])
 
   const filtrados = useMemo(() => {
     const term = search.toLowerCase().trim()
@@ -55,23 +62,23 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, seguimien
       <header className="topbar">
         <div>
           <div className="topbar-title">Clientes</div>
-          <div className="topbar-subtitle">Tus clientes: seguimiento y valoración</div>
+          <div className="topbar-subtitle">{esAdmin ? 'Todos los clientes: seguimiento y valoración' : 'Tus clientes: seguimiento y valoración'}</div>
         </div>
       </header>
 
       <main className="page-content">
-        {!miPersona && (
+        {!esAdmin && !miPersona && (
           <p className="lead-log-empty">
             No encontramos tu ficha en Equipo con este email — pídele a Raúl que revise que el email de tu ficha coincida con el de tu cuenta.
           </p>
         )}
 
-        {miPersona && (
+        {(esAdmin || miPersona) && (
           <>
             <div className="kpi-grid">
               <div className="kpi-card">
                 <div className="kpi-card-header">
-                  <span className="kpi-card-label">Mis clientes</span>
+                  <span className="kpi-card-label">{esAdmin ? 'Total clientes' : 'Mis clientes'}</span>
                   <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)' }}>👥</div>
                 </div>
                 <div className="kpi-card-value">{stats.total}</div>
@@ -95,7 +102,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, seguimien
             <div className="table-card">
               <div className="card-header">
                 <div>
-                  <div className="card-title">Tus clientes</div>
+                  <div className="card-title">{esAdmin ? 'Todos los clientes' : 'Tus clientes'}</div>
                   <div className="card-subtitle">{filtrados.length} de {misClientes.length} mostrados</div>
                 </div>
                 <input
@@ -112,6 +119,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, seguimien
                     <tr>
                       <th>Nombre</th>
                       <th>Servicio</th>
+                      {esAdmin && <th>Entrenador</th>}
                       <th>Estado</th>
                       <th>Inicio</th>
                       <th>Contacto</th>
@@ -119,26 +127,30 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, seguimien
                     </tr>
                   </thead>
                   <tbody>
-                    {filtrados.map((cliente, index) => (
-                      <tr key={`${cliente.id || cliente.Nombre}-${index}`}>
-                        <td style={{ fontWeight: 600 }}>{cliente.Nombre || '—'}</td>
-                        <td>{cliente['Servicio contratado'] || '—'}</td>
-                        <td><StatusPill estado={cliente['Estado del cliente']} /></td>
-                        <td>{formatDate(cliente['Fecha inicio'])}</td>
-                        <td style={{ color: 'var(--color-text-secondary)' }}>
-                          {cliente.Email || '—'}{cliente.Teléfono ? ` · ${cliente.Teléfono}` : ''}
-                          {cliente.Drive && (
-                            <> · <a href={cliente.Drive} target="_blank" rel="noopener noreferrer">Drive</a></>
-                          )}
-                        </td>
-                        <td>
-                          <button type="button" className="row-action-btn" onClick={() => setSeguimientoCliente(cliente)}>📋 Seguimiento</button>
-                          <button type="button" className="row-action-btn" onClick={() => setValoracionCliente(cliente)}>📈 Valoración</button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filtrados.map((cliente, index) => {
+                      const trabajadores = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
+                      return (
+                        <tr key={`${cliente.id || cliente.Nombre}-${index}`}>
+                          <td style={{ fontWeight: 600 }}>{cliente.Nombre || '—'}</td>
+                          <td>{cliente['Servicio contratado'] || '—'}</td>
+                          {esAdmin && <td>{trabajadores.length ? trabajadores.join(', ') : '—'}</td>}
+                          <td><StatusPill estado={cliente['Estado del cliente']} /></td>
+                          <td>{formatDate(cliente['Fecha inicio'])}</td>
+                          <td style={{ color: 'var(--color-text-secondary)' }}>
+                            {cliente.Email || '—'}{cliente.Teléfono ? ` · ${cliente.Teléfono}` : ''}
+                            {cliente.Drive && (
+                              <> · <a href={cliente.Drive} target="_blank" rel="noopener noreferrer">Drive</a></>
+                            )}
+                          </td>
+                          <td>
+                            <button type="button" className="row-action-btn" onClick={() => setSeguimientoCliente(cliente)}>📋 Seguimiento</button>
+                            <button type="button" className="row-action-btn" onClick={() => setValoracionCliente(cliente)}>📈 Valoración</button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                     {filtrados.length === 0 && (
-                      <tr><td colSpan={6} className="lead-log-empty">
+                      <tr><td colSpan={esAdmin ? 7 : 6} className="lead-log-empty">
                         {misClientes.length === 0 ? 'Todavía no tienes clientes asignados.' : 'Sin resultados con ese filtro.'}
                       </td></tr>
                     )}
