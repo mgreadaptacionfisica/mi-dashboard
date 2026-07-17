@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import ContactoSemanal from './ContactoSemanal'
 import SeguimientoCliente from './SeguimientoCliente'
+import CalendarioTecnico from './CalendarioTecnico'
 import {
   actividadTecnico,
   seguimientoTecnico,
@@ -26,9 +27,15 @@ const SEGUIMIENTO_HELPERS = { semanaActualISO, progresoSemana, progresoContacto,
 // (editar/eliminar miembro, marcar pago) que siguen siendo solo de admin.
 // Se identifica quién ha iniciado sesión cruzando su email con su ficha en
 // Equipo, mismo patrón que ClientesEquipo/MuroEquipo/VideosParaEditar.
-export default function MiFicha({ team, clientes = [], seguimientos = [], setSeguimientos, contactosSemanales = [], setContactosSemanales, gastosEmpresa = [], miEmail }) {
+export default function MiFicha({ team, clientes = [], seguimientos = [], setSeguimientos, contactosSemanales = [], setContactosSemanales, gastosEmpresa = [], tareas = [], miEmail }) {
+  const [vista, setVista] = useState('resumen')
   const [seguimientoClienteAbierto, setSeguimientoClienteAbierto] = useState(null)
   const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', hora: '10', minuto: '00', ampm: 'AM' })
+
+  const misTareasConFecha = useMemo(
+    () => tareas.filter((t) => t.propietarioEmail === miEmail && t.fecha),
+    [tareas, miEmail]
+  )
 
   const miPersona = useMemo(
     () => (team?.tecnico || []).find((p) => p.email && miEmail && p.email.toLowerCase() === miEmail.toLowerCase()),
@@ -95,6 +102,21 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], setSeg
 
         {miPersona && actividad && (
           <>
+            <div className="tabs-bar" style={{ marginBottom: 20 }}>
+              <button type="button" className={`tab-btn ${vista === 'resumen' ? 'tab-btn-active' : ''}`} onClick={() => setVista('resumen')}>📊 Resumen</button>
+              <button type="button" className={`tab-btn ${vista === 'calendario' ? 'tab-btn-active' : ''}`} onClick={() => setVista('calendario')}>🗓️ Calendario</button>
+            </div>
+
+            {vista === 'calendario' && (
+              <CalendarioTecnico
+                tareas={misTareasConFecha}
+                clientesAsignados={actividad.clientesAsignados}
+                seguimientos={seguimientos}
+              />
+            )}
+
+            {vista === 'resumen' && (
+              <>
             <div className="team-grid" style={{ marginBottom: 20 }}>
               <div className="team-card">
                 <div className="team-card-header">
@@ -245,6 +267,8 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], setSeg
                 </ul>
               )}
             </div>
+              </>
+            )}
           </>
         )}
       </main>
