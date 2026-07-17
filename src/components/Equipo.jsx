@@ -5,6 +5,7 @@ import { insertMiembroRemote, updateMiembroRemote, deleteMiembroRemote, deleteAl
 import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, semanaVacia, DIAS_SEMANA } from '../utils/seguimientoHelpers'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { insertFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
+import { actividadTecnico, seguimientoTecnico, contactoTecnico, mesActualISO, mesLabel } from '../utils/equipoHelpers'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -23,64 +24,7 @@ const ETAPA_LABELS = {
   perdida: 'Perdida',
 }
 
-// Tarifa por cliente activo del equipo técnico, según volumen total asignado.
-function tarifaPorClientes(n) {
-  if (n <= 20) return 30
-  if (n <= 40) return 35
-  return 40
-}
-
-const MESES_ES = {
-  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
-  julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
-}
-
-// Acepta fechas en formato ISO (2026-07-08) o en texto largo en español
-// (7 de junio de 2026), que es como llegan los clientes sincronizados de Notion.
-function parseFechaFlexible(value) {
-  if (!value) return null
-  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
-  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
-  const esLarga = /^(\d{1,2}) de ([a-záéíóúñ]+) de (\d{4})/i.exec(value.trim())
-  if (esLarga) {
-    const mes = MESES_ES[esLarga[2].toLowerCase()]
-    if (mes) return new Date(Number(esLarga[3]), mes - 1, Number(esLarga[1]))
-  }
-  return null
-}
-
-function mesesEntreFechas(inicio, fin) {
-  if (!inicio) return []
-  const start = new Date(inicio.getFullYear(), inicio.getMonth(), 1)
-  const limite = fin || new Date()
-  const end = new Date(limite.getFullYear(), limite.getMonth(), 1)
-  if (end < start) return []
-  const meses = []
-  let cursor = start
-  let guard = 0
-  while (cursor <= end && guard < 240) {
-    meses.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`)
-    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
-    guard += 1
-  }
-  return meses
-}
-
-function mesActualISO() {
-  return new Date().toISOString().slice(0, 7)
-}
-
-const NOMBRES_MES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-]
-
-function mesLabel(mesKey) {
-  const [y, m] = (mesKey || '').split('-')
-  const nombre = NOMBRES_MES[Number(m) - 1]
-  if (!nombre) return mesKey
-  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${y}`
-}
+const SEGUIMIENTO_HELPERS = { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente }
 
 function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, onDelete, onDetail }) {
   return (
@@ -305,43 +249,10 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
   // tarifa según volumen y desglose mensual de pago derivado de las fechas del cliente.
   // Al pasar un cliente a NO ACTIVO se le desasigna automáticamente (ver Clientes.jsx),
   // y al cambiar de servicio el pago se recalcula solo porque se deriva en vivo de los datos.
+  // Lógica compartida con MiFicha.jsx (auto-servicio del técnico) — ver utils/equipoHelpers.js.
   const actividadPorTecnico = useMemo(() => {
     return team.tecnico.reduce((acc, persona) => {
-      const clientesAsignados = clientes.filter(cliente => {
-        const asignados = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
-        return asignados.includes(persona.nombre)
-      })
-      const activos = clientesAsignados.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
-      const tarifaActual = tarifaPorClientes(activos.length)
-      const totalMes = activos.length * tarifaActual
-
-      const conteoPorMes = {}
-      clientesAsignados.forEach(cliente => {
-        const inicio = parseFechaFlexible(cliente['Fecha inicio'])
-        if (!inicio) return
-        const estado = (cliente['Estado del cliente'] || '').toUpperCase()
-        const fin = estado === 'NO ACTIVO' ? parseFechaFlexible(cliente['Fecha fin']) : null
-        mesesEntreFechas(inicio, fin).forEach(mes => {
-          conteoPorMes[mes] = (conteoPorMes[mes] || 0) + 1
-        })
-      })
-
-      const historial = Object.keys(conteoPorMes)
-        .sort((a, b) => b.localeCompare(a))
-        .map(mes => {
-          const n = conteoPorMes[mes]
-          const tarifa = tarifaPorClientes(n)
-          return { mes, clientes: n, tarifa, total: n * tarifa }
-        })
-
-      acc[persona.nombre] = {
-        clientesAsignados,
-        totalAsignados: clientesAsignados.length,
-        activos: activos.length,
-        tarifaActual,
-        totalMes,
-        historial,
-      }
+      acc[persona.nombre] = actividadTecnico(persona, clientes)
       return acc
     }, {})
   }, [team, clientes])
@@ -352,54 +263,18 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
   // falta el login (ver Supabase pendiente) para que esto sea un acceso real
   // por persona en vez de una vista compartida.
   const seguimientoPorTecnico = useMemo(() => {
-    const semanaActual = semanaActualISO()
     return team.tecnico.reduce((acc, persona) => {
       const clientesAsignados = actividadPorTecnico[persona.nombre]?.clientesAsignados || []
-      let totalTareas = 0
-      let totalRevisadas = 0
-      let ultimaRevisionGeneral = null
-
-      const resumenClientes = clientesAsignados.map((cliente) => {
-        const registroActual = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaActual)
-        const progreso = progresoSemana(registroActual)
-        const ultima = ultimaRevisionCliente(seguimientos, cliente.Nombre)
-        totalTareas += progreso.total
-        totalRevisadas += progreso.revisadas
-        if (ultima && (!ultimaRevisionGeneral || ultima > ultimaRevisionGeneral)) ultimaRevisionGeneral = ultima
-        return { cliente, progreso, ultimaRevision: ultima }
-      })
-
-      const revisionesRecientes = clientesAsignados
-        .flatMap((cliente) =>
-          seguimientos
-            .filter((s) => s.clienteNombre === cliente.Nombre)
-            .flatMap((s) => (s.revisiones || []).map((r) => ({ ...r, clienteNombre: cliente.Nombre })))
-        )
-        .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))
-        .slice(0, 15)
-
-      acc[persona.nombre] = {
-        resumenClientes,
-        porcentajeGeneral: totalTareas > 0 ? Math.round((totalRevisadas / totalTareas) * 100) : null,
-        ultimaRevisionGeneral,
-        revisionesRecientes,
-      }
+      acc[persona.nombre] = seguimientoTecnico(clientesAsignados, seguimientos, SEGUIMIENTO_HELPERS)
       return acc
     }, {})
   }, [team, seguimientos, actividadPorTecnico])
 
   // Progreso agregado del contacto semanal (3 checks por cliente) de la semana actual.
   const contactoPorTecnico = useMemo(() => {
-    const semanaActual = semanaActualISO()
     return team.tecnico.reduce((acc, persona) => {
       const clientesAsignados = actividadPorTecnico[persona.nombre]?.clientesAsignados || []
-      let hechos = 0
-      const total = clientesAsignados.length * 3
-      clientesAsignados.forEach((cliente) => {
-        const registro = contactosSemanales.find((c) => c.clienteNombre === cliente.Nombre && c.semana === semanaActual)
-        hechos += progresoContacto(registro).hechos
-      })
-      acc[persona.nombre] = { hechos, total, porcentaje: total > 0 ? Math.round((hechos / total) * 100) : null }
+      acc[persona.nombre] = contactoTecnico(clientesAsignados, contactosSemanales, SEGUIMIENTO_HELPERS)
       return acc
     }, {})
   }, [team, contactosSemanales, actividadPorTecnico])

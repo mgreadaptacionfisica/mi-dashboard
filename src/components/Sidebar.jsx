@@ -6,6 +6,7 @@ const TODOS_LOS_ITEMS = [
   { id: 'clientes', icon: '👥', label: 'Clientes' },
   { id: 'clientes-equipo', icon: '📋', label: 'Seguimiento y Valoración' },
   { id: 'equipo', icon: '👔', label: 'Equipo' },
+  { id: 'mi-ficha', icon: '🧑‍💼', label: 'Mi Ficha' },
   { id: 'comunicacion', icon: '💬', label: 'Comunicación' },
   { id: 'finanzas', icon: '💶', label: 'Finanzas' },
   { id: 'onboarding', icon: '✨', label: 'Onboarding' },

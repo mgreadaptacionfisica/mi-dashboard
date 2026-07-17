@@ -15,10 +15,15 @@ import { supabase } from './supabaseClient'
 // Seguimiento y Valoración) son dos vistas distintas a propósito — un
 // técnico no debe ver importes ni poder editar/borrar clientes, solo
 // trabajar con los suyos.
+// 'mi-ficha' (MiFicha.jsx) es la vista de auto-servicio del equipo técnico:
+// su propia ficha, su pago, su seguimiento semanal y su contacto/revisiones
+// — recortado a "lo suyo", sin las acciones de gestión de Equipo.jsx (que
+// sigue siendo solo admin). Se la damos también a admin porque Raúl es a
+// la vez entrenador con clientes propios asignados (ver ClientesEquipo.jsx).
 export const SECCIONES_POR_ROL = {
-  admin: ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales'],
+  admin: ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'mi-ficha', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales'],
   closer: ['ventas', 'comunicacion', 'manuales'],
-  tecnico: ['clientes-equipo', 'comunicacion', 'manuales'],
+  tecnico: ['clientes-equipo', 'mi-ficha', 'comunicacion', 'manuales'],
   contenido: ['operaciones', 'comunicacion', 'manuales'],
 }
 

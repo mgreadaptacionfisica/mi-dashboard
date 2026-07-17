@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import('./components/Dashboard'))
 const ClientesAdmin = lazy(() => import('./components/ClientesAdmin'))
 const ClientesEquipo = lazy(() => import('./components/ClientesEquipo'))
 const Equipo = lazy(() => import('./components/Equipo'))
+const MiFicha = lazy(() => import('./components/MiFicha'))
 const Ventas = lazy(() => import('./components/Ventas'))
 const Finanzas = lazy(() => import('./components/Finanzas'))
 const Operaciones = lazy(() => import('./components/Operaciones'))
@@ -305,6 +306,7 @@ function InternalApp({ session, rol, onLogout }) {
       case 'clientes':     return <ClientesAdmin clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} objetivosFase={objetivosFase} setObjetivosFase={setObjetivosFase} />
       case 'clientes-equipo': return <ClientesEquipo clientes={clientes} team={team} miEmail={session?.user?.email} rol={rol} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} objetivosFase={objetivosFase} setObjetivosFase={setObjetivosFase} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
+      case 'mi-ficha':     return <MiFicha team={team} clientes={clientes} seguimientos={seguimientos} setSeguimientos={setSeguimientos} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} gastosEmpresa={gastosEmpresa} miEmail={session?.user?.email} />
       case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} miEmail={session?.user?.email} rol={rol} />
       // Finanzas: datos personales de Raúl + datos de empresa (alimentados
       // automáticamente desde Ventas/Clientes/Equipo). Solo 'admin' tiene
