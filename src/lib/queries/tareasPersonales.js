@@ -1,15 +1,19 @@
 import { supabase } from '../supabaseClient'
 
-// "Mis tareas": lista de tareas personales de Raúl, con fecha opcional y
-// checkbox de hecha/pendiente. Tabla admin-only (ver
-// supabase-sql/18_tareas_personales.sql), sin fallback a datos estáticos
-// porque es una tabla nueva sin historial previo.
+// "Mis tareas": lista de tareas personales, con fecha opcional y checkbox
+// de hecha/pendiente. Al principio era solo de Raúl (admin); ahora también
+// la usa cada técnico para sus propias tareas privadas — se distinguen por
+// propietario_email (ver supabase-sql/36_tareas_personales_propietario.sql),
+// y el filtrado por dueño se hace en MisTareas.jsx (mismo patrón de "cruzar
+// email de sesión" que ClientesEquipo/MuroEquipo). No hay fallback a datos
+// estáticos porque es una tabla nueva sin historial previo relevante.
 function fromRow(row) {
   return {
     id: row.id,
     texto: row.texto || '',
     fecha: row.fecha || null,
     hecha: !!row.hecha,
+    propietarioEmail: row.propietario_email || null,
   }
 }
 
@@ -19,6 +23,7 @@ function toRow(entrada) {
   if ('texto' in entrada) row.texto = entrada.texto
   if ('fecha' in entrada) row.fecha = entrada.fecha || null
   if ('hecha' in entrada) row.hecha = entrada.hecha
+  if ('propietarioEmail' in entrada) row.propietario_email = entrada.propietarioEmail || null
   return row
 }
 

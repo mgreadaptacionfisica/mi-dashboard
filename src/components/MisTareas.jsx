@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import { insertTareaRemote, updateTareaRemote, deleteTareaRemote } from '../lib/queries/tareasPersonales'
 
-// "Mis tareas": lista personal de pendientes de Raúl, con fecha opcional.
-// Solo el rol admin ve esta sección (ver SECCIONES_POR_ROL en lib/auth.js).
-// El aviso de tareas para hoy/vencidas se muestra aparte, como banner en el
-// Dashboard (ver Dashboard.jsx), porque el panel no puede mandar
-// notificaciones fuera de la propia app.
+// "Mis tareas": lista personal de pendientes — de Raúl (admin) y también,
+// desde julio 2026, de cada técnico (ver SECCIONES_POR_ROL en lib/auth.js).
+// Es la misma tabla para todos, pero cada persona solo ve y crea las suyas:
+// se filtra cruzando el email de la sesión con propietarioEmail de cada
+// tarea, mismo patrón que ClientesEquipo/MuroEquipo. El aviso de tareas
+// para hoy/vencidas en el Dashboard sigue siendo solo el de Raúl (ver
+// Dashboard.jsx), porque ahí no se sabe qué técnico está mirando.
 
 function todayISO() {
   const d = new Date()
@@ -28,34 +30,41 @@ function diasEstado(fecha, hoy) {
 const ESTADO_CLASS = { vencida: 'status-inactivo', hoy: 'status-pendiente', futura: 'status-idea' }
 const ESTADO_LABEL = { vencida: 'Vencida', hoy: 'Hoy', futura: null }
 
-export default function MisTareas({ tareas = [], setTareas }) {
+export default function MisTareas({ tareas = [], setTareas, miEmail }) {
   const [filtro, setFiltro] = useState('pendientes')
   const [texto, setTexto] = useState('')
   const [fecha, setFecha] = useState('')
   const hoy = todayISO()
 
+  // Sin miEmail (no debería pasar, login es obligatorio) se ven todas para
+  // no perder datos de golpe; con miEmail, solo las propias.
+  const misTareas = useMemo(
+    () => tareas.filter((t) => !miEmail || t.propietarioEmail === miEmail),
+    [tareas, miEmail]
+  )
+
   const stats = useMemo(() => ({
-    pendientes: tareas.filter((t) => !t.hecha).length,
-    vencidas: tareas.filter((t) => !t.hecha && t.fecha && t.fecha < hoy).length,
-    hechas: tareas.filter((t) => t.hecha).length,
-  }), [tareas, hoy])
+    pendientes: misTareas.filter((t) => !t.hecha).length,
+    vencidas: misTareas.filter((t) => !t.hecha && t.fecha && t.fecha < hoy).length,
+    hechas: misTareas.filter((t) => t.hecha).length,
+  }), [misTareas, hoy])
 
   const tareasVisibles = useMemo(() => {
-    let lista = tareas
-    if (filtro === 'pendientes') lista = tareas.filter((t) => !t.hecha)
-    else if (filtro === 'hechas') lista = tareas.filter((t) => t.hecha)
+    let lista = misTareas
+    if (filtro === 'pendientes') lista = misTareas.filter((t) => !t.hecha)
+    else if (filtro === 'hechas') lista = misTareas.filter((t) => t.hecha)
     return [...lista].sort((a, b) => {
       if (!a.fecha && !b.fecha) return 0
       if (!a.fecha) return 1
       if (!b.fecha) return -1
       return a.fecha.localeCompare(b.fecha)
     })
-  }, [tareas, filtro])
+  }, [misTareas, filtro])
 
   const addTarea = (event) => {
     event.preventDefault()
     if (typeof setTareas !== 'function' || !texto.trim()) return
-    const nueva = { id: `tarea-${Date.now()}`, texto: texto.trim(), fecha: fecha || null, hecha: false }
+    const nueva = { id: `tarea-${Date.now()}`, texto: texto.trim(), fecha: fecha || null, hecha: false, propietarioEmail: miEmail || null }
     setTareas((prev) => [nueva, ...prev])
     insertTareaRemote(nueva)
     setTexto('')

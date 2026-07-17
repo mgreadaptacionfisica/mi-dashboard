@@ -13,7 +13,10 @@ function formatFecha(iso) {
 
 const initialForm = { titulo: '', categoria: '', contenido: '', enlace: '' }
 
-export default function SOPs({ sops = [], setSops }) {
+// puedeEditar=false oculta "Añadir SOP"/"Editar"/"Eliminar" — así el equipo
+// técnico puede consultar los protocolos sin poder tocarlos (solo admin y
+// contenido, que son quienes los redactan, pueden editarlos).
+export default function SOPs({ sops = [], setSops, puedeEditar = true }) {
   const [filtroCategoria, setFiltroCategoria] = useState('Todas')
   const [expandido, setExpandido] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -118,7 +121,9 @@ export default function SOPs({ sops = [], setSops }) {
               <option value="Todas">Todas las categorías</option>
               {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <button type="button" className="add-client-btn" onClick={openNew}>＋ Añadir SOP</button>
+            {puedeEditar && (
+              <button type="button" className="add-client-btn" onClick={openNew}>＋ Añadir SOP</button>
+            )}
           </div>
         </div>
 
@@ -141,8 +146,12 @@ export default function SOPs({ sops = [], setSops }) {
                       </button>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Actualizado {formatFecha(sop.actualizadoEn)}</span>
-                        <button type="button" className="row-action-btn" onClick={() => openEdit(sop)}>Editar</button>
-                        <button type="button" className="row-action-btn" onClick={() => eliminar(sop.id)}>Eliminar</button>
+                        {puedeEditar && (
+                          <>
+                            <button type="button" className="row-action-btn" onClick={() => openEdit(sop)}>Editar</button>
+                            <button type="button" className="row-action-btn" onClick={() => eliminar(sop.id)}>Eliminar</button>
+                          </>
+                        )}
                       </div>
                     </div>
                     {expandido === sop.id && (

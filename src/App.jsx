@@ -323,7 +323,7 @@ function InternalApp({ session, rol, onLogout }) {
       )
       case 'onboarding':   return <Onboarding />
       case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} miEmail={session?.user?.email} rol={rol} />
-      case 'tareas':       return <MisTareas tareas={tareasPersonales} setTareas={setTareasPersonales} />
+      case 'tareas':       return <MisTareas tareas={tareasPersonales} setTareas={setTareasPersonales} miEmail={session?.user?.email} />
       case 'manuales':     return <Manuales manuales={manuales} setManuales={setManuales} rol={rol} />
       default:             return null
     }
