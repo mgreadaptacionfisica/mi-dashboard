@@ -113,12 +113,12 @@ export const ITEMS_MOVILIDAD_HOMBRO = [
   {
     id: 'rotacionInternaDx',
     label: 'Rotación interna derecho',
-    nota: 'En reposo, codo pegado al cuerpo (0° de abducción).',
+    nota: 'Brazo por detrás del cuerpo (mano subiendo por la espalda).',
   },
   {
     id: 'rotacionInternaIzq',
     label: 'Rotación interna izquierdo',
-    nota: 'En reposo, codo pegado al cuerpo (0° de abducción).',
+    nota: 'Brazo por detrás del cuerpo (mano subiendo por la espalda).',
   },
   { id: 'extensionHombroDx', label: 'Extensión hombro derecho' },
   { id: 'extensionHombroIzq', label: 'Extensión hombro izquierdo' },
