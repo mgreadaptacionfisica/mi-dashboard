@@ -97,6 +97,16 @@ export const ITEMS_MOVILIDAD_HOMBRO = [
   { id: 'abdHorizontalIzq', label: 'ABD horizontal izquierdo' },
   { id: 'addHorizontalDx', label: 'ADD horizontal derecho' },
   { id: 'addHorizontalIzq', label: 'ADD horizontal izquierdo' },
+  {
+    id: 'shoulderTestDx',
+    label: 'Shoulder test (brazo derecho arriba)',
+    nota: 'Apley scratch test: un brazo por arriba y por detrás del cuello, el otro por detrás de la espalda desde abajo, intentando tocarse los dedos. Aquí es el brazo derecho el que va por arriba.',
+  },
+  {
+    id: 'shoulderTestIzq',
+    label: 'Shoulder test (brazo izquierdo arriba)',
+    nota: 'Mismo test que el anterior, pero con el brazo izquierdo por arriba.',
+  },
 ]
 
 export const ITEMS_MOVILIDAD_CERVICAL = [

@@ -132,6 +132,7 @@ function CampoSemaforo({ label, item, value, onChange }) {
           {PATRON_LUMBAR_OPCIONES.map((o) => <option key={o.valor} value={o.valor}>{o.label}</option>)}
         </select>
       )}
+      {item.nota && <p className="valoracion-referencia" style={{ marginTop: 2 }}>ℹ️ {item.nota}</p>}
     </div>
   )
 }
