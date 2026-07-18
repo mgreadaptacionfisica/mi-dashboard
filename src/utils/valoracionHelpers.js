@@ -87,6 +87,8 @@ export const ITEMS_MOVILIDAD_HOMBRO = [
   { id: 'reDesdeAbdIzq', label: 'RE desde ABD izquierdo' },
   { id: 'riDesdeAbdDx', label: 'RI desde ABD derecho' },
   { id: 'riDesdeAbdIzq', label: 'RI desde ABD izquierdo' },
+  { id: 'riDesdeFlexionDx', label: 'RI desde flexión derecho' },
+  { id: 'riDesdeFlexionIzq', label: 'RI desde flexión izquierdo' },
   { id: 'extensionHombroDx', label: 'Extensión hombro derecho' },
   { id: 'extensionHombroIzq', label: 'Extensión hombro izquierdo' },
   { id: 'abduccionHombroDx', label: 'Abducción hombro derecho' },
