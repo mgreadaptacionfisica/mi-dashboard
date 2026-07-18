@@ -14,6 +14,8 @@
 //   notasDolor: '' (pegado del formulario externo de dolor),
 //   notasEvaluacionInicial: '',
 //   notasPreferenciasEntrenamiento: '' (días disponibles, material, gustos — se arrastra automáticamente de la valoración anterior al crear una nueva),
+//   notasMovilidad: '' (comentario libre bajo el bloque Movilidad general: cabeza adelantada, hombro adelantado, escoliosis, etc.),
+//   notasFuerza: '' (comentario libre bajo el bloque Fuerza),
 //   dolorEnDeporte: true|false|null (solo relevante si SPADI=0, distingue fase 3 de fase 4),
 //   fase: 1|2|3|4|null (confirmada por el técnico; el panel la sugiere a partir del SPADI),
 //   objetivo: '' (texto libre adicional),

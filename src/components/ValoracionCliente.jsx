@@ -283,6 +283,8 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     base.notasDolor = valoracion.notasDolor || ''
     base.notasEvaluacionInicial = valoracion.notasEvaluacionInicial || ''
     base.notasPreferenciasEntrenamiento = valoracion.notasPreferenciasEntrenamiento || ''
+    base.notasMovilidad = valoracion.notasMovilidad || ''
+    base.notasFuerza = valoracion.notasFuerza || ''
     base.dolorEnDeporte = valoracion.dolorEnDeporte ?? null
     base.fase = valoracion.fase ?? null
     base.objetivo = valoracion.objetivo || ''
@@ -558,6 +560,8 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                             ✅ Cumplidos de la fase anterior: {v.objetivosCumplidos.map((id) => objetivosFase.find((o) => o.id === id)?.texto).filter(Boolean).join(' · ')}
                           </p>
                         )}
+                        {v.notasMovilidad && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🤸 Movilidad: {v.notasMovilidad}</p>}
+                        {v.notasFuerza && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>💪 Fuerza: {v.notasFuerza}</p>}
                         {v.notasDolor && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🩹 Dolor: {v.notasDolor}</p>}
                         {v.notasEvaluacionInicial && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>📝 Evaluación inicial: {v.notasEvaluacionInicial}</p>}
                         {v.notasPreferenciasEntrenamiento && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🗓️ Preferencias: {v.notasPreferenciasEntrenamiento}</p>}
@@ -629,6 +633,28 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                       </div>
                     ))}
                   </div>
+                  {bloque.id === 'fuerza' && (
+                    <label className="valoracion-campo" style={{ marginTop: 8 }}>
+                      <span>Comentario extra de la evaluación de fuerza (opcional)</span>
+                      <textarea
+                        rows={2}
+                        value={formData.notasFuerza}
+                        onChange={(e) => setFormData({ ...formData, notasFuerza: e.target.value })}
+                        placeholder="Cualquier cosa que detectes durante esta parte y no encaje en un ítem concreto..."
+                      />
+                    </label>
+                  )}
+                  {bloque.id === 'movilidadGeneral' && (
+                    <label className="valoracion-campo" style={{ marginTop: 8 }}>
+                      <span>Comentario extra de la evaluación de movilidad (opcional)</span>
+                      <textarea
+                        rows={2}
+                        value={formData.notasMovilidad}
+                        onChange={(e) => setFormData({ ...formData, notasMovilidad: e.target.value })}
+                        placeholder="Ej: cabeza adelantada, hombro adelantado, escoliosis visible..."
+                      />
+                    </label>
+                  )}
                 </div>
               ))}
 

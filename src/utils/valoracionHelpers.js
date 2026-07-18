@@ -333,6 +333,8 @@ export function valoracionVacia() {
     notasDolor: '',
     notasEvaluacionInicial: '',
     notasPreferenciasEntrenamiento: '',
+    notasMovilidad: '',
+    notasFuerza: '',
     dolorEnDeporte: null,
     fase: null,
     objetivo: '',
