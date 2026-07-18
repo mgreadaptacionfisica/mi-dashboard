@@ -23,7 +23,6 @@ import {
   objetivoCombinado,
 } from '../utils/valoracionHelpers'
 import { insertValoracionRemote, updateValoracionRemote, deleteValoracionRemote } from '../lib/queries/valoracionesClientes'
-import { insertObjetivoFaseRemote, updateObjetivoFaseRemote, deleteObjetivoFaseRemote } from '../lib/queries/objetivosFase'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -137,16 +136,12 @@ function CampoSemaforo({ label, item, value, onChange }) {
   )
 }
 
-export default function ValoracionCliente({ cliente, valoraciones, setValoraciones, objetivosFase = [], setObjetivosFase, esAdmin = false, onClose }) {
+export default function ValoracionCliente({ cliente, valoraciones, setValoraciones, objetivosFase = [], onClose }) {
   const [vista, setVista] = useState('evolucion')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [expandido, setExpandido] = useState(null)
   const [formData, setFormData] = useState({ fecha: todayISO(), ...valoracionVacia() })
-  const [gestionandoCatalogo, setGestionandoCatalogo] = useState(false)
-  const [nuevoObjetivoPorFase, setNuevoObjetivoPorFase] = useState({})
-  const [editandoObjetivoId, setEditandoObjetivoId] = useState(null)
-  const [editandoObjetivoTexto, setEditandoObjetivoTexto] = useState('')
 
   const historial = valoraciones
     .filter((v) => v.clienteNombre === cliente.Nombre)
@@ -288,6 +283,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     base.dolorEnDeporte = valoracion.dolorEnDeporte ?? null
     base.fase = valoracion.fase ?? null
     base.objetivo = valoracion.objetivo || ''
+    base.objetivoAnteriorConfirmado = valoracion.objetivoAnteriorConfirmado || false
     base.objetivosSeleccionados = valoracion.objetivosSeleccionados || []
     base.objetivosCumplidos = valoracion.objetivosCumplidos || []
     setEditingId(valoracion.id)
@@ -303,25 +299,6 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
 
   const setCampo = (bloqueId, itemId, valor) => {
     setFormData((prev) => ({ ...prev, [bloqueId]: { ...prev[bloqueId], [itemId]: valor } }))
-  }
-
-  const toggleObjetivoSeleccionado = (id) => {
-    setFormData((prev) => {
-      const actuales = prev.objetivosSeleccionados || []
-      const yaEsta = actuales.includes(id)
-      return { ...prev, objetivosSeleccionados: yaEsta ? actuales.filter((x) => x !== id) : [...actuales, id] }
-    })
-  }
-
-  // Marca (o desmarca) si un objetivo de la valoración ANTERIOR se cumplió
-  // de verdad, al hacer esta valoración nueva. Es lo que permite comprobar
-  // si tocaba subir de fase o no — ver el aviso más abajo en el formulario.
-  const toggleObjetivoCumplido = (id) => {
-    setFormData((prev) => {
-      const actuales = prev.objetivosCumplidos || []
-      const yaEsta = actuales.includes(id)
-      return { ...prev, objetivosCumplidos: yaEsta ? actuales.filter((x) => x !== id) : [...actuales, id] }
-    })
   }
 
   const handleSubmit = (event) => {
@@ -340,54 +317,19 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     setEditingId(null)
   }
 
-  // Gestión del catálogo de objetivos por fase (solo admin, ver botón
-  // "⚙️ Gestionar catálogo" más abajo).
-  const agregarObjetivoCatalogo = (faseNumero) => {
-    const texto = (nuevoObjetivoPorFase[faseNumero] || '').trim()
-    if (typeof setObjetivosFase !== 'function' || !texto) return
-    const ordenActual = objetivosFase.filter((o) => o.fase === faseNumero).length
-    const nuevo = { id: `obj-${Date.now()}`, fase: faseNumero, texto, orden: ordenActual + 1 }
-    setObjetivosFase((prev) => [...prev, nuevo])
-    insertObjetivoFaseRemote(nuevo)
-    setNuevoObjetivoPorFase((prev) => ({ ...prev, [faseNumero]: '' }))
-  }
-
-  const editarObjetivoCatalogo = (id) => {
-    if (typeof setObjetivosFase !== 'function' || !editandoObjetivoTexto.trim()) return
-    const texto = editandoObjetivoTexto.trim()
-    setObjetivosFase((prev) => prev.map((o) => (o.id === id ? { ...o, texto } : o)))
-    updateObjetivoFaseRemote(id, { texto })
-    setEditandoObjetivoId(null)
-    setEditandoObjetivoTexto('')
-  }
-
-  const eliminarObjetivoCatalogo = (id) => {
-    if (typeof setObjetivosFase !== 'function') return
-    setObjetivosFase((prev) => prev.filter((o) => o.id !== id))
-    deleteObjetivoFaseRemote(id)
-    setFormData((prev) => ({ ...prev, objetivosSeleccionados: (prev.objetivosSeleccionados || []).filter((x) => x !== id) }))
-  }
-
   const spadiTotalForm = spadiTotal(formData.spadi)
   const tampaTotalForm = tampaTotal(formData.tampa)
   const faseSugeridaForm = calcularFaseSugerida(spadiTotalForm, formData.dolorEnDeporte)
   const faseSugeridaInfo = faseInfo(faseSugeridaForm)
   const faseConfirmadaInfo = faseInfo(formData.fase)
   const faseParaCatalogo = formData.fase || faseSugeridaForm
-  const objetivosDeFaseActual = objetivosFase
-    .filter((o) => o.fase === faseParaCatalogo)
-    .sort((a, b) => (a.orden || 0) - (b.orden || 0))
 
-  // Objetivos de la valoración anterior (excluyendo la que se está editando,
-  // si aplica) — se revisan aquí para marcar cuáles se cumplieron de verdad
-  // antes de decidir si toca subir de fase.
+  // Objetivo (texto libre) de la valoración anterior (excluyendo la que se
+  // está editando, si aplica) — se revisa aquí para confirmar si se cumplió
+  // de verdad antes de decidir si toca subir de fase.
   const valoracionAnterior = historialDesc.filter((v) => v.id !== editingId)[0] || null
-  const objetivosAnterior = valoracionAnterior?.objetivosSeleccionados?.length
-    ? objetivosFase.filter((o) => valoracionAnterior.objetivosSeleccionados.includes(o.id))
-    : []
   const subiendoFase = Boolean(valoracionAnterior?.fase && formData.fase && formData.fase > valoracionAnterior.fase)
-  const objetivosAnteriorSinMarcar = objetivosAnterior.filter((o) => !(formData.objetivosCumplidos || []).includes(o.id))
-  const avisoSubidaFase = subiendoFase && objetivosAnteriorSinMarcar.length > 0
+  const avisoSubidaFase = subiendoFase && Boolean(valoracionAnterior?.objetivo) && !formData.objetivoAnteriorConfirmado
 
   return (
     <div className="client-modal-overlay" onClick={onClose}>
@@ -683,21 +625,18 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
 
               <h4 className="team-activity-subtitle">Fase y objetivo</h4>
 
-              {objetivosAnterior.length > 0 && (
+              {valoracionAnterior?.objetivo && (
                 <div className="valoracion-campo">
-                  <span>Objetivos marcados en la valoración anterior (Fase {valoracionAnterior.fase || '—'}) — ¿se cumplieron?</span>
-                  <div className="valoracion-objetivos-catalogo">
-                    {objetivosAnterior.map((o) => (
-                      <label key={o.id} className="valoracion-objetivo-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={(formData.objetivosCumplidos || []).includes(o.id)}
-                          onChange={() => toggleObjetivoCumplido(o.id)}
-                        />
-                        <span>{o.texto}</span>
-                      </label>
-                    ))}
-                  </div>
+                  <span>Objetivo de la valoración anterior (Fase {valoracionAnterior.fase || '—'}) — ¿se cumplió?</span>
+                  <p style={{ margin: '4px 0' }}>{valoracionAnterior.objetivo}</p>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400 }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formData.objetivoAnteriorConfirmado)}
+                      onChange={(e) => setFormData({ ...formData, objetivoAnteriorConfirmado: e.target.checked })}
+                    />
+                    Se cumplió
+                  </label>
                 </div>
               )}
 
@@ -742,35 +681,12 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
 
               {avisoSubidaFase && (
                 <p className="valoracion-aviso-fase">
-                  ⚠️ Vas a subir de Fase {valoracionAnterior.fase} a Fase {formData.fase}, pero hay {objetivosAnteriorSinMarcar.length} objetivo{objetivosAnteriorSinMarcar.length === 1 ? '' : 's'} de la fase anterior sin marcar como cumplido{objetivosAnteriorSinMarcar.length === 1 ? '' : 's'} (arriba). Confirma que realmente toca subir antes de guardar.
+                  ⚠️ Vas a subir de Fase {valoracionAnterior.fase} a Fase {formData.fase}, pero no has marcado como cumplido el objetivo de la fase anterior (arriba). Confirma que realmente toca subir antes de guardar.
                 </p>
               )}
 
-              <div className="valoracion-campo">
-                <span>Objetivos para esta fase{faseParaCatalogo ? ` (Fase ${faseParaCatalogo})` : ''}</span>
-                {faseParaCatalogo ? (
-                  <div className="valoracion-objetivos-catalogo">
-                    {objetivosDeFaseActual.length === 0 && (
-                      <p className="lead-log-empty" style={{ margin: '4px 0' }}>Todavía no hay objetivos guardados para la Fase {faseParaCatalogo}.</p>
-                    )}
-                    {objetivosDeFaseActual.map((o) => (
-                      <label key={o.id} className="valoracion-objetivo-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={(formData.objetivosSeleccionados || []).includes(o.id)}
-                          onChange={() => toggleObjetivoSeleccionado(o.id)}
-                        />
-                        <span>{o.texto}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="lead-log-empty" style={{ margin: '4px 0' }}>Confirma o deja que se sugiera una fase para ver su catálogo de objetivos.</p>
-                )}
-              </div>
-
               <label className="valoracion-campo">
-                <span>Objetivo adicional (texto libre)</span>
+                <span>Objetivo de esta fase{faseParaCatalogo ? ` (Fase ${faseParaCatalogo})` : ''} — texto libre</span>
                 <textarea
                   rows={2}
                   value={formData.objetivo}
@@ -778,52 +694,6 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                   placeholder={faseConfirmadaInfo?.objetivoEjemplo || faseSugeridaInfo?.objetivoEjemplo || 'Objetivo concreto para esta fase...'}
                 />
               </label>
-
-              {esAdmin && (
-                <div className="valoracion-catalogo-admin">
-                  <button type="button" className="row-action-btn" onClick={() => setGestionandoCatalogo((v) => !v)}>
-                    {gestionandoCatalogo ? 'Ocultar gestión del catálogo' : '⚙️ Gestionar catálogo de objetivos'}
-                  </button>
-                  {gestionandoCatalogo && (
-                    <div className="valoracion-catalogo-editor">
-                      {FASES.map((f) => (
-                        <div key={f.numero} className="valoracion-catalogo-fase">
-                          <strong>Fase {f.numero}</strong>
-                          <ul>
-                            {objetivosFase.filter((o) => o.fase === f.numero).sort((a, b) => (a.orden || 0) - (b.orden || 0)).map((o) => (
-                              <li key={o.id}>
-                                {editandoObjetivoId === o.id ? (
-                                  <>
-                                    <input type="text" value={editandoObjetivoTexto} onChange={(e) => setEditandoObjetivoTexto(e.target.value)} style={{ width: '65%' }} />
-                                    <button type="button" className="row-action-btn" onClick={() => editarObjetivoCatalogo(o.id)}>Guardar</button>
-                                    <button type="button" className="row-action-btn" onClick={() => setEditandoObjetivoId(null)}>Cancelar</button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span>{o.texto}</span>
-                                    <button type="button" className="row-action-btn" onClick={() => { setEditandoObjetivoId(o.id); setEditandoObjetivoTexto(o.texto) }}>Editar</button>
-                                    <button type="button" className="row-action-btn" onClick={() => eliminarObjetivoCatalogo(o.id)}>Eliminar</button>
-                                  </>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <input
-                              type="text"
-                              placeholder={`Nuevo objetivo para Fase ${f.numero}...`}
-                              value={nuevoObjetivoPorFase[f.numero] || ''}
-                              onChange={(e) => setNuevoObjetivoPorFase((prev) => ({ ...prev, [f.numero]: e.target.value }))}
-                              style={{ flex: 1 }}
-                            />
-                            <button type="button" className="row-action-btn" onClick={() => agregarObjetivoCatalogo(f.numero)}>Añadir</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
 
               <label className="valoracion-campo" style={{ marginTop: 8 }}>
                 <span>Notas de evaluación del dolor</span>

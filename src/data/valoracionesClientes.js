@@ -18,10 +18,16 @@
 //   notasFuerza: '' (comentario libre bajo el bloque Fuerza),
 //   dolorEnDeporte: true|false|null (solo relevante si SPADI=0, distingue fase 3 de fase 4),
 //   fase: 1|2|3|4|null (confirmada por el técnico; el panel la sugiere a partir del SPADI),
-//   objetivo: '' (texto libre adicional),
-//   objetivosSeleccionados: ['obj-fase1-1', ...] (ids del catálogo objetivos_fase, marcados como META en esta valoración),
-//   objetivosCumplidos: ['obj-fase1-1', ...] (subconjunto de los objetivosSeleccionados de la valoración ANTERIOR que se marcan como cumplidos al hacer esta valoración nueva) }
+//   objetivo: '' (texto libre, específico de cada valoración),
+//   objetivoAnteriorConfirmado: true|false (¿se cumplió el "objetivo" de la valoración ANTERIOR? se usa para avisar si se sube de fase sin confirmarlo) }
 //
+// Nota: "objetivosSeleccionados"/"objetivosCumplidos" (ids contra la tabla
+// objetivos_fase) fueron el mecanismo original de objetivos — un catálogo
+// compartido entre clientes. Se quitó de la interfaz porque cada cliente
+// tiene un objetivo distinto y no tenía sentido reutilizar el catálogo
+// (ver objetivoAnteriorConfirmado arriba, que lo sustituye). Las columnas
+// siguen existiendo en Supabase solo para no perder el historial de las
+// valoraciones antiguas que ya las tenían rellenas.
 // Nota: la columna "dinamometria" existe todavía en Supabase (datos históricos)
 // pero ya no se usa desde el panel — el bloque se eliminó.
 // Ver src/utils/valoracionHelpers.js para el listado completo de ítems por bloque,

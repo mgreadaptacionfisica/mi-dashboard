@@ -338,6 +338,13 @@ export function valoracionVacia() {
     dolorEnDeporte: null,
     fase: null,
     objetivo: '',
+    objetivoAnteriorConfirmado: false,
+    // objetivosSeleccionados/objetivosCumplidos: del antiguo catálogo
+    // compartido de objetivos por fase, quitado a petición de Raúl (cada
+    // cliente tiene un objetivo distinto, no tenía sentido reutilizar el
+    // mismo catálogo entre todos). Se dejan aquí solo para poder seguir
+    // leyendo e imprimiendo correctamente las valoraciones antiguas que ya
+    // los tenían rellenos — el formulario ya no los usa.
     objetivosSeleccionados: [],
     objetivosCumplidos: [],
   }

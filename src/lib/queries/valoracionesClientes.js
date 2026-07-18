@@ -26,6 +26,7 @@ function fromRow(row) {
     dolorEnDeporte: row.dolor_en_deporte ?? null,
     fase: row.fase ?? null,
     objetivo: row.objetivo || '',
+    objetivoAnteriorConfirmado: row.objetivo_anterior_confirmado || false,
     objetivosSeleccionados: row.objetivos_seleccionados || [],
     objetivosCumplidos: row.objetivos_cumplidos || [],
   }
@@ -53,6 +54,7 @@ function toRow(v) {
     dolor_en_deporte: v.dolorEnDeporte ?? null,
     fase: v.fase ?? null,
     objetivo: v.objetivo || '',
+    objetivo_anterior_confirmado: v.objetivoAnteriorConfirmado || false,
     objetivos_seleccionados: v.objetivosSeleccionados || [],
     objetivos_cumplidos: v.objetivosCumplidos || [],
   }
