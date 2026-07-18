@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
-import { ultimaFaseCliente, objetivoCombinado } from '../utils/valoracionHelpers'
+import FasesObjetivos from './FasesObjetivos'
+import { faseAutomatica } from '../utils/valoracionHelpers'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
@@ -22,10 +23,11 @@ function formatDate(value) {
   return iso ? formatFechaISO(iso) : value
 }
 
-export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosFase = [], setObjetivosFase }) {
+export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase }) {
   const [search, setSearch] = useState('')
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
+  const [fasesCliente, setFasesCliente] = useState(null)
 
   // Admin: acceso a Seguimiento/Valoración de TODOS los clientes (no solo
   // los suyos), porque necesita poder supervisar el trabajo de cualquier
@@ -117,7 +119,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                   <tbody>
                     {filtrados.map((cliente, index) => {
                       const trabajadores = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
-                      const fase = ultimaFaseCliente(valoraciones, cliente.Nombre)
+                      const fase = faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre))
                       return (
                         <tr key={`${cliente.id || cliente.Nombre}-${index}`}>
                           <td style={{ fontWeight: 600 }}>{cliente.Nombre || '—'}</td>
@@ -125,7 +127,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           {esAdmin && <td>{trabajadores.length ? trabajadores.join(', ') : '—'}</td>}
                           <td>
                             {fase ? (
-                              <span className="status-pill status-activo" title={objetivoCombinado(fase, objetivosFase)}>Fase {fase.fase}</span>
+                              <span className="status-pill status-activo">Fase {fase}</span>
                             ) : (
                               <span style={{ color: 'var(--color-text-secondary)' }}>—</span>
                             )}
@@ -140,6 +142,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           <td>
                             <button type="button" className="row-action-btn" onClick={() => setSeguimientoCliente(cliente)}>📋 Seguimiento</button>
                             <button type="button" className="row-action-btn" onClick={() => setValoracionCliente(cliente)}>📈 Valoración</button>
+                            <button type="button" className="row-action-btn" onClick={() => setFasesCliente(cliente)}>🎯 Fases y objetivos</button>
                           </td>
                         </tr>
                       )
@@ -163,7 +166,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           seguimientos={seguimientos}
           setSeguimientos={setSeguimientos}
           valoraciones={valoraciones}
-          objetivosFase={objetivosFase}
+          objetivosClienteFase={objetivosClienteFase}
           onClose={() => setSeguimientoCliente(null)}
         />
       )}
@@ -173,10 +176,17 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           cliente={valoracionCliente}
           valoraciones={valoraciones}
           setValoraciones={setValoraciones}
-          objetivosFase={objetivosFase}
-          setObjetivosFase={setObjetivosFase}
-          esAdmin={esAdmin}
+          objetivosClienteFase={objetivosClienteFase}
           onClose={() => setValoracionCliente(null)}
+        />
+      )}
+
+      {fasesCliente && (
+        <FasesObjetivos
+          cliente={fasesCliente}
+          objetivosClienteFase={objetivosClienteFase}
+          setObjetivosClienteFase={setObjetivosClienteFase}
+          onClose={() => setFasesCliente(null)}
         />
       )}
     </>

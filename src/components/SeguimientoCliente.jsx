@@ -10,13 +10,13 @@ import {
   progresoSemana,
 } from '../utils/seguimientoHelpers'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
-import { ultimaFaseCliente, faseInfo, objetivoCombinado } from '../utils/valoracionHelpers'
+import { faseAutomatica, faseInfo } from '../utils/valoracionHelpers'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, valoraciones = [], objetivosFase = [], onClose }) {
+export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], onClose }) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [tareaDraft, setTareaDraft] = useState({})
   // Texto libre cuando se elige "Otra" en el desplegable de bloques, para
@@ -81,7 +81,11 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
     actualizarSemana({ comentarios: texto })
   }
 
-  const faseVigente = useMemo(() => ultimaFaseCliente(valoraciones, cliente.Nombre), [valoraciones, cliente])
+  const faseActual = useMemo(
+    () => faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre)),
+    [objetivosClienteFase, cliente]
+  )
+  const faseActualInfo = faseInfo(faseActual)
 
   return (
     <div className="client-modal-overlay" onClick={onClose}>
@@ -105,14 +109,13 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
           <button className="close-modal-btn" onClick={onClose}>✕</button>
         </div>
 
-        {faseVigente ? (
+        {faseActual ? (
           <div className="valoracion-fase-banner">
-            📍 <strong>Fase {faseVigente.fase}</strong> — {faseInfo(faseVigente.fase)?.criterio}
-            {objetivoCombinado(faseVigente, objetivosFase) && <> · Objetivo: {objetivoCombinado(faseVigente, objetivosFase)}</>}
+            📍 <strong>Fase actual: {faseActual}</strong> — {faseActualInfo?.criterio}
           </div>
         ) : (
           <div className="valoracion-fase-banner" style={{ color: 'var(--color-text-secondary)' }}>
-            Sin fase confirmada todavía — revísala en Valoración.
+            Sin fase confirmada todavía — revísala en Fases y objetivos.
           </div>
         )}
 

@@ -251,12 +251,12 @@ export const SPADI_ENLACE = 'https://drive.google.com/file/d/1TEIN5xHLOPuvU8mhqO
 export const TAMPA_ITEMS = Array.from({ length: 11 }, (_, i) => i + 1)
 export const TAMPA_INTERPRETACION = 'Mínimo 11 (sin kinesiofobia) — Máximo 44 (miedo extremo al movimiento). Por encima de 37 suele indicar un nivel alto/severo de kinesiofobia.'
 
-// Fases y objetivos (SOP "3. Establecer fase y objetivos"): permite calcular
-// una fase sugerida a partir del SPADI de la valoración (dato objetivo) y,
-// cuando el SPADI es 0, de si hay dolor en gestos del propio deporte
-// (fases 3 y 4 comparten SPADI 0 y solo se distinguen por esa pregunta).
-// El técnico siempre puede confirmar o cambiar la fase sugerida a mano —
-// esto es una ayuda, no reemplaza el criterio clínico.
+// Fases y objetivos (SOP "3. Establecer fase y objetivos"). "criterio" es
+// solo texto orientativo sobre qué caracteriza clínicamente cada fase — la
+// fase real del cliente ya NO se calcula a partir del SPADI, sino de los
+// objetivos que se le hayan marcado en "Fases y objetivos" (ver
+// faseAutomatica más abajo): se avanza de fase solo cuando se cumplen
+// todos los objetivos de la fase anterior.
 export const FASES = [
   {
     numero: 1,
@@ -288,31 +288,36 @@ export function faseInfo(numero) {
   return FASES.find((f) => f.numero === Number(numero)) || null
 }
 
-// Calcula la fase sugerida solo a partir de datos objetivos: el SPADI de la
-// valoración actual y, si el SPADI es 0, la respuesta a "¿dolor en gestos de
-// su deporte?" (dolorEnDeporte: true/false). Devuelve null si faltan datos
-// para decidir (sin SPADI, o SPADI=0 sin haber respondido esa pregunta).
-export function calcularFaseSugerida(spadi, dolorEnDeporte) {
-  if (spadi === null || spadi === undefined || spadi === '') return null
-  const valor = Number(spadi)
-  if (valor === 0) {
-    if (dolorEnDeporte === true) return 3
-    if (dolorEnDeporte === false) return 4
-    return null
+// Fase confirmada de un cliente a partir de SUS objetivos por fase (tabla
+// objetivos_cliente_fase, uno por cliente — no el catálogo compartido
+// antiguo). Se puede estar trabajando ya en objetivos de una fase
+// posterior (por eso en "Fases y objetivos" se ven las 4 fases a la vez),
+// pero la fase "oficial" solo avanza cuando TODOS los objetivos de una
+// fase están marcados como cumplidos, y solo si las fases anteriores
+// también lo están (no se puede "saltar" una fase vacía). Si una fase
+// todavía no tiene ningún objetivo escrito, se corta ahí — no cuenta como
+// superada. Devuelve null si la fase 1 todavía no tiene ningún objetivo.
+export function faseAutomatica(objetivosCliente) {
+  const porFase = {}
+  for (const o of objetivosCliente || []) {
+    if (!porFase[o.fase]) porFase[o.fase] = []
+    porFase[o.fase].push(o)
   }
-  if (valor < 10) return 2
-  return 1
+  let confirmada = null
+  for (let n = 1; n <= 4; n += 1) {
+    const items = porFase[n] || []
+    if (items.length === 0) break
+    if (!items.every((o) => o.cumplido)) break
+    confirmada = n
+  }
+  return confirmada
 }
 
-// Última fase confirmada de un cliente (la valoración con fase más
-// reciente por fecha, no necesariamente la última valoración registrada si
-// esa todavía no tiene fase confirmada). Se usa en ClientesEquipo.jsx
-// (columna Fase) y SeguimientoCliente.jsx (recordatorio de objetivo).
-export function ultimaFaseCliente(valoraciones, clienteNombre) {
-  const conFase = (valoraciones || [])
-    .filter((v) => v.clienteNombre === clienteNombre && v.fase)
-    .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''))
-  return conFase.length ? conFase[conFase.length - 1] : null
+// Objetivos de un cliente para una fase concreta, ordenados.
+export function objetivosDeFase(objetivosCliente, faseNumero) {
+  return (objetivosCliente || [])
+    .filter((o) => o.fase === faseNumero)
+    .sort((a, b) => (a.orden || 0) - (b.orden || 0))
 }
 
 // Texto combinado del objetivo de una valoración: los objetivos elegidos

@@ -3,6 +3,7 @@ import SERVICIOS from '../data/servicios'
 import RENOVACIONES from '../data/renovaciones'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
+import FasesObjetivos from './FasesObjetivos'
 import CobrosPendientes from './CobrosPendientes'
 import { insertClienteRemote, updateClienteRemote, deleteClienteRemote } from '../lib/queries/clientes'
 import { generarPlazosPorNumero } from '../lib/plazos'
@@ -114,7 +115,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function ClientesAdmin({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosFase = [], setObjetivosFase }) {
+export default function ClientesAdmin({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
   // Por defecto solo se ven los clientes ACTIVO (menos ruido visual); desde
@@ -130,6 +131,7 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
   const [formData, setFormData] = useState(initialForm)
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
+  const [fasesCliente, setFasesCliente] = useState(null)
 
   const tecnicoNames = useMemo(
     () => team?.tecnico.map(persona => persona.nombre) ?? [],
@@ -581,6 +583,13 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
                           📈 Valoración
                         </button>
                       )}
+                      <button
+                        type="button"
+                        className="row-action-btn"
+                        onClick={() => setFasesCliente(cliente)}
+                      >
+                        🎯 Fases y objetivos
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -800,7 +809,7 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
           seguimientos={seguimientos}
           setSeguimientos={setSeguimientos}
           valoraciones={valoraciones}
-          objetivosFase={objetivosFase}
+          objetivosClienteFase={objetivosClienteFase}
           onClose={() => setSeguimientoCliente(null)}
         />
       )}
@@ -810,10 +819,17 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
           cliente={valoracionCliente}
           valoraciones={valoraciones}
           setValoraciones={setValoraciones}
-          objetivosFase={objetivosFase}
-          setObjetivosFase={setObjetivosFase}
-          esAdmin
+          objetivosClienteFase={objetivosClienteFase}
           onClose={() => setValoracionCliente(null)}
+        />
+      )}
+
+      {fasesCliente && (
+        <FasesObjetivos
+          cliente={fasesCliente}
+          objetivosClienteFase={objetivosClienteFase}
+          setObjetivosClienteFase={setObjetivosClienteFase}
+          onClose={() => setFasesCliente(null)}
         />
       )}
     </>

@@ -149,11 +149,21 @@ const valoracionesClientesDataPromise = async () => {
   return import('./data/valoracionesClientes')
 }
 // Catálogo de objetivos por fase (Valoración): mismo patrón fallback que SOPs.
+// Se deja cargado solo para no perder el historial de valoraciones antiguas
+// que ya usaban el catálogo compartido — ya no se edita desde el panel.
 const objetivosFaseDataPromise = async () => {
   const { fetchObjetivosFase } = await import('./lib/queries/objetivosFase')
   const remoto = await fetchObjetivosFase()
   if (remoto !== null) return { default: remoto }
   return import('./data/objetivosFase')
+}
+// Objetivos por fase DE CADA CLIENTE ("Fases y objetivos", separado de
+// Valoración): mismo patrón fallback.
+const objetivosClienteFaseDataPromise = async () => {
+  const { fetchObjetivosClienteFase } = await import('./lib/queries/objetivosClienteFase')
+  const remoto = await fetchObjetivosClienteFase()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/objetivosClienteFase')
 }
 
 // Comunicación: segundo módulo migrado a Supabase, mismo patrón que SOPs
@@ -261,6 +271,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [mensajesEquipo, setMensajesEquipo] = useState([])
   const [valoracionesClientes, setValoracionesClientes] = useState([])
   const [objetivosFase, setObjetivosFase] = useState([])
+  const [objetivosClienteFase, setObjetivosClienteFase] = useState([])
   const [tareasPersonales, setTareasPersonales] = useState([])
   const [manuales, setManuales] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
@@ -274,8 +285,8 @@ function InternalApp({ session, rol, onLogout }) {
       ingresosEmpresaDataPromise(), gastosEmpresaDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
       contactosSemanalesDataPromise(), mensajesEquipoDataPromise(), valoracionesClientesDataPromise(),
       tareasPersonalesDataPromise(), manualesDataPromise(), objetivosFaseDataPromise(),
-      reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(),
-    ]).then(async ([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of, rr, tp]) => {
+      reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(), objetivosClienteFaseDataPromise(),
+    ]).then(async ([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of, rr, tp, ocf]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -296,6 +307,7 @@ function InternalApp({ session, rol, onLogout }) {
       setObjetivosFase(of.default)
       setReglasRecurrentes(rr.default)
       setTarifasPasarela(tp.default)
+      setObjetivosClienteFase(ocf.default)
 
       // Catch-up de gastos/ingresos recurrentes: por cada regla activa,
       // genera (e inserta en Supabase) las filas de los periodos que ya
@@ -346,8 +358,8 @@ function InternalApp({ session, rol, onLogout }) {
     switch (vista) {
       case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} tareasPersonales={tareasPersonales} contenidoIdeas={contenidoIdeas} />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
-      case 'clientes':     return <ClientesAdmin clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosFase={objetivosFase} setObjetivosFase={setObjetivosFase} />
-      case 'clientes-equipo': return <ClientesEquipo clientes={clientes} team={team} miEmail={session?.user?.email} rol={rol} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} objetivosFase={objetivosFase} setObjetivosFase={setObjetivosFase} />
+      case 'clientes':     return <ClientesAdmin clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={objetivosClienteFase} setObjetivosClienteFase={setObjetivosClienteFase} />
+      case 'clientes-equipo': return <ClientesEquipo clientes={clientes} team={team} miEmail={session?.user?.email} rol={rol} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} objetivosClienteFase={objetivosClienteFase} setObjetivosClienteFase={setObjetivosClienteFase} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
       case 'mi-ficha':     return <MiFicha team={team} clientes={clientes} seguimientos={seguimientos} setSeguimientos={setSeguimientos} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} gastosEmpresa={gastosEmpresa} tareas={tareasPersonales} miEmail={session?.user?.email} />
       case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} miEmail={session?.user?.email} rol={rol} />
