@@ -394,6 +394,17 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
             <div className="card-title">Valoración funcional — {cliente.Nombre}</div>
             <div className="card-subtitle">{historial.length} evaluació{historial.length === 1 ? 'n' : 'nes'} registrada{historial.length === 1 ? '' : 's'}</div>
           </div>
+          {cliente.Drive && (
+            <a
+              href={cliente.Drive}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="secondary-action"
+              style={{ marginRight: 8 }}
+            >
+              📁 Abrir Drive
+            </a>
+          )}
           <button className="close-modal-btn" onClick={onClose}>✕</button>
         </div>
 

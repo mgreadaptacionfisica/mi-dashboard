@@ -91,6 +91,17 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
             <div className="card-title">Seguimiento semanal — {cliente.Nombre}</div>
             <div className="card-subtitle">{(cliente.Trabajadores || []).join(', ') || 'Sin profesional asignado'}</div>
           </div>
+          {cliente.Drive && (
+            <a
+              href={cliente.Drive}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="secondary-action"
+              style={{ marginRight: 8 }}
+            >
+              📁 Abrir Drive
+            </a>
+          )}
           <button className="close-modal-btn" onClick={onClose}>✕</button>
         </div>
 
