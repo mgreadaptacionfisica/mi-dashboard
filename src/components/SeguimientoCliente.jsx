@@ -10,13 +10,13 @@ import {
   progresoSemana,
 } from '../utils/seguimientoHelpers'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
-import { faseAutomatica, faseInfo } from '../utils/valoracionHelpers'
+import { faseAutomatica, faseInfo, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], onClose }) {
+export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], onClose }) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [tareaDraft, setTareaDraft] = useState({})
   // Texto libre cuando se elige "Otra" en el desplegable de bloques, para
@@ -81,10 +81,10 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
     actualizarSemana({ comentarios: texto })
   }
 
-  const faseActual = useMemo(
-    () => faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre)),
-    [objetivosClienteFase, cliente]
-  )
+  const faseActual = useMemo(() => {
+    const spadiTope = faseTopeSpadi(ultimoSpadiCliente(valoraciones, cliente.Nombre))
+    return faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre), spadiTope)
+  }, [objetivosClienteFase, valoraciones, cliente])
   const faseActualInfo = faseInfo(faseActual)
 
   return (
@@ -109,15 +109,9 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
           <button className="close-modal-btn" onClick={onClose}>✕</button>
         </div>
 
-        {faseActual ? (
-          <div className="valoracion-fase-banner">
-            📍 <strong>Fase actual: {faseActual}</strong> — {faseActualInfo?.criterio}
-          </div>
-        ) : (
-          <div className="valoracion-fase-banner" style={{ color: 'var(--color-text-secondary)' }}>
-            Sin fase confirmada todavía — revísala en Fases y objetivos.
-          </div>
-        )}
+        <div className="valoracion-fase-banner">
+          📍 <strong>Fase actual: {faseActual}</strong> — {faseActualInfo?.criterio}
+        </div>
 
         <div className="seguimiento-week-nav">
           <button type="button" className="secondary-action" onClick={() => setWeekOffset((w) => w - 1)}>← Semana anterior</button>

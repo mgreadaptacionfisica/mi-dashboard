@@ -829,6 +829,7 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
           cliente={fasesCliente}
           objetivosClienteFase={objetivosClienteFase}
           setObjetivosClienteFase={setObjetivosClienteFase}
+          valoraciones={valoraciones}
           onClose={() => setFasesCliente(null)}
         />
       )}

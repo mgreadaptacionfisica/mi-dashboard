@@ -17,6 +17,8 @@ import {
   indiceSimetria,
   faseInfo,
   faseAutomatica,
+  faseTopeSpadi,
+  ultimoSpadiCliente,
   semaforoInfo,
   compararSemaforo,
 } from '../utils/valoracionHelpers'
@@ -153,7 +155,8 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
   // solo se muestra en modo lectura como contexto (y para la referencia de
   // fuerza por fase, más abajo).
   const objetivosDelCliente = objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre)
-  const faseActual = faseAutomatica(objetivosDelCliente)
+  const spadiTope = faseTopeSpadi(ultimoSpadiCliente(valoraciones, cliente.Nombre))
+  const faseActual = faseAutomatica(objetivosDelCliente, spadiTope)
   const faseActualInfo = faseInfo(faseActual)
 
   // Evolución por bloque: para cada ítem con al menos un valor registrado,
@@ -344,14 +347,8 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
         </div>
 
         <div className="valoracion-fase-banner">
-          {faseActual ? (
-            <>
-              📍 <strong>Fase actual: {faseActual}</strong> — {faseActualInfo?.criterio}
-              <span style={{ color: 'var(--color-text-secondary)' }}> (gestiona los objetivos en "Fases y objetivos")</span>
-            </>
-          ) : (
-            <span style={{ color: 'var(--color-text-secondary)' }}>Todavía no hay una fase confirmada — gestiónala en "Fases y objetivos".</span>
-          )}
+          📍 <strong>Fase actual: {faseActual}</strong> — {faseActualInfo?.criterio}
+          <span style={{ color: 'var(--color-text-secondary)' }}> (gestiona los objetivos en "Fases y objetivos")</span>
         </div>
 
         <div className="tabs-bar">

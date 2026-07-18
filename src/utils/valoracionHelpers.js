@@ -288,29 +288,56 @@ export function faseInfo(numero) {
   return FASES.find((f) => f.numero === Number(numero)) || null
 }
 
+// Techo de fase por SPADI (dato de seguridad clínica): aunque los
+// objetivos de una fase ya estén todos cumplidos, no tiene sentido
+// confirmar el paso a la siguiente si el dolor/irritabilidad todavía es
+// el propio de una fase anterior. SPADI ≥10 no deja pasar de Fase 1,
+// SPADI 1-9 no deja pasar de Fase 2; con SPADI 0 no hay techo por dolor
+// (a partir de ahí ya solo deciden los objetivos). Devuelve null si no
+// hay ningún SPADI registrado todavía (no limita).
+export function faseTopeSpadi(spadi) {
+  if (spadi === null || spadi === undefined || spadi === '') return null
+  const valor = Number(spadi)
+  if (valor >= 10) return 1
+  if (valor >= 1) return 2
+  return 4
+}
+
+// SPADI de la valoración más reciente de un cliente (o null si no tiene
+// ninguna valoración con SPADI registrado todavía).
+export function ultimoSpadiCliente(valoraciones, clienteNombre) {
+  const delCliente = (valoraciones || [])
+    .filter((v) => v.clienteNombre === clienteNombre)
+    .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''))
+  if (delCliente.length === 0) return null
+  return spadiTotal(delCliente[delCliente.length - 1].spadi)
+}
+
 // Fase confirmada de un cliente a partir de SUS objetivos por fase (tabla
 // objetivos_cliente_fase, uno por cliente — no el catálogo compartido
-// antiguo). Se puede estar trabajando ya en objetivos de una fase
-// posterior (por eso en "Fases y objetivos" se ven las 4 fases a la vez),
-// pero la fase "oficial" solo avanza cuando TODOS los objetivos de una
-// fase están marcados como cumplidos, y solo si las fases anteriores
-// también lo están (no se puede "saltar" una fase vacía). Si una fase
-// todavía no tiene ningún objetivo escrito, se corta ahí — no cuenta como
-// superada. Devuelve null si la fase 1 todavía no tiene ningún objetivo.
-export function faseAutomatica(objetivosCliente) {
+// antiguo) Y, como techo de seguridad, del SPADI más reciente (ver
+// faseTopeSpadi arriba). Se puede estar trabajando ya en objetivos de una
+// fase posterior (por eso en "Fases y objetivos" se ven las 4 fases a la
+// vez), pero la fase "oficial" avanza en cuanto TODOS los objetivos de la
+// fase actual están cumplidos (y el SPADI no lo impide) — no hace falta
+// que la fase siguiente tenga ya objetivos escritos. Empieza siempre en
+// Fase 1 (es el punto de partida de todo cliente) y llega como mucho
+// hasta Fase 4.
+export function faseAutomatica(objetivosCliente, spadiTope = null) {
   const porFase = {}
   for (const o of objetivosCliente || []) {
     if (!porFase[o.fase]) porFase[o.fase] = []
     porFase[o.fase].push(o)
   }
-  let confirmada = null
-  for (let n = 1; n <= 4; n += 1) {
-    const items = porFase[n] || []
+  let fase = 1
+  while (fase < 4) {
+    if (spadiTope !== null && fase >= spadiTope) break
+    const items = porFase[fase] || []
     if (items.length === 0) break
     if (!items.every((o) => o.cumplido)) break
-    confirmada = n
+    fase += 1
   }
-  return confirmada
+  return fase
 }
 
 // Objetivos de un cliente para una fase concreta, ordenados.

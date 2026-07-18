@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
 import FasesObjetivos from './FasesObjetivos'
-import { faseAutomatica } from '../utils/valoracionHelpers'
+import { faseAutomatica, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
@@ -119,18 +119,15 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                   <tbody>
                     {filtrados.map((cliente, index) => {
                       const trabajadores = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
-                      const fase = faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre))
+                      const spadiTope = faseTopeSpadi(ultimoSpadiCliente(valoraciones, cliente.Nombre))
+                      const fase = faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre), spadiTope)
                       return (
                         <tr key={`${cliente.id || cliente.Nombre}-${index}`}>
                           <td style={{ fontWeight: 600 }}>{cliente.Nombre || '—'}</td>
                           <td>{cliente['Servicio contratado'] || '—'}</td>
                           {esAdmin && <td>{trabajadores.length ? trabajadores.join(', ') : '—'}</td>}
                           <td>
-                            {fase ? (
-                              <span className="status-pill status-activo">Fase {fase}</span>
-                            ) : (
-                              <span style={{ color: 'var(--color-text-secondary)' }}>—</span>
-                            )}
+                            <span className="status-pill status-activo">Fase {fase}</span>
                           </td>
                           <td>{formatDate(cliente['Fecha inicio'])}</td>
                           <td style={{ color: 'var(--color-text-secondary)' }}>
@@ -186,6 +183,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           cliente={fasesCliente}
           objetivosClienteFase={objetivosClienteFase}
           setObjetivosClienteFase={setObjetivosClienteFase}
+          valoraciones={valoraciones}
           onClose={() => setFasesCliente(null)}
         />
       )}

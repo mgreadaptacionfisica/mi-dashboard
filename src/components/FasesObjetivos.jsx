@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { FASES, faseInfo, faseAutomatica, objetivosDeFase } from '../utils/valoracionHelpers'
+import {
+  FASES,
+  faseInfo,
+  faseAutomatica,
+  faseTopeSpadi,
+  ultimoSpadiCliente,
+  objetivosDeFase,
+} from '../utils/valoracionHelpers'
 import {
   insertObjetivoClienteFaseRemote,
   updateObjetivoClienteFaseRemote,
@@ -14,12 +21,19 @@ import {
 // todo — lo que hace que la fase "oficial" avance sola es que TODOS los
 // objetivos de una fase estén marcados como cumplidos (ver faseAutomatica
 // en valoracionHelpers.js).
-export default function FasesObjetivos({ cliente, objetivosClienteFase = [], setObjetivosClienteFase, onClose }) {
+export default function FasesObjetivos({ cliente, objetivosClienteFase = [], setObjetivosClienteFase, valoraciones = [], onClose }) {
   const [nuevoTexto, setNuevoTexto] = useState({})
 
   const objetivosDelCliente = objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre)
-  const faseConfirmada = faseAutomatica(objetivosDelCliente)
+  const spadiActual = ultimoSpadiCliente(valoraciones, cliente.Nombre)
+  const spadiTope = faseTopeSpadi(spadiActual)
+  const faseConfirmada = faseAutomatica(objetivosDelCliente, spadiTope)
   const faseConfirmadaInfo = faseInfo(faseConfirmada)
+  // Fase a la que ya darían derecho solo los objetivos, sin el techo de
+  // SPADI — se usa para avisar cuando es el SPADI el que está reteniendo el
+  // avance, aunque los objetivos ya estén todos cumplidos.
+  const faseSoloObjetivos = faseAutomatica(objetivosDelCliente)
+  const spadiFrenando = faseSoloObjetivos > faseConfirmada
 
   const addObjetivo = (faseNumero) => {
     const texto = (nuevoTexto[faseNumero] || '').trim()
@@ -65,15 +79,14 @@ export default function FasesObjetivos({ cliente, objetivosClienteFase = [], set
           <button className="close-modal-btn" onClick={onClose}>✕</button>
         </div>
 
-        {faseConfirmada ? (
-          <div className="valoracion-fase-banner">
-            📍 <strong>Fase confirmada: {faseConfirmada}</strong> — {faseConfirmadaInfo?.criterio}
-          </div>
-        ) : (
-          <div className="valoracion-fase-banner" style={{ color: 'var(--color-text-secondary)' }}>
-            Sin fase confirmada todavía — añade objetivos a la Fase 1 y márcalos como cumplidos para empezar.
-          </div>
-        )}
+        <div className="valoracion-fase-banner">
+          📍 <strong>Fase confirmada: {faseConfirmada}</strong> — {faseConfirmadaInfo?.criterio}
+          {spadiFrenando && (
+            <div style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
+              🔒 Los objetivos ya permitirían Fase {faseSoloObjetivos}, pero el último SPADI ({spadiActual}) todavía no baja lo suficiente para confirmar ese salto.
+            </div>
+          )}
+        </div>
 
         <div className="fases-objetivos-grid">
           {FASES.map((f) => {
