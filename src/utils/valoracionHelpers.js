@@ -94,12 +94,12 @@ export const ITEMS_FUERZA_CERVICAL = [
 export const ITEMS_MOVILIDAD_HOMBRO = [
   { id: 'flexionHombroDx', label: 'Flexión hombro derecho' },
   { id: 'flexionHombroIzq', label: 'Flexión hombro izquierdo' },
-  { id: 'rotacionExternaAbdDx', label: 'Rotación externa de abducción derecho' },
-  { id: 'rotacionExternaAbdIzq', label: 'Rotación externa de abducción izquierdo' },
-  { id: 'rotacionInternaAbdDx', label: 'Rotación interna de abducción derecho' },
-  { id: 'rotacionInternaAbdIzq', label: 'Rotación interna de abducción izquierdo' },
-  { id: 'rotacionInternaFleDx', label: 'Rotación interna de flexión derecho' },
-  { id: 'rotacionInternaFleIzq', label: 'Rotación interna de flexión izquierdo' },
+  { id: 'rotacionExternaAbdDx', label: 'RE desde ABD derecho' },
+  { id: 'rotacionExternaAbdIzq', label: 'RE desde ABD izquierdo' },
+  { id: 'rotacionInternaAbdDx', label: 'RI desde ABD derecho' },
+  { id: 'rotacionInternaAbdIzq', label: 'RI desde ABD izquierdo' },
+  { id: 'rotacionInternaFleDx', label: 'Rotación desde FLEX derecho' },
+  { id: 'rotacionInternaFleIzq', label: 'Rotación desde FLEX izquierdo' },
   {
     id: 'rotacionExternaDx',
     label: 'Rotación externa derecho',
