@@ -16,6 +16,7 @@ const initialForm = {
   otroServicio: '',
   estado: 'ACTIVO',
   formaPago: 'Stripe',
+  drive: '',
   trabajadores: [],
   fechaInicio: '',
   fechaFin: '',
@@ -230,6 +231,7 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
       'Servicio contratado': nombreServicio,
       'Estado del cliente': formData.estado,
       'Forma de pago': formData.formaPago,
+      Drive: formData.drive,
       Trabajadores: trabajadoresFinal,
       'Fecha inicio': formData.fechaInicio,
       'Fecha fin': formData.fechaFin,
@@ -276,6 +278,7 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
       otroServicio: servicioEncontrado ? '' : servicioActual,
       estado: cliente['Estado del cliente'] || 'ACTIVO',
       formaPago: cliente['Forma de pago'] || 'Stripe',
+      drive: cliente.Drive || '',
       trabajadores: cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : []),
       fechaInicio: cliente['Fecha inicio'] || '',
       fechaFin: cliente['Fecha fin'] || '',
@@ -535,7 +538,12 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
                       )}
                     </td>
                     <td>{cliente['Forma de pago'] || '—'}</td>
-                    <td style={{ color: 'var(--color-text-secondary)' }}>{cliente.Email || '—'}</td>
+                    <td style={{ color: 'var(--color-text-secondary)' }}>
+                      {cliente.Email || '—'}
+                      {cliente.Drive && (
+                        <> · <a href={cliente.Drive} target="_blank" rel="noopener noreferrer">Drive</a></>
+                      )}
+                    </td>
                     <td>
                       <button
                         type="button"
@@ -675,6 +683,13 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
                 <option value="Transferencia">Transferencia</option>
                 <option value="HOTMART">HOTMART</option>
               </select>
+              <label className="lead-detail-label">Carpeta de Google Drive (opcional)</label>
+              <input
+                type="url"
+                placeholder="https://drive.google.com/..."
+                value={formData.drive}
+                onChange={event => setFormData({ ...formData, drive: event.target.value })}
+              />
               <div>
                 <label className="lead-detail-label">Profesionales asignados</label>
                 <MultiTrabajadorSelect
