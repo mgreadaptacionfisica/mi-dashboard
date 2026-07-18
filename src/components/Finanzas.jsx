@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { insertFinanzaRemote, updateFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
 import { insertReglaRecurrenteRemote, updateReglaRecurrenteRemote, deleteReglaRecurrenteRemote } from '../lib/queries/reglasRecurrentes'
 import { entradasPendientes, FRECUENCIAS, TABLAS_RECURRENTES } from '../utils/recurrenciaHelpers'
+import { updateTarifaPasarelaRemote } from '../lib/queries/tarifasPasarela'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -459,6 +460,122 @@ function Recurrentes({
   )
 }
 
+// Tarifas de comisión por pasarela de pago (Stripe/Hotmart/...). Al marcar
+// un cobro en Clientes > Cobros pendientes, se busca aquí la tarifa según
+// la "Forma de pago" del cliente y se genera automáticamente el gasto de
+// comisión (ver utils/comisionesHelpers.js). Aquí solo se edita el
+// porcentaje/fijo/reserva de cada una — no se pueden añadir ni borrar
+// pasarelas nuevas desde aquí (las 4 vienen ya creadas por la migración
+// 39_tarifas_pasarela.sql).
+function Comisiones({ tarifas = [], setTarifas }) {
+  const [editingId, setEditingId] = useState(null)
+  const [formData, setFormData] = useState(null)
+
+  const openEdit = (t) => {
+    setEditingId(t.id)
+    setFormData({
+      porcentaje: String(t.porcentaje ?? 0),
+      fijo: String(t.fijo ?? 0),
+      reservaPct: String(t.reservaPct ?? 0),
+      reservaDias: String(t.reservaDias ?? 0),
+      notas: t.notas || '',
+    })
+  }
+
+  const guardar = (id) => {
+    if (typeof setTarifas !== 'function' || !formData) return
+    const patch = {
+      porcentaje: Number(formData.porcentaje) || 0,
+      fijo: Number(formData.fijo) || 0,
+      reservaPct: Number(formData.reservaPct) || 0,
+      reservaDias: Number(formData.reservaDias) || 0,
+      notas: formData.notas,
+      actualizadoEn: todayISO(),
+    }
+    setTarifas((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
+    updateTarifaPasarelaRemote(id, patch)
+    setEditingId(null)
+    setFormData(null)
+  }
+
+  return (
+    <div className="table-card">
+      <div className="card-header">
+        <div>
+          <div className="card-title">Comisiones de pasarela de pago</div>
+          <div className="card-subtitle">Se aplican solas al marcar un cobro en Clientes &gt; Cobros pendientes, según la "Forma de pago" del cliente</div>
+        </div>
+      </div>
+      <div className="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Pasarela</th>
+              <th>% comisión</th>
+              <th>Fijo</th>
+              <th>Reserva</th>
+              <th>Notas</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tarifas.map((t) => {
+              const enEdicion = editingId === t.id
+              return (
+                <tr key={t.id}>
+                  <td style={{ fontWeight: 600 }}>{t.pasarela || t.id}</td>
+                  <td>
+                    {enEdicion ? (
+                      <input type="number" min="0" step="0.01" value={formData.porcentaje}
+                        onChange={(e) => setFormData({ ...formData, porcentaje: e.target.value })} style={{ width: 70 }} />
+                    ) : `${t.porcentaje}%`}
+                  </td>
+                  <td>
+                    {enEdicion ? (
+                      <input type="number" min="0" step="0.01" value={formData.fijo}
+                        onChange={(e) => setFormData({ ...formData, fijo: e.target.value })} style={{ width: 70 }} />
+                    ) : euro(t.fijo)}
+                  </td>
+                  <td>
+                    {enEdicion ? (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <input type="number" min="0" step="1" placeholder="%" value={formData.reservaPct}
+                          onChange={(e) => setFormData({ ...formData, reservaPct: e.target.value })} style={{ width: 50 }} />
+                        <input type="number" min="0" step="1" placeholder="días" value={formData.reservaDias}
+                          onChange={(e) => setFormData({ ...formData, reservaDias: e.target.value })} style={{ width: 55 }} />
+                      </div>
+                    ) : (
+                      Number(t.reservaPct) > 0 ? `${t.reservaPct}% a ${t.reservaDias} días` : 'Sin reserva'
+                    )}
+                  </td>
+                  <td style={{ color: 'var(--color-text-secondary)', maxWidth: 260, fontSize: 12.5 }}>
+                    {enEdicion ? (
+                      <input value={formData.notas} onChange={(e) => setFormData({ ...formData, notas: e.target.value })} style={{ width: '100%' }} />
+                    ) : (t.notas || '—')}
+                  </td>
+                  <td>
+                    {enEdicion ? (
+                      <>
+                        <button type="button" className="row-action-btn" onClick={() => guardar(t.id)}>Guardar</button>
+                        <button type="button" className="row-action-btn" onClick={() => { setEditingId(null); setFormData(null) }}>Cancelar</button>
+                      </>
+                    ) : (
+                      <button type="button" className="row-action-btn" onClick={() => openEdit(t)}>Editar</button>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+            {tarifas.length === 0 && (
+              <tr><td colSpan={6} className="lead-log-empty">Sin tarifas todavía — ejecuta supabase-sql/39_tarifas_pasarela.sql en Supabase.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // Agrupa las 4 tablas por mes (YYYY-MM) y por año, para ver de un vistazo
 // cómo va la empresa y las finanzas personales de Raúl a lo largo del tiempo.
 function Resumen({ ingresosEmpresa, gastosEmpresa, ingresosPersonales, gastosPersonales }) {
@@ -591,6 +708,7 @@ export default function Finanzas({
   ingresosEmpresa = [], setIngresosEmpresa,
   gastosEmpresa = [], setGastosEmpresa,
   reglasRecurrentes = [], setReglasRecurrentes,
+  tarifasPasarela = [], setTarifasPasarela,
 }) {
   const [activeTab, setActiveTab] = useState('resumen')
 
@@ -665,6 +783,9 @@ export default function Finanzas({
           <button type="button" className={`tab-btn ${activeTab === 'recurrentes' ? 'tab-btn-active' : ''}`} onClick={() => setActiveTab('recurrentes')}>
             🔁 Recurrentes
           </button>
+          <button type="button" className={`tab-btn ${activeTab === 'comisiones' ? 'tab-btn-active' : ''}`} onClick={() => setActiveTab('comisiones')}>
+            ⚙️ Comisiones
+          </button>
         </div>
 
         {activeTab === 'resumen' && (
@@ -695,6 +816,9 @@ export default function Finanzas({
             ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales}
             gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales}
           />
+        )}
+        {activeTab === 'comisiones' && (
+          <Comisiones tarifas={tarifasPasarela} setTarifas={setTarifasPasarela} />
         )}
       </main>
     </>

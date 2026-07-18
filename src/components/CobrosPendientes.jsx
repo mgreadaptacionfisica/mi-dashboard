@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { insertFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
 import { updateClienteRemote } from '../lib/queries/clientes'
+import { calcularComision, construirComisionCobro } from '../utils/comisionesHelpers'
 
 // Vista global de plazos pendientes de cobro, generados desde Clientes al
 // contratar un servicio en 2 o 3 plazos. Al marcar un plazo como cobrado,
@@ -28,7 +29,7 @@ function idIngresoPlazo(clienteId, numero) {
   return `fin-plazo-${clienteId}-${numero}`
 }
 
-export default function CobrosPendientes({ clientes = [], setClientes, setIngresosEmpresa }) {
+export default function CobrosPendientes({ clientes = [], setClientes, setIngresosEmpresa, setGastosEmpresa, tarifasPasarela = [] }) {
   const [editando, setEditando] = useState(null) // `${clienteIndex}-${numero}`
   const [mostrarForm, setMostrarForm] = useState(false)
   const [nuevoCobro, setNuevoCobro] = useState({ clienteId: '', concepto: '', importe: '', fecha: todayISO() })
@@ -44,6 +45,7 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
             clienteId: cliente.id,
             clienteNombre: cliente.Nombre,
             servicio: cliente['Servicio contratado'],
+            formaPago: cliente['Forma de pago'],
             totalPlazos: (cliente.Plazos || []).length,
           })
         }
@@ -51,6 +53,11 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
     })
     return lista.sort((a, b) => (a.fecha || '') < (b.fecha || '') ? -1 : 1)
   }, [clientes])
+
+  // Comisión estimada de la pasarela del cliente (Stripe/Hotmart/...), solo
+  // para mostrarla antes de cobrar — el cálculo real (y el gasto que se
+  // genera) pasa en marcarCobrado, con la tarifa vigente en ese momento.
+  const tarifaDe = (formaPago) => tarifasPasarela.find((t) => t.id === formaPago)
 
   // Añadir un cobro pendiente manualmente, sin pasar por el alta de cliente
   // ni por el cierre de venta en Ventas — para ajustes, cobros sueltos o
@@ -112,30 +119,49 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
   const marcarCobrado = (plazo) => {
     const hoy = todayISO()
     actualizarPlazo(plazo.clienteIndex, plazo.numero, { pagado: true, fechaPago: hoy })
-    if (typeof setIngresosEmpresa === 'function' && plazo.clienteId) {
-      const nuevoIngreso = {
-        id: idIngresoPlazo(plazo.clienteId, plazo.numero),
-        fecha: hoy,
-        concepto: `Plazo ${plazo.numero}/${plazo.totalPlazos} — ${plazo.clienteNombre}${plazo.servicio ? ' · ' + plazo.servicio : ''}`,
-        importe: Number(plazo.importe) || 0,
-        notas: 'Cobro automático desde Clientes > Cobros pendientes',
-        origen: 'cobro_cliente',
-        clienteId: plazo.clienteId,
-        plazoNumero: plazo.numero,
-      }
-      setIngresosEmpresa(prev => [nuevoIngreso, ...prev])
-      insertFinanzaRemote('ingresos_empresa', nuevoIngreso)
+    if (typeof setIngresosEmpresa !== 'function' || !plazo.clienteId) return
+
+    const idBase = idIngresoPlazo(plazo.clienteId, plazo.numero)
+    const tarifa = tarifaDe(plazo.formaPago)
+    const { gasto, notaReserva } = construirComisionCobro({ idBase, fecha: hoy, importeBruto: plazo.importe, tarifa })
+
+    // El ingreso se registra por el importe BRUTO (lo que paga el
+    // cliente) — la comisión de la pasarela se registra aparte, como
+    // gasto, para poder ver por separado cuánto se factura de verdad y
+    // cuánto se comen las comisiones (ver utils/comisionesHelpers.js).
+    const nuevoIngreso = {
+      id: idBase,
+      fecha: hoy,
+      concepto: `Plazo ${plazo.numero}/${plazo.totalPlazos} — ${plazo.clienteNombre}${plazo.servicio ? ' · ' + plazo.servicio : ''}`,
+      importe: Number(plazo.importe) || 0,
+      notas: ['Cobro automático desde Clientes > Cobros pendientes', notaReserva].filter(Boolean).join(' — '),
+      origen: 'cobro_cliente',
+      clienteId: plazo.clienteId,
+      plazoNumero: plazo.numero,
+    }
+    setIngresosEmpresa(prev => [nuevoIngreso, ...prev])
+    insertFinanzaRemote('ingresos_empresa', nuevoIngreso)
+
+    if (gasto && typeof setGastosEmpresa === 'function') {
+      setGastosEmpresa(prev => [gasto, ...prev])
+      insertFinanzaRemote('gastos_empresa', gasto)
     }
   }
 
   // Deshacer: vuelve el plazo a pendiente (sin fecha de cobro) y borra el
-  // ingreso automático que se había creado en Finanzas > Ingresos empresa.
+  // ingreso y la comisión automáticos que se habían creado en Finanzas.
   const deshacerCobro = (plazo) => {
     actualizarPlazo(plazo.clienteIndex, plazo.numero, { pagado: false, fechaPago: null })
-    if (typeof setIngresosEmpresa === 'function' && plazo.clienteId) {
-      const id = idIngresoPlazo(plazo.clienteId, plazo.numero)
-      setIngresosEmpresa(prev => prev.filter(ingreso => ingreso.id !== id))
-      deleteFinanzaRemote('ingresos_empresa', id)
+    if (!plazo.clienteId) return
+    const idBase = idIngresoPlazo(plazo.clienteId, plazo.numero)
+    if (typeof setIngresosEmpresa === 'function') {
+      setIngresosEmpresa(prev => prev.filter(ingreso => ingreso.id !== idBase))
+      deleteFinanzaRemote('ingresos_empresa', idBase)
+    }
+    if (typeof setGastosEmpresa === 'function') {
+      const idComision = `${idBase}-comision`
+      setGastosEmpresa(prev => prev.filter(g => g.id !== idComision))
+      deleteFinanzaRemote('gastos_empresa', idComision)
     }
   }
 
@@ -231,6 +257,7 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
                 <th>Cliente</th>
                 <th>Servicio</th>
                 <th>Plazo</th>
+                <th>Pasarela</th>
                 <th>Importe</th>
                 <th>Fecha prevista</th>
                 <th>Acciones</th>
@@ -240,11 +267,21 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
               {pendientes.map((plazo) => {
                 const key = `${plazo.clienteIndex}-${plazo.numero}`
                 const enEdicion = editando === key
+                const tarifa = tarifaDe(plazo.formaPago)
+                const comisionEstimada = calcularComision(plazo.importe, tarifa)
                 return (
                   <tr key={key}>
                     <td style={{ fontWeight: 600 }}>{plazo.clienteNombre || '—'}</td>
                     <td>{plazo.concepto || plazo.servicio || '—'}</td>
                     <td>{plazo.numero}/{plazo.totalPlazos}</td>
+                    <td>
+                      {plazo.formaPago || '—'}
+                      {comisionEstimada > 0 && (
+                        <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                          Comisión ≈ {euro(comisionEstimada)}
+                        </div>
+                      )}
+                    </td>
                     <td>
                       {enEdicion ? (
                         <input
@@ -286,7 +323,7 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
                 )
               })}
               {pendientes.length === 0 && (
-                <tr><td colSpan={6} className="lead-log-empty">No hay plazos pendientes de cobro.</td></tr>
+                <tr><td colSpan={7} className="lead-log-empty">No hay plazos pendientes de cobro.</td></tr>
               )}
             </tbody>
           </table>
