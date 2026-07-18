@@ -6,6 +6,7 @@ import ValoracionCliente from './ValoracionCliente'
 import CobrosPendientes from './CobrosPendientes'
 import { insertClienteRemote, updateClienteRemote, deleteClienteRemote } from '../lib/queries/clientes'
 import { generarPlazosPorNumero } from '../lib/plazos'
+import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
 
@@ -52,9 +53,15 @@ function normalizaRenueva(valor) {
   return 'No'
 }
 
+// Las fechas vienen de la sincronización con Notion en formatos distintos
+// (ISO, texto largo en español, día-mes-año con guiones o barras). Se
+// interpretan con parseFechaFlexible y se muestran siempre igual
+// (DD/MM/AAAA); si no se puede interpretar se enseña el valor original en
+// vez de ocultarlo, para no perder datos antiguos sin revisar.
 function formatDate(value) {
   if (!value) return '—'
-  return value
+  const iso = parseFechaFlexible(value)
+  return iso ? formatFechaISO(iso) : value
 }
 
 // Ya no se pide "HIGH TICKET / LOW TICKET" a mano: la categoría se deduce
@@ -280,13 +287,17 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
       formaPago: cliente['Forma de pago'] || 'Stripe',
       drive: cliente.Drive || '',
       trabajadores: cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : []),
-      fechaInicio: cliente['Fecha inicio'] || '',
-      fechaFin: cliente['Fecha fin'] || '',
+      // Se normaliza a ISO (para que el selector de calendario la muestre
+      // bien); si viene en un formato que no reconocemos se deja el valor
+      // original para no perderlo — el selector se verá vacío hasta que se
+      // corrija a mano esa fecha concreta.
+      fechaInicio: parseFechaFlexible(cliente['Fecha inicio']) || cliente['Fecha inicio'] || '',
+      fechaFin: parseFechaFlexible(cliente['Fecha fin']) || cliente['Fecha fin'] || '',
       renueva: normalizaRenueva(cliente.Renueva),
       renovacionId: renovacionActual ? (renovacionEncontrada ? renovacionEncontrada.id : 'otro') : RENOVACIONES[0].id,
       otraRenovacion: renovacionActual && !renovacionEncontrada ? renovacionActual : '',
       importeRenovacion: cliente['Importe renovación'] || RENOVACIONES[0].precio,
-      fechaRenovacion: cliente['Fecha renovación'] || '',
+      fechaRenovacion: parseFechaFlexible(cliente['Fecha renovación']) || cliente['Fecha renovación'] || '',
       pago: cliente.Pago || 'COMPLETO',
       importeTotal: cliente['Importe total'] || '',
       plazosDetalle: cliente.Plazos || [],
@@ -698,16 +709,28 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
                   onChange={(nuevos) => setFormData({ ...formData, trabajadores: nuevos })}
                 />
               </div>
+              <label className="lead-detail-label">Fecha inicio</label>
               <input
-                placeholder="Fecha inicio"
-                value={formData.fechaInicio}
+                type="date"
+                value={/^\d{4}-\d{2}-\d{2}$/.test(formData.fechaInicio) ? formData.fechaInicio : ''}
                 onChange={event => setFormData({ ...formData, fechaInicio: event.target.value })}
               />
+              {formData.fechaInicio && !/^\d{4}-\d{2}-\d{2}$/.test(formData.fechaInicio) && (
+                <p style={{ margin: '-6px 0 6px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  Fecha guardada sin interpretar: "{formData.fechaInicio}". Selecciónala de nuevo en el calendario.
+                </p>
+              )}
+              <label className="lead-detail-label">Fecha fin</label>
               <input
-                placeholder="Fecha fin"
-                value={formData.fechaFin}
+                type="date"
+                value={/^\d{4}-\d{2}-\d{2}$/.test(formData.fechaFin) ? formData.fechaFin : ''}
                 onChange={event => setFormData({ ...formData, fechaFin: event.target.value })}
               />
+              {formData.fechaFin && !/^\d{4}-\d{2}-\d{2}$/.test(formData.fechaFin) && (
+                <p style={{ margin: '-6px 0 6px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  Fecha guardada sin interpretar: "{formData.fechaFin}". Selecciónala de nuevo en el calendario.
+                </p>
+              )}
               <label className="lead-detail-label">¿Renueva?</label>
               <select
                 value={formData.renueva}
@@ -749,11 +772,17 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
                     value={formData.importeRenovacion}
                     onChange={event => setFormData({ ...formData, importeRenovacion: event.target.value })}
                   />
+                  <label className="lead-detail-label">Fecha de renovación</label>
                   <input
-                    placeholder="Fecha de renovación"
-                    value={formData.fechaRenovacion}
+                    type="date"
+                    value={/^\d{4}-\d{2}-\d{2}$/.test(formData.fechaRenovacion) ? formData.fechaRenovacion : ''}
                     onChange={event => setFormData({ ...formData, fechaRenovacion: event.target.value })}
                   />
+                  {formData.fechaRenovacion && !/^\d{4}-\d{2}-\d{2}$/.test(formData.fechaRenovacion) && (
+                    <p style={{ margin: '-6px 0 6px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                      Fecha guardada sin interpretar: "{formData.fechaRenovacion}". Selecciónala de nuevo en el calendario.
+                    </p>
+                  )}
                 </div>
               )}
               <div className="modal-actions">

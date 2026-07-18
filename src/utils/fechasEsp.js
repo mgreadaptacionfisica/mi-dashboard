@@ -1,8 +1,10 @@
 // Utilidades para trabajar con las fechas del panel, que pueden venir en
-// dos formatos: texto en español (heredado del CSV/Notion, ej. "31 de mayo
-// de 2026") o ISO (YYYY-MM-DD, los inputs type="date" nuevos). Se usa para
-// poder calcular avisos (renovaciones, etc.) sin importar de dónde venga
-// la fecha.
+// varios formatos heredados del CSV/Notion — texto en español ("31 de mayo
+// de 2026"), con guiones o barras en formato día-mes-año (31-05-2026,
+// 31/05/2026) — o ya en ISO (YYYY-MM-DD, el formato que usan los inputs
+// type="date"). Se usa tanto para mostrar las fechas de forma consistente
+// como para calcular avisos (renovaciones, etc.) sin importar de dónde
+// venga la fecha original.
 
 const MESES_ES = {
   enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
@@ -16,11 +18,23 @@ export function parseFechaFlexible(value) {
   const texto = String(value).trim()
   if (!texto) return null
   if (/^\d{4}-\d{2}-\d{2}/.test(texto)) return texto.slice(0, 10)
-  const m = /^(\d{1,2}) de ([a-záéíóúñ]+) de (\d{4})/i.exec(texto)
-  if (!m) return null
-  const mes = MESES_ES[m[2].toLowerCase()]
-  if (!mes) return null
-  return `${m[3]}-${String(mes).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`
+  const larga = /^(\d{1,2}) de ([a-záéíóúñ]+) de (\d{4})/i.exec(texto)
+  if (larga) {
+    const mes = MESES_ES[larga[2].toLowerCase()]
+    if (mes) return `${larga[3]}-${String(mes).padStart(2, '0')}-${String(larga[1]).padStart(2, '0')}`
+  }
+  // Día-mes-año con guiones o barras (31-05-2026 / 31/05/2026), el formato
+  // habitual en España cuando no es ISO ni texto largo.
+  const corta = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(texto)
+  if (corta) {
+    const dia = Number(corta[1])
+    const mes = Number(corta[2])
+    const anio = Number(corta[3])
+    if (mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) {
+      return `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+    }
+  }
+  return null
 }
 
 export function sumarDias(iso, dias) {

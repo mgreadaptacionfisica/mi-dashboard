@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
 import { ultimaFaseCliente, objetivoCombinado } from '../utils/valoracionHelpers'
+import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
 // propósito de ClientesAdmin.jsx (sidebar item "Clientes"), que lleva toda
@@ -16,7 +17,9 @@ import { ultimaFaseCliente, objetivoCombinado } from '../utils/valoracionHelpers
 // seguimiento/valoración de alguien que ya no es cliente. Los no activos
 // solo se gestionan desde ClientesAdmin (altas/bajas).
 function formatDate(value) {
-  return value || '—'
+  if (!value) return '—'
+  const iso = parseFechaFlexible(value)
+  return iso ? formatFechaISO(iso) : value
 }
 
 export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosFase = [], setObjetivosFase }) {
