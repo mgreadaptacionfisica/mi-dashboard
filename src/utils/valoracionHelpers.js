@@ -80,19 +80,22 @@ export const ITEMS_FUERZA_CERVICAL = [
   { id: 'cervSorensenModificado', label: 'Sorensen modificado', unidad: 's' },
 ]
 
-// 'reDesdeAbdDx/Izq' + 'riDesdeAbdDx/Izq' se fusionaron en un único
-// 'rotacionAbdDx/Izq' (a petición de Raúl, dejaban de tener sentido
-// separados) y 'riDesdeFlexionDx/Izq' pasó a llamarse 'rotacionFleDx/Izq'.
-// Los datos ya guardados con los ids antiguos siguen en la base de datos
-// (es JSON, no se borra nada) pero no se muestran en el formulario nuevo.
-// 'rotacionExternaDx/Izq' y 'rotacionInternaDx/Izq' son ítems nuevos,
-// distintos de los de arriba: se miden en reposo (0° de abducción), no en
-// ABD ni en flexión.
+// 'riDesdeFlexionDx/Izq' pasó a llamarse 'rotacionFleDx/Izq'. La fusión de
+// 'reDesdeAbdDx/Izq' + 'riDesdeAbdDx/Izq' en un único ítem se probó y se
+// deshizo: quedan separados de nuevo como 'rotacionExternaAbdDx/Izq' y
+// 'rotacionInternaAbdDx/Izq'. Los datos ya guardados con ids antiguos
+// (reDesdeAbdDx/Izq, riDesdeAbdDx/Izq, rotacionAbdDx/Izq) siguen en la base
+// de datos tal cual (es JSON, no se borra nada) pero no se muestran en el
+// formulario actual.
+// 'rotacionExternaDx/Izq' y 'rotacionInternaDx/Izq' son ítems distintos:
+// se miden en reposo (0° de abducción), no en ABD ni en flexión.
 export const ITEMS_MOVILIDAD_HOMBRO = [
   { id: 'flexionHombroDx', label: 'Flexión hombro derecho' },
   { id: 'flexionHombroIzq', label: 'Flexión hombro izquierdo' },
-  { id: 'rotacionAbdDx', label: 'Rotación ABD derecho' },
-  { id: 'rotacionAbdIzq', label: 'Rotación ABD izquierdo' },
+  { id: 'rotacionExternaAbdDx', label: 'Rotación externa de abducción derecho' },
+  { id: 'rotacionExternaAbdIzq', label: 'Rotación externa de abducción izquierdo' },
+  { id: 'rotacionInternaAbdDx', label: 'Rotación interna de abducción derecho' },
+  { id: 'rotacionInternaAbdIzq', label: 'Rotación interna de abducción izquierdo' },
   { id: 'rotacionFleDx', label: 'Rotación FLE derecho' },
   { id: 'rotacionFleIzq', label: 'Rotación FLE izquierdo' },
   {
