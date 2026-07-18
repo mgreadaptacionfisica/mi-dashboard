@@ -2739,6 +2739,46 @@ textarea {
   color: #fff;
 }
 
+/* ---------- Hilos de respuesta (Muro de comunicación) ---------- */
+
+.muro-hilo {
+  margin-top: 10px;
+  padding-left: 14px;
+  border-left: 2px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.muro-respuesta {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.muro-responder-btn {
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 6px 0 0;
+  font-weight: 600;
+}
+
+.muro-responder-btn:hover {
+  color: var(--color-blue);
+}
+
+.muro-respuesta-form {
+  margin-top: 8px;
+  padding-left: 14px;
+  border-left: 2px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 @media (max-width: 768px) {
   .contacto-semanal-row {
     grid-template-columns: 1fr repeat(3, 0.6fr);

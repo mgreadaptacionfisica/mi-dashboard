@@ -7,6 +7,7 @@ function fromRow(row) {
     texto: row.texto,
     menciones: row.menciones || [],
     fecha: row.fecha,
+    respuestaAId: row.respuesta_a_id || null,
   }
 }
 
@@ -17,6 +18,7 @@ function toRow(msg) {
     texto: msg.texto,
     menciones: msg.menciones || [],
     fecha: msg.fecha,
+    respuesta_a_id: msg.respuestaAId || null,
   }
 }
 

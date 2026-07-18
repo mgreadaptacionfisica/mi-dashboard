@@ -49,6 +49,8 @@ export default function MuroEquipo({ mensajes, setMensajes, team, miEmail, rol }
   const [texto, setTexto] = useState('')
   const [menciones, setMenciones] = useState([])
   const [soloMenciones, setSoloMenciones] = useState(false)
+  const [respondiendoA, setRespondiendoA] = useState(null)
+  const [textoRespuesta, setTextoRespuesta] = useState('')
 
   const toggleMencion = (nombre) => {
     setMenciones((prev) => prev.includes(nombre) ? prev.filter((n) => n !== nombre) : [...prev, nombre])
@@ -57,22 +59,51 @@ export default function MuroEquipo({ mensajes, setMensajes, team, miEmail, rol }
   const publicar = (event) => {
     event.preventDefault()
     if (!texto.trim()) return
-    const nuevo = { id: `msg-${Date.now()}`, autor, texto: texto.trim(), menciones, fecha: nowISO() }
+    const nuevo = { id: `msg-${Date.now()}`, autor, texto: texto.trim(), menciones, fecha: nowISO(), respuestaAId: null }
     setMensajes((prev) => [nuevo, ...prev])
     insertMensajeRemote(nuevo)
     setTexto('')
     setMenciones([])
   }
 
+  const responder = (event, padreId) => {
+    event.preventDefault()
+    if (!textoRespuesta.trim()) return
+    const nueva = { id: `msg-${Date.now()}`, autor, texto: textoRespuesta.trim(), menciones: [], fecha: nowISO(), respuestaAId: padreId }
+    setMensajes((prev) => [nueva, ...prev])
+    insertMensajeRemote(nueva)
+    setTextoRespuesta('')
+    setRespondiendoA(null)
+  }
+
+  // Al borrar un mensaje raíz se borran también sus respuestas en local
+  // (en Supabase ya pasa solo por el "on delete cascade" de la FK — ver
+  // supabase-sql/38_mensajes_equipo_respuestas.sql).
   const eliminarMensaje = (id) => {
-    setMensajes((prev) => prev.filter((m) => m.id !== id))
+    setMensajes((prev) => prev.filter((m) => m.id !== id && m.respuestaAId !== id))
     deleteMensajeRemote(id)
   }
 
+  // Solo un nivel de hilo: un mensaje raíz (respuestaAId null) y sus
+  // respuestas directas, ordenadas de más antigua a más nueva (como un chat).
+  const raiz = useMemo(() => mensajes.filter((m) => !m.respuestaAId), [mensajes])
+  const respuestasPorPadre = useMemo(() => {
+    const map = {}
+    mensajes.filter((m) => m.respuestaAId).forEach((m) => {
+      map[m.respuestaAId] = map[m.respuestaAId] || []
+      map[m.respuestaAId].push(m)
+    })
+    Object.values(map).forEach((lista) => lista.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')))
+    return map
+  }, [mensajes])
+
+  const hiloMenciona = (m) =>
+    (m.menciones || []).includes(autor) || (respuestasPorPadre[m.id] || []).some((r) => (r.menciones || []).includes(autor))
+
   const mensajesVisibles = useMemo(() => {
-    if (!soloMenciones) return mensajes
-    return mensajes.filter((m) => (m.menciones || []).includes(autor))
-  }, [mensajes, soloMenciones, autor])
+    if (!soloMenciones) return raiz
+    return raiz.filter(hiloMenciona)
+  }, [raiz, soloMenciones, autor, respuestasPorPadre])
 
   return (
     <>
@@ -146,6 +177,41 @@ export default function MuroEquipo({ mensajes, setMensajes, team, miEmail, rol }
                     <span key={n} className={`muro-mencion-pill ${n === autor ? 'muro-mencion-pill-yo' : ''}`}>@{n}</span>
                   ))}
                 </div>
+              )}
+
+              {(respuestasPorPadre[m.id] || []).length > 0 && (
+                <div className="muro-hilo">
+                  {respuestasPorPadre[m.id].map((r) => (
+                    <div key={r.id} className="muro-respuesta">
+                      <div className="muro-mensaje-header">
+                        <strong>{r.autor}</strong>
+                        <span className="muro-mensaje-fecha">{formatFecha(r.fecha)}</span>
+                        <button type="button" className="muro-mensaje-eliminar" title="Eliminar respuesta" onClick={() => eliminarMensaje(r.id)}>🗑️</button>
+                      </div>
+                      <p className="muro-mensaje-texto">{r.texto}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {respondiendoA === m.id ? (
+                <form className="muro-respuesta-form" onSubmit={(e) => responder(e, m.id)}>
+                  <textarea
+                    rows={2}
+                    autoFocus
+                    placeholder={`Responder a ${m.autor}...`}
+                    value={textoRespuesta}
+                    onChange={(e) => setTextoRespuesta(e.target.value)}
+                  />
+                  <div className="modal-actions">
+                    <button type="button" className="secondary-action" onClick={() => { setRespondiendoA(null); setTextoRespuesta('') }}>Cancelar</button>
+                    <button type="submit" className="primary-action">Responder</button>
+                  </div>
+                </form>
+              ) : (
+                <button type="button" className="muro-responder-btn" onClick={() => { setRespondiendoA(m.id); setTextoRespuesta('') }}>
+                  💬 Responder
+                </button>
               )}
             </article>
           ))}
