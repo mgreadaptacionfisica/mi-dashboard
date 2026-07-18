@@ -80,13 +80,15 @@ export const ITEMS_FUERZA_CERVICAL = [
   { id: 'cervSorensenModificado', label: 'Sorensen modificado', unidad: 's' },
 ]
 
-// 'riDesdeFlexionDx/Izq' pasó a llamarse 'rotacionFleDx/Izq'. La fusión de
-// 'reDesdeAbdDx/Izq' + 'riDesdeAbdDx/Izq' en un único ítem se probó y se
-// deshizo: quedan separados de nuevo como 'rotacionExternaAbdDx/Izq' y
+// 'riDesdeFlexionDx/Izq' pasó a llamarse 'rotacionFleDx/Izq' y después,
+// para dejar claro que en flexión solo se mide la interna, a
+// 'rotacionInternaFleDx/Izq'. La fusión de 'reDesdeAbdDx/Izq' +
+// 'riDesdeAbdDx/Izq' en un único ítem se probó y se deshizo: quedan
+// separados de nuevo como 'rotacionExternaAbdDx/Izq' y
 // 'rotacionInternaAbdDx/Izq'. Los datos ya guardados con ids antiguos
-// (reDesdeAbdDx/Izq, riDesdeAbdDx/Izq, rotacionAbdDx/Izq) siguen en la base
-// de datos tal cual (es JSON, no se borra nada) pero no se muestran en el
-// formulario actual.
+// (reDesdeAbdDx/Izq, riDesdeAbdDx/Izq, rotacionAbdDx/Izq, rotacionFleDx/Izq)
+// siguen en la base de datos tal cual (es JSON, no se borra nada) pero no
+// se muestran en el formulario actual.
 // 'rotacionExternaDx/Izq' y 'rotacionInternaDx/Izq' son ítems distintos:
 // se miden en reposo (0° de abducción), no en ABD ni en flexión.
 export const ITEMS_MOVILIDAD_HOMBRO = [
@@ -96,8 +98,8 @@ export const ITEMS_MOVILIDAD_HOMBRO = [
   { id: 'rotacionExternaAbdIzq', label: 'Rotación externa de abducción izquierdo' },
   { id: 'rotacionInternaAbdDx', label: 'Rotación interna de abducción derecho' },
   { id: 'rotacionInternaAbdIzq', label: 'Rotación interna de abducción izquierdo' },
-  { id: 'rotacionFleDx', label: 'Rotación FLE derecho' },
-  { id: 'rotacionFleIzq', label: 'Rotación FLE izquierdo' },
+  { id: 'rotacionInternaFleDx', label: 'Rotación interna de flexión derecho' },
+  { id: 'rotacionInternaFleIzq', label: 'Rotación interna de flexión izquierdo' },
   {
     id: 'rotacionExternaDx',
     label: 'Rotación externa derecho',
