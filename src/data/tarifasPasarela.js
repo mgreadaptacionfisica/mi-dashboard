@@ -16,9 +16,9 @@ const tarifasPasarela = [
     pasarela: 'Hotmart',
     porcentaje: 9.9,
     fijo: 0.50,
-    reservaPct: 10,
+    reservaPct: 20,
     reservaDias: 15,
-    notas: 'Comisión de plataforma 9,9% + 0,50 (moneda de la venta). Reserva de seguridad: 10% retenido 15 días, confirmar en tu panel de Hotmart si tu cuenta tiene otro plazo/porcentaje.',
+    notas: 'Comisión de plataforma 9,9% + 0,50. Todas las ventas Hotmart de Raúl van con financiación seQura (Hotmart la usa para ofrecer pago aplazado al cliente): el reparto real es 80% al momento del cobro y 20% liberado unos 15 días después — ajusta los días si ves que varía.',
     actualizadoEn: '2026-07-18',
   },
   {
