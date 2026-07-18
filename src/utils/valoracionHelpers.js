@@ -80,15 +80,41 @@ export const ITEMS_FUERZA_CERVICAL = [
   { id: 'cervSorensenModificado', label: 'Sorensen modificado', unidad: 's' },
 ]
 
+// 'reDesdeAbdDx/Izq' + 'riDesdeAbdDx/Izq' se fusionaron en un único
+// 'rotacionAbdDx/Izq' (a petición de Raúl, dejaban de tener sentido
+// separados) y 'riDesdeFlexionDx/Izq' pasó a llamarse 'rotacionFleDx/Izq'.
+// Los datos ya guardados con los ids antiguos siguen en la base de datos
+// (es JSON, no se borra nada) pero no se muestran en el formulario nuevo.
+// 'rotacionExternaDx/Izq' y 'rotacionInternaDx/Izq' son ítems nuevos,
+// distintos de los de arriba: se miden en reposo (0° de abducción), no en
+// ABD ni en flexión.
 export const ITEMS_MOVILIDAD_HOMBRO = [
   { id: 'flexionHombroDx', label: 'Flexión hombro derecho' },
   { id: 'flexionHombroIzq', label: 'Flexión hombro izquierdo' },
-  { id: 'reDesdeAbdDx', label: 'RE desde ABD derecho' },
-  { id: 'reDesdeAbdIzq', label: 'RE desde ABD izquierdo' },
-  { id: 'riDesdeAbdDx', label: 'RI desde ABD derecho' },
-  { id: 'riDesdeAbdIzq', label: 'RI desde ABD izquierdo' },
-  { id: 'riDesdeFlexionDx', label: 'RI desde flexión derecho' },
-  { id: 'riDesdeFlexionIzq', label: 'RI desde flexión izquierdo' },
+  { id: 'rotacionAbdDx', label: 'Rotación ABD derecho' },
+  { id: 'rotacionAbdIzq', label: 'Rotación ABD izquierdo' },
+  { id: 'rotacionFleDx', label: 'Rotación FLE derecho' },
+  { id: 'rotacionFleIzq', label: 'Rotación FLE izquierdo' },
+  {
+    id: 'rotacionExternaDx',
+    label: 'Rotación externa derecho',
+    nota: 'En reposo, codo pegado al cuerpo (0° de abducción).',
+  },
+  {
+    id: 'rotacionExternaIzq',
+    label: 'Rotación externa izquierdo',
+    nota: 'En reposo, codo pegado al cuerpo (0° de abducción).',
+  },
+  {
+    id: 'rotacionInternaDx',
+    label: 'Rotación interna derecho',
+    nota: 'En reposo, codo pegado al cuerpo (0° de abducción).',
+  },
+  {
+    id: 'rotacionInternaIzq',
+    label: 'Rotación interna izquierdo',
+    nota: 'En reposo, codo pegado al cuerpo (0° de abducción).',
+  },
   { id: 'extensionHombroDx', label: 'Extensión hombro derecho' },
   { id: 'extensionHombroIzq', label: 'Extensión hombro izquierdo' },
   { id: 'abduccionHombroDx', label: 'Abducción hombro derecho' },
