@@ -115,6 +115,13 @@ const gastosEmpresaDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/gastosProfesionales')
 }
+// Reglas de gastos/ingresos recurrentes (Finanzas > Recurrentes). Tabla
+// nueva, admin-only, sin fallback a datos estáticos.
+const reglasRecurrentesDataPromise = async () => {
+  const { fetchReglasRecurrentes } = await import('./lib/queries/reglasRecurrentes')
+  const remoto = await fetchReglasRecurrentes()
+  return { default: remoto || [] }
+}
 const contenidoIdeasDataPromise = async () => {
   const { fetchContenidoIdeas } = await import('./lib/queries/contenidoIdeas')
   const remoto = await fetchContenidoIdeas()
@@ -238,6 +245,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [gastosPersonales, setGastosPersonales] = useState([])
   const [ingresosEmpresa, setIngresosEmpresa] = useState([])
   const [gastosEmpresa, setGastosEmpresa] = useState([])
+  const [reglasRecurrentes, setReglasRecurrentes] = useState([])
   const [contenidoIdeas, setContenidoIdeas] = useState([])
   const [sops, setSops] = useState([])
   const [contactosSemanales, setContactosSemanales] = useState([])
@@ -257,7 +265,8 @@ function InternalApp({ session, rol, onLogout }) {
       ingresosEmpresaDataPromise(), gastosEmpresaDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
       contactosSemanalesDataPromise(), mensajesEquipoDataPromise(), valoracionesClientesDataPromise(),
       tareasPersonalesDataPromise(), manualesDataPromise(), objetivosFaseDataPromise(),
-    ]).then(([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of]) => {
+      reglasRecurrentesDataPromise(),
+    ]).then(async ([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of, rr]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -268,10 +277,6 @@ function InternalApp({ session, rol, onLogout }) {
       setAdsNotas(an.default)
       setAnuncios(anu.default)
       setRecontactos(rc.default)
-      setIngresosPersonales(ip.default)
-      setGastosPersonales(gp.default)
-      setIngresosEmpresa(ie.default)
-      setGastosEmpresa(ge.default)
       setContenidoIdeas(ci.default)
       setSops(so.default)
       setContactosSemanales(cs.default)
@@ -280,6 +285,34 @@ function InternalApp({ session, rol, onLogout }) {
       setTareasPersonales(ta.default)
       setManuales(ma.default)
       setObjetivosFase(of.default)
+      setReglasRecurrentes(rr.default)
+
+      // Catch-up de gastos/ingresos recurrentes: por cada regla activa,
+      // genera (e inserta en Supabase) las filas de los periodos que ya
+      // deberían existir y todavía no están — así, si pasan varios meses
+      // sin abrir el panel, se rellenan todos de golpe la próxima vez que
+      // se entra. Ver utils/recurrenciaHelpers.js.
+      const { entradasPendientes } = await import('./utils/recurrenciaHelpers')
+      const { insertFinanzaRemote } = await import('./lib/queries/finanzas')
+      const entradasPorTabla = {
+        ingresos_empresa: ie.default,
+        gastos_empresa: ge.default,
+        ingresos_personales: ip.default,
+        gastos_personales: gp.default,
+      }
+      const generadasPorTabla = { ingresos_empresa: [], gastos_empresa: [], ingresos_personales: [], gastos_personales: [] }
+      ;(rr.default || []).forEach((regla) => {
+        const pendientes = entradasPendientes(regla, entradasPorTabla[regla.tabla] || [])
+        pendientes.forEach((entrada) => {
+          generadasPorTabla[regla.tabla].push(entrada)
+          insertFinanzaRemote(regla.tabla, entrada)
+        })
+      })
+      setIngresosEmpresa([...generadasPorTabla.ingresos_empresa, ...ie.default])
+      setGastosEmpresa([...generadasPorTabla.gastos_empresa, ...ge.default])
+      setIngresosPersonales([...generadasPorTabla.ingresos_personales, ...ip.default])
+      setGastosPersonales([...generadasPorTabla.gastos_personales, ...gp.default])
+
       setDataLoaded(true)
     })
     return () => { cancelled = true }
@@ -319,6 +352,7 @@ function InternalApp({ session, rol, onLogout }) {
           gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales}
           ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa}
           gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa}
+          reglasRecurrentes={reglasRecurrentes} setReglasRecurrentes={setReglasRecurrentes}
         />
       )
       case 'onboarding':   return <Onboarding />

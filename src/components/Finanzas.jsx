@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import { insertFinanzaRemote, updateFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
+import { insertReglaRecurrenteRemote, updateReglaRecurrenteRemote, deleteReglaRecurrenteRemote } from '../lib/queries/reglasRecurrentes'
+import { entradasPendientes, FRECUENCIAS, TABLAS_RECURRENTES } from '../utils/recurrenciaHelpers'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -25,9 +27,9 @@ function euro(n) {
   return `${(Number(n) || 0).toLocaleString('es-ES', { maximumFractionDigits: 2 })}€`
 }
 
-const initialForm = { fecha: todayISO(), concepto: '', importe: '', notas: '' }
+const initialForm = { fecha: todayISO(), concepto: '', importe: '', notas: '', recurrente: false, frecuenciaMeses: '1', fechaFinRecurrencia: '' }
 
-function LedgerTable({ entradas = [], setEntradas, etiqueta, mostrarOrigen, tabla }) {
+function LedgerTable({ entradas = [], setEntradas, etiqueta, mostrarOrigen, tabla, setReglas }) {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState(initialForm)
@@ -84,6 +86,30 @@ function LedgerTable({ entradas = [], setEntradas, etiqueta, mostrarOrigen, tabl
       }
       setEntradas((prev) => prev.map((e) => (e.id === editingId ? { ...e, ...patch } : e)))
       updateFinanzaRemote(tabla, editingId, patch)
+    } else if (formData.recurrente) {
+      // En vez de una fila suelta, se crea la regla (que se repetirá sola
+      // cada X meses — ver utils/recurrenciaHelpers.js) y se genera de una
+      // vez la primera fila (y cualquier otra que ya tocara, si la fecha
+      // de inicio es anterior a hoy).
+      const nuevaRegla = {
+        id: `regla-${Date.now()}`,
+        tabla,
+        concepto: formData.concepto.trim(),
+        importe: Number(formData.importe) || 0,
+        categoria: '',
+        notas: formData.notas.trim(),
+        fechaInicio: formData.fecha,
+        frecuenciaMeses: Number(formData.frecuenciaMeses) || 1,
+        fechaFin: formData.fechaFinRecurrencia || null,
+        activa: true,
+      }
+      if (typeof setReglas === 'function') {
+        setReglas((prev) => [nuevaRegla, ...prev])
+        insertReglaRecurrenteRemote(nuevaRegla)
+      }
+      const nuevasEntradas = entradasPendientes(nuevaRegla, entradas)
+      nuevasEntradas.forEach((entrada) => insertFinanzaRemote(tabla, entrada))
+      setEntradas((prev) => [...nuevasEntradas, ...prev])
     } else {
       const nueva = {
         id: `fin-${Date.now()}`,
@@ -144,7 +170,12 @@ function LedgerTable({ entradas = [], setEntradas, etiqueta, mostrarOrigen, tabl
               {ordenadas.map((entrada) => (
                 <tr key={entrada.id}>
                   <td>{formatFecha(entrada.fecha)}</td>
-                  <td style={{ fontWeight: 600 }}>{entrada.concepto || '—'}</td>
+                  <td style={{ fontWeight: 600 }}>
+                    {entrada.reglaRecurrenteId && (
+                      <span title="Generado por una regla recurrente — gestiónala en la pestaña Recurrentes" style={{ marginRight: 4 }}>🔁</span>
+                    )}
+                    {entrada.concepto || '—'}
+                  </td>
                   {mostrarOrigen && (
                     <td>
                       {entrada.origen === 'equipo' || entrada.origen === 'cobro_cliente'
@@ -188,6 +219,26 @@ function LedgerTable({ entradas = [], setEntradas, etiqueta, mostrarOrigen, tabl
                 onChange={(e) => setFormData({ ...formData, importe: e.target.value })} />
               <input placeholder="Notas (opcional)" value={formData.notas}
                 onChange={(e) => setFormData({ ...formData, notas: e.target.value })} />
+              {!editingId && (
+                <div className="recurrente-toggle">
+                  <label className="tareas-check">
+                    <input type="checkbox" checked={formData.recurrente}
+                      onChange={(e) => setFormData({ ...formData, recurrente: e.target.checked })} />
+                    <span>🔁 Es recurrente (se repite solo, no hace falta volver a apuntarlo)</span>
+                  </label>
+                  {formData.recurrente && (
+                    <div className="recurrente-opciones">
+                      <select value={formData.frecuenciaMeses}
+                        onChange={(e) => setFormData({ ...formData, frecuenciaMeses: e.target.value })}>
+                        {FRECUENCIAS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                      </select>
+                      <label className="lead-detail-label" style={{ margin: 0 }}>Fecha fin (opcional)</label>
+                      <input type="date" value={formData.fechaFinRecurrencia}
+                        onChange={(e) => setFormData({ ...formData, fechaFinRecurrencia: e.target.value })} />
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="modal-actions">
                 <button type="button" className="secondary-action" onClick={() => setShowForm(false)}>Cancelar</button>
                 <button type="submit" className="primary-action">Guardar</button>
@@ -197,6 +248,214 @@ function LedgerTable({ entradas = [], setEntradas, etiqueta, mostrarOrigen, tabl
         </div>
       )}
     </>
+  )
+}
+
+function formatFrecuencia(n) {
+  const f = FRECUENCIAS.find((x) => x.value === Number(n))
+  return f ? f.label : `Cada ${n} meses`
+}
+
+const initialReglaForm = { tabla: 'gastos_empresa', concepto: '', importe: '', categoria: '', notas: '', fechaInicio: todayISO(), frecuenciaMeses: '1', fechaFin: '' }
+
+// Gestión de las reglas recurrentes de las 4 tablas a la vez (se puede
+// crear una regla nueva directamente aquí, o desde el check "🔁 Es
+// recurrente" al añadir un registro en cualquiera de las 4 pestañas). Al
+// crear/editar/reanudar una regla se generan al momento las filas de los
+// periodos que ya tocan (ver utils/recurrenciaHelpers.js), sin esperar a
+// la próxima vez que se abra el panel.
+function Recurrentes({
+  reglas = [], setReglas,
+  ingresosEmpresa = [], setIngresosEmpresa,
+  gastosEmpresa = [], setGastosEmpresa,
+  ingresosPersonales = [], setIngresosPersonales,
+  gastosPersonales = [], setGastosPersonales,
+}) {
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [formData, setFormData] = useState(initialReglaForm)
+
+  const entradasPorTabla = {
+    ingresos_empresa: [ingresosEmpresa, setIngresosEmpresa],
+    gastos_empresa: [gastosEmpresa, setGastosEmpresa],
+    ingresos_personales: [ingresosPersonales, setIngresosPersonales],
+    gastos_personales: [gastosPersonales, setGastosPersonales],
+  }
+
+  const generarPendientes = (regla) => {
+    const [entradasActuales, setEntradasActuales] = entradasPorTabla[regla.tabla] || [[], null]
+    const nuevasEntradas = entradasPendientes(regla, entradasActuales)
+    if (nuevasEntradas.length === 0) return
+    nuevasEntradas.forEach((entrada) => insertFinanzaRemote(regla.tabla, entrada))
+    if (typeof setEntradasActuales === 'function') setEntradasActuales((prev) => [...nuevasEntradas, ...prev])
+  }
+
+  const ordenadas = useMemo(
+    () => [...reglas].sort((a, b) => (a.fechaInicio < b.fechaInicio ? 1 : -1)),
+    [reglas]
+  )
+
+  const openNew = () => {
+    setEditingId(null)
+    setFormData({ ...initialReglaForm, fechaInicio: todayISO() })
+    setShowForm(true)
+  }
+
+  const openEdit = (regla) => {
+    setEditingId(regla.id)
+    setFormData({
+      tabla: regla.tabla,
+      concepto: regla.concepto || '',
+      importe: regla.importe ?? '',
+      categoria: regla.categoria || '',
+      notas: regla.notas || '',
+      fechaInicio: regla.fechaInicio || todayISO(),
+      frecuenciaMeses: String(regla.frecuenciaMeses || 1),
+      fechaFin: regla.fechaFin || '',
+    })
+    setShowForm(true)
+  }
+
+  const eliminar = (id) => {
+    if (typeof setReglas !== 'function') return
+    if (!window.confirm('¿Eliminar esta regla recurrente? Dejará de generar filas nuevas — las que ya se crearon no se borran.')) return
+    setReglas((prev) => prev.filter((r) => r.id !== id))
+    deleteReglaRecurrenteRemote(id)
+  }
+
+  const toggleActiva = (regla) => {
+    if (typeof setReglas !== 'function') return
+    const activa = !regla.activa
+    const actualizada = { ...regla, activa }
+    setReglas((prev) => prev.map((r) => (r.id === regla.id ? actualizada : r)))
+    updateReglaRecurrenteRemote(regla.id, { activa })
+    if (activa) generarPendientes(actualizada)
+  }
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    if (typeof setReglas !== 'function') return
+    const patch = {
+      tabla: formData.tabla,
+      concepto: formData.concepto.trim(),
+      importe: Number(formData.importe) || 0,
+      categoria: formData.categoria.trim(),
+      notas: formData.notas.trim(),
+      fechaInicio: formData.fechaInicio,
+      frecuenciaMeses: Number(formData.frecuenciaMeses) || 1,
+      fechaFin: formData.fechaFin || null,
+    }
+    let reglaCompleta
+    if (editingId) {
+      reglaCompleta = { ...reglas.find((r) => r.id === editingId), ...patch, id: editingId }
+      setReglas((prev) => prev.map((r) => (r.id === editingId ? reglaCompleta : r)))
+      updateReglaRecurrenteRemote(editingId, patch)
+    } else {
+      reglaCompleta = { id: `regla-${Date.now()}`, activa: true, ...patch }
+      setReglas((prev) => [reglaCompleta, ...prev])
+      insertReglaRecurrenteRemote(reglaCompleta)
+    }
+    if (reglaCompleta.activa !== false) generarPendientes(reglaCompleta)
+    setShowForm(false)
+    setEditingId(null)
+    setFormData(initialReglaForm)
+  }
+
+  return (
+    <div className="table-card">
+      <div className="card-header">
+        <div>
+          <div className="card-title">Gastos e ingresos recurrentes</div>
+          <div className="card-subtitle">{reglas.length} reglas — cada una genera sola su fila en la tabla que toque</div>
+        </div>
+        <button type="button" className="add-client-btn" onClick={openNew}>＋ Añadir regla</button>
+      </div>
+      <div className="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Concepto</th>
+              <th>Importe</th>
+              <th>Frecuencia</th>
+              <th>Inicio</th>
+              <th>Fin</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ordenadas.map((regla) => (
+              <tr key={regla.id}>
+                <td>{TABLAS_RECURRENTES.find((t) => t.value === regla.tabla)?.label || regla.tabla}</td>
+                <td style={{ fontWeight: 600 }}>{regla.concepto || '—'}</td>
+                <td>{euro(regla.importe)}</td>
+                <td>{formatFrecuencia(regla.frecuenciaMeses)}</td>
+                <td>{formatFecha(regla.fechaInicio)}</td>
+                <td>{regla.fechaFin ? formatFecha(regla.fechaFin) : 'Sin fin'}</td>
+                <td>
+                  {regla.activa
+                    ? <span className="status-pill status-activo">Activa</span>
+                    : <span className="status-pill status-inactivo">Pausada</span>}
+                </td>
+                <td>
+                  <button type="button" className="row-action-btn" onClick={() => openEdit(regla)}>Editar</button>
+                  <button type="button" className="row-action-btn" onClick={() => toggleActiva(regla)}>{regla.activa ? 'Pausar' : 'Reanudar'}</button>
+                  <button type="button" className="row-action-btn" onClick={() => eliminar(regla.id)}>Eliminar</button>
+                </td>
+              </tr>
+            ))}
+            {ordenadas.length === 0 && (
+              <tr><td colSpan={8} className="lead-log-empty">Sin reglas recurrentes todavía — márcalo al añadir un gasto/ingreso, o créala aquí directamente.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {showForm && (
+        <div className="client-modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="client-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <div>
+                <div className="card-title">{editingId ? 'Editar regla recurrente' : 'Añadir regla recurrente'}</div>
+                <div className="card-subtitle">Se generará sola una fila por cada periodo</div>
+              </div>
+              <button className="close-modal-btn" onClick={() => setShowForm(false)}>✕</button>
+            </div>
+            <form className="modal-form" onSubmit={handleSubmit}>
+              <label className="lead-detail-label">Tipo</label>
+              <select value={formData.tabla} onChange={(e) => setFormData({ ...formData, tabla: e.target.value })} disabled={Boolean(editingId)}>
+                {TABLAS_RECURRENTES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+              <input required placeholder="Concepto" value={formData.concepto}
+                onChange={(e) => setFormData({ ...formData, concepto: e.target.value })} />
+              <input type="number" min="0" step="0.01" placeholder="Importe (€)" value={formData.importe}
+                onChange={(e) => setFormData({ ...formData, importe: e.target.value })} />
+              {formData.tabla === 'gastos_empresa' && (
+                <input placeholder="Categoría (opcional)" value={formData.categoria}
+                  onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} />
+              )}
+              <label className="lead-detail-label">Fecha de inicio</label>
+              <input type="date" required value={formData.fechaInicio}
+                onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })} />
+              <label className="lead-detail-label">Repetir</label>
+              <select value={formData.frecuenciaMeses} onChange={(e) => setFormData({ ...formData, frecuenciaMeses: e.target.value })}>
+                {FRECUENCIAS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+              </select>
+              <label className="lead-detail-label">Fecha fin (opcional)</label>
+              <input type="date" value={formData.fechaFin}
+                onChange={(e) => setFormData({ ...formData, fechaFin: e.target.value })} />
+              <input placeholder="Notas (opcional)" value={formData.notas}
+                onChange={(e) => setFormData({ ...formData, notas: e.target.value })} />
+              <div className="modal-actions">
+                <button type="button" className="secondary-action" onClick={() => setShowForm(false)}>Cancelar</button>
+                <button type="submit" className="primary-action">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -331,6 +590,7 @@ export default function Finanzas({
   gastosPersonales = [], setGastosPersonales,
   ingresosEmpresa = [], setIngresosEmpresa,
   gastosEmpresa = [], setGastosEmpresa,
+  reglasRecurrentes = [], setReglasRecurrentes,
 }) {
   const [activeTab, setActiveTab] = useState('resumen')
 
@@ -402,6 +662,9 @@ export default function Finanzas({
           <button type="button" className={`tab-btn ${activeTab === 'gastosPersonales' ? 'tab-btn-active' : ''}`} onClick={() => setActiveTab('gastosPersonales')}>
             👤 Gastos personales
           </button>
+          <button type="button" className={`tab-btn ${activeTab === 'recurrentes' ? 'tab-btn-active' : ''}`} onClick={() => setActiveTab('recurrentes')}>
+            🔁 Recurrentes
+          </button>
         </div>
 
         {activeTab === 'resumen' && (
@@ -413,16 +676,25 @@ export default function Finanzas({
           />
         )}
         {activeTab === 'ingresosEmpresa' && (
-          <LedgerTable entradas={ingresosEmpresa} setEntradas={setIngresosEmpresa} etiqueta="Ingresos empresa" mostrarOrigen tabla="ingresos_empresa" />
+          <LedgerTable entradas={ingresosEmpresa} setEntradas={setIngresosEmpresa} etiqueta="Ingresos empresa" mostrarOrigen tabla="ingresos_empresa" setReglas={setReglasRecurrentes} />
         )}
         {activeTab === 'gastosEmpresa' && (
-          <LedgerTable entradas={gastosEmpresa} setEntradas={setGastosEmpresa} etiqueta="Gastos empresa" mostrarOrigen tabla="gastos_empresa" />
+          <LedgerTable entradas={gastosEmpresa} setEntradas={setGastosEmpresa} etiqueta="Gastos empresa" mostrarOrigen tabla="gastos_empresa" setReglas={setReglasRecurrentes} />
         )}
         {activeTab === 'ingresosPersonales' && (
-          <LedgerTable entradas={ingresosPersonales} setEntradas={setIngresosPersonales} etiqueta="Ingresos personales" tabla="ingresos_personales" />
+          <LedgerTable entradas={ingresosPersonales} setEntradas={setIngresosPersonales} etiqueta="Ingresos personales" tabla="ingresos_personales" setReglas={setReglasRecurrentes} />
         )}
         {activeTab === 'gastosPersonales' && (
-          <LedgerTable entradas={gastosPersonales} setEntradas={setGastosPersonales} etiqueta="Gastos personales" tabla="gastos_personales" />
+          <LedgerTable entradas={gastosPersonales} setEntradas={setGastosPersonales} etiqueta="Gastos personales" tabla="gastos_personales" setReglas={setReglasRecurrentes} />
+        )}
+        {activeTab === 'recurrentes' && (
+          <Recurrentes
+            reglas={reglasRecurrentes} setReglas={setReglasRecurrentes}
+            ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa}
+            gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa}
+            ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales}
+            gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales}
+          />
         )}
       </main>
     </>

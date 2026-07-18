@@ -11,20 +11,27 @@ import { supabase } from '../supabaseClient'
 // columnas de origen.
 // Un solo helper genérico parametrizado por tabla, en vez de cuadruplicar
 // fetch/insert/update/delete.
+// reglaRecurrenteId (regla_recurrente_id): si esta fila la generó una regla
+// recurrente en vez de meterla Raúl a mano — ver utils/recurrenciaHelpers.js
+// y supabase-sql/37_reglas_recurrentes.sql.
 const TABLAS = {
   ingresos_personales: {
     id: 'id', fecha: 'fecha', concepto: 'concepto', importe: 'importe', notas: 'notas',
+    reglaRecurrenteId: 'regla_recurrente_id',
   },
   gastos_personales: {
     id: 'id', fecha: 'fecha', concepto: 'concepto', importe: 'importe', notas: 'notas',
+    reglaRecurrenteId: 'regla_recurrente_id',
   },
   gastos_empresa: {
     id: 'id', fecha: 'fecha', concepto: 'concepto', importe: 'importe', notas: 'notas',
     categoria: 'categoria', origen: 'origen', personaNombre: 'persona_nombre', mes: 'mes',
+    reglaRecurrenteId: 'regla_recurrente_id',
   },
   ingresos_empresa: {
     id: 'id', fecha: 'fecha', concepto: 'concepto', importe: 'importe', notas: 'notas',
     origen: 'origen', clienteId: 'cliente_id', plazoNumero: 'plazo_numero',
+    reglaRecurrenteId: 'regla_recurrente_id',
   },
 }
 

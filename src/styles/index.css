@@ -1438,6 +1438,32 @@ tbody td {
   gap: 10px;
 }
 
+/* ---------- Gastos/ingresos recurrentes (Finanzas) ---------- */
+
+.recurrente-toggle {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recurrente-opciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-left: 28px;
+}
+
+.recurrente-opciones select,
+.recurrente-opciones input {
+  flex: 1;
+  min-width: 140px;
+}
+
 .tareas-aviso-banner {
   background: linear-gradient(135deg, #fff7ed, #ffedd5);
   border: 1px solid #fdba74;
