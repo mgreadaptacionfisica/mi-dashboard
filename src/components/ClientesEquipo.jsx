@@ -264,6 +264,9 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       const trabajadores = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
                       const spadiTope = faseTopeSpadi(ultimoSpadiCliente(valoraciones, cliente.Nombre))
                       const fase = faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre), spadiTope)
+                      const registroSemana = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaActual)
+                      const progresoTareas = progresoSemana(registroSemana)
+                      const tareasPendientes = progresoTareas.total - progresoTareas.revisadas
                       return (
                         <tr key={`${cliente.id || cliente.Nombre}-${index}`}>
                           <td style={{ fontWeight: 600 }}>{cliente.Nombre || '—'}</td>
@@ -300,7 +303,14 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                             )}
                           </td>
                           <td>
-                            <button type="button" className="row-action-btn" onClick={() => setSeguimientoCliente(cliente)}>📋 Seguimiento</button>
+                            <button type="button" className="row-action-btn" onClick={() => setSeguimientoCliente(cliente)}>
+                              📋 Seguimiento
+                              {tareasPendientes > 0 && (
+                                <span className="tareas-pendientes-badge" title={`${tareasPendientes} tarea${tareasPendientes === 1 ? '' : 's'} sin revisar esta semana`}>
+                                  {tareasPendientes}
+                                </span>
+                              )}
+                            </button>
                             <button type="button" className="row-action-btn" onClick={() => setValoracionCliente(cliente)}>📈 Valoración</button>
                             <button type="button" className="row-action-btn" onClick={() => setFasesCliente(cliente)}>🎯 Fases y objetivos</button>
                           </td>

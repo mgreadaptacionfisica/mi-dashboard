@@ -2603,6 +2603,24 @@ textarea {
   color: var(--color-green);
 }
 
+/* Aviso de tareas sin revisar en el botón "Seguimiento" de cada cliente
+   (a petición de Raúl): un número visible sin tener que entrar. */
+.tareas-pendientes-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin-left: 5px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: white;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* ---------- Comunicación: muro del equipo ---------- */
 
 .muro-page {
