@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import ContactoSemanal from './ContactoSemanal'
 import SeguimientoCliente from './SeguimientoCliente'
 import CalendarioTecnico from './CalendarioTecnico'
 import {
@@ -27,7 +26,7 @@ const SEGUIMIENTO_HELPERS = { semanaActualISO, progresoSemana, progresoContacto,
 // (editar/eliminar miembro, marcar pago) que siguen siendo solo de admin.
 // Se identifica quién ha iniciado sesión cruzando su email con su ficha en
 // Equipo, mismo patrón que ClientesEquipo/MuroEquipo/VideosParaEditar.
-export default function MiFicha({ team, clientes = [], seguimientos = [], setSeguimientos, contactosSemanales = [], setContactosSemanales, gastosEmpresa = [], tareas = [], miEmail }) {
+export default function MiFicha({ team, clientes = [], seguimientos = [], setSeguimientos, contactosSemanales = [], setContactosSemanales, gastosEmpresa = [], tareas = [], valoraciones = [], objetivosClienteFase = [], revisionesSemanales = [], setRevisionesSemanales, miEmail }) {
   const [vista, setVista] = useState('resumen')
   const [seguimientoClienteAbierto, setSeguimientoClienteAbierto] = useState(null)
   const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', hora: '10', minuto: '00', ampm: 'AM' })
@@ -188,22 +187,11 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], setSeg
 
             <div className="table-card" style={{ marginTop: 20 }}>
               <div className="card-header">
-                <div>
-                  <div className="card-title">Contacto semanal por cliente (3x)</div>
-                  <div className="card-subtitle">Lunes: inicio de semana · Miércoles/jueves: mitad de semana · Viernes/sábado: fin de semana.</div>
-                </div>
-              </div>
-              <ContactoSemanal
-                clientes={actividad.clientesAsignados}
-                contactos={contactosSemanales}
-                setContactos={setContactosSemanales}
-              />
-            </div>
-
-            <div className="table-card" style={{ marginTop: 20 }}>
-              <div className="card-header">
                 <div><div className="card-title">Seguimiento semanal por cliente</div></div>
               </div>
+              <p className="lead-log-empty" style={{ padding: '0 20px' }}>
+                El contacto semanal (inicio/mitad/fin) y el check final de cada cliente se gestionan ahora desde "📋 Seguimiento y Valoración", junto con las tareas de la semana — todo en un mismo sitio.
+              </p>
               <ul className="lead-log-list seguimiento-resumen-list">
                 {seguimiento?.resumenClientes.map(({ cliente, progreso, ultimaRevision }, i) => (
                   <li key={i} className="seguimiento-resumen-item">
@@ -278,6 +266,11 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], setSeg
           cliente={seguimientoClienteAbierto}
           seguimientos={seguimientos}
           setSeguimientos={setSeguimientos}
+          valoraciones={valoraciones}
+          objetivosClienteFase={objetivosClienteFase}
+          revisionesSemanales={revisionesSemanales}
+          setRevisionesSemanales={setRevisionesSemanales}
+          miEmail={miEmail}
           onClose={() => setSeguimientoClienteAbierto(null)}
         />
       )}

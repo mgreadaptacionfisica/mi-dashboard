@@ -2574,6 +2574,35 @@ textarea {
   border-radius: 6px;
 }
 
+/* Versión compacta de los 3 puntos de contacto semanal, inline en la
+   tabla de Seguimiento y Valoración (en vez de una tabla aparte en Mi
+   Ficha) — un vistazo y un clic por punto, sin salir de la página. */
+.contacto-semanal-inline {
+  display: flex;
+  gap: 4px;
+}
+
+.contacto-dot {
+  border: 1px solid var(--color-border);
+  background: #f8fafc;
+  border-radius: 999px;
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.contacto-dot-hecho {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--color-green);
+  color: var(--color-green);
+}
+
 /* ---------- Comunicación: muro del equipo ---------- */
 
 .muro-page {

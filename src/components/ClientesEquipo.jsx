@@ -4,7 +4,8 @@ import ValoracionCliente from './ValoracionCliente'
 import FasesObjetivos from './FasesObjetivos'
 import { faseAutomatica, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
-import { semanaActualISO, formatRangoSemana, resumenRevisionesSemana } from '../utils/seguimientoHelpers'
+import { semanaActualISO, formatRangoSemana, resumenRevisionesSemana, PUNTOS_CONTACTO, contactoVacio } from '../utils/seguimientoHelpers'
+import { upsertContactoSemanalRemote } from '../lib/queries/contactosSemanales'
 
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
 // propósito de ClientesAdmin.jsx (sidebar item "Clientes"), que lleva toda
@@ -24,7 +25,7 @@ function formatDate(value) {
   return iso ? formatFechaISO(iso) : value
 }
 
-export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, onRefrescar, refrescando }) {
+export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, onRefrescar, refrescando }) {
   const [search, setSearch] = useState('')
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
@@ -74,6 +75,26 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     [misClientes, revisionesSemanales, semanaActual]
   )
   const todoRevisado = resumen.total > 0 && resumen.revisados === resumen.total
+
+  // Contacto semanal (3 checks: inicio/mitad/fin) directamente en esta
+  // misma tabla — a petición de Raúl, para que el técnico no tenga que ir
+  // y venir entre Mi Ficha y Seguimiento y Valoración para su ronda
+  // semanal: aquí ya ve y marca todo lo de cada cliente de un vistazo.
+  const toggleContacto = (clienteNombre, puntoId, actual) => {
+    if (typeof setContactosSemanales !== 'function') return
+    const existente = contactosSemanales.find((c) => c.clienteNombre === clienteNombre && c.semana === semanaActual)
+    const base = existente ? { ...existente } : { clienteNombre, semana: semanaActual, ...contactoVacio() }
+    const actualizado = {
+      ...base,
+      [puntoId]: { ...contactoVacio()[puntoId], ...base[puntoId], hecho: !actual, fecha: !actual ? new Date().toISOString().slice(0, 10) : null },
+    }
+    setContactosSemanales((prev) => {
+      const existe = prev.some((c) => c.clienteNombre === clienteNombre && c.semana === semanaActual)
+      if (existe) return prev.map((c) => (c.clienteNombre === clienteNombre && c.semana === semanaActual ? actualizado : c))
+      return [...prev, actualizado]
+    })
+    upsertContactoSemanalRemote(actualizado)
+  }
 
   return (
     <>
@@ -164,6 +185,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       <th>Servicio</th>
                       {esAdmin && <th>Entrenador</th>}
                       <th>Fase</th>
+                      <th title="Inicio / mitad / fin de semana">Contacto semanal</th>
                       <th>Inicio</th>
                       <th>Contacto</th>
                       <th>Acciones</th>
@@ -182,6 +204,26 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           <td>
                             <span className="status-pill status-activo">Fase {fase}</span>
                           </td>
+                          <td>
+                            <div className="contacto-semanal-inline">
+                              {PUNTOS_CONTACTO.map((p) => {
+                                const registroContacto = contactosSemanales.find((c) => c.clienteNombre === cliente.Nombre && c.semana === semanaActual)
+                                const punto = registroContacto?.[p.id]
+                                const hecho = Boolean(punto?.hecho)
+                                return (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    className={`contacto-dot ${hecho ? 'contacto-dot-hecho' : ''}`}
+                                    title={`${p.label} (${p.dia})${hecho && punto?.fecha ? ` — contactado el ${punto.fecha}` : ''}`}
+                                    onClick={() => toggleContacto(cliente.Nombre, p.id, hecho)}
+                                  >
+                                    {hecho ? '●' : '○'}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </td>
                           <td>{formatDate(cliente['Fecha inicio'])}</td>
                           <td style={{ color: 'var(--color-text-secondary)' }}>
                             {cliente.Email || '—'}{cliente.Teléfono ? ` · ${cliente.Teléfono}` : ''}
@@ -198,7 +240,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       )
                     })}
                     {filtrados.length === 0 && (
-                      <tr><td colSpan={esAdmin ? 7 : 6} className="lead-log-empty">
+                      <tr><td colSpan={esAdmin ? 8 : 7} className="lead-log-empty">
                         {misClientes.length === 0 ? 'No hay clientes activos asignados.' : 'Sin resultados con ese filtro.'}
                       </td></tr>
                     )}
