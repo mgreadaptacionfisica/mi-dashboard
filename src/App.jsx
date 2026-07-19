@@ -356,6 +356,32 @@ function InternalApp({ session, rol, onLogout }) {
   // hace falta un segundo efecto que vuelva a pedir las tablas de Finanzas
   // al iniciar sesión, porque nunca se piden "sin sesión todavía".
 
+  // Refresco manual de "Seguimiento y Valoración" (a petición de Raúl): el
+  // panel no tiene Supabase Realtime, así que si un compañero marca su
+  // check semanal, revisa una tarea o cambia una valoración mientras tú ya
+  // tienes el panel abierto, no lo ves hasta recargar. En vez de montar
+  // Realtime (más complejidad y superficie de bugs para un dato que no
+  // hace falta ver al instante), este botón vuelve a pedir solo lo que usa
+  // esa vista — más barato y más simple que recargar toda la página.
+  const [refrescandoSeguimiento, setRefrescandoSeguimiento] = useState(false)
+  const refrescarSeguimientoEquipo = async () => {
+    setRefrescandoSeguimiento(true)
+    try {
+      const [c, t, s, vc, ocf, rs] = await Promise.all([
+        clientesDataPromise(), teamDataPromise(), seguimientosDataPromise(),
+        valoracionesClientesDataPromise(), objetivosClienteFaseDataPromise(), revisionesSemanalesDataPromise(),
+      ])
+      setClientes(c.default)
+      setTeam(t.default)
+      setSeguimientos(s.default)
+      setValoracionesClientes(vc.default)
+      setObjetivosClienteFase(ocf.default)
+      setRevisionesSemanales(rs.default)
+    } finally {
+      setRefrescandoSeguimiento(false)
+    }
+  }
+
   const irVistaPermitida = (id) => {
     if (seccionesPermitidas.includes(id)) setActiveView(id)
   }
@@ -369,7 +395,7 @@ function InternalApp({ session, rol, onLogout }) {
       case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} tareasPersonales={tareasPersonales} contenidoIdeas={contenidoIdeas} />
       case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
       case 'clientes':     return <ClientesAdmin clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={objetivosClienteFase} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={revisionesSemanales} setRevisionesSemanales={setRevisionesSemanales} miEmail={session?.user?.email} />
-      case 'clientes-equipo': return <ClientesEquipo clientes={clientes} team={team} miEmail={session?.user?.email} rol={rol} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} objetivosClienteFase={objetivosClienteFase} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={revisionesSemanales} setRevisionesSemanales={setRevisionesSemanales} />
+      case 'clientes-equipo': return <ClientesEquipo clientes={clientes} team={team} miEmail={session?.user?.email} rol={rol} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} objetivosClienteFase={objetivosClienteFase} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={revisionesSemanales} setRevisionesSemanales={setRevisionesSemanales} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} />
       case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} />
       case 'mi-ficha':     return <MiFicha team={team} clientes={clientes} seguimientos={seguimientos} setSeguimientos={setSeguimientos} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} gastosEmpresa={gastosEmpresa} tareas={tareasPersonales} miEmail={session?.user?.email} />
       case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} miEmail={session?.user?.email} rol={rol} />

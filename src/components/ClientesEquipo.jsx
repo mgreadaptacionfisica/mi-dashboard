@@ -24,7 +24,7 @@ function formatDate(value) {
   return iso ? formatFechaISO(iso) : value
 }
 
-export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales }) {
+export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, onRefrescar, refrescando }) {
   const [search, setSearch] = useState('')
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
@@ -82,6 +82,17 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           <div className="topbar-title">Seguimiento y Valoración</div>
           <div className="topbar-subtitle">{esAdmin ? 'Clientes activos de todo el equipo' : 'Tus clientes activos'}</div>
         </div>
+        {typeof onRefrescar === 'function' && (
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={onRefrescar}
+            disabled={refrescando}
+            title="El panel no se actualiza solo: si un compañero acaba de marcar algo, pulsa aquí para verlo sin recargar la página."
+          >
+            {refrescando ? '⏳ Actualizando…' : '🔄 Actualizar'}
+          </button>
+        )}
       </header>
 
       <main className="page-content">
