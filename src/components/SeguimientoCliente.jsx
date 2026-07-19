@@ -36,7 +36,6 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
   }, [seguimientos, cliente, mondayISO])
 
   const diasActuales = registro?.dias || semanaVacia()
-  const comentarios = registro?.comentarios || ''
   const cambiosPendientes = registro?.cambiosPendientes || []
   const progreso = progresoSemana(registro)
 
@@ -78,10 +77,6 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
       i === index ? { ...t, revisado: !t.revisado, revisadoEn: !t.revisado ? todayISO() : null } : t
     )
     actualizarSemana({ dias: { ...diasActuales, [diaId]: { tareas } } })
-  }
-
-  const setComentarios = (texto) => {
-    actualizarSemana({ comentarios: texto })
   }
 
   // Cambios/tareas de la semana con checkbox propio (independiente de las
@@ -237,12 +232,6 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
             />
             <button type="button" className="secondary-action" onClick={addCambio}>＋</button>
           </div>
-          <textarea
-            rows={3}
-            value={comentarios}
-            onChange={(e) => setComentarios(e.target.value)}
-            placeholder="Notas generales para la próxima semana, comentarios del equipo..."
-          />
         </div>
 
         <div className={`seguimiento-check-final${semanaRevisada ? ' seguimiento-check-final-marcado' : ''}`}>
