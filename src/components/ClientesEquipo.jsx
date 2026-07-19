@@ -23,9 +23,18 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-// El input nativo type="time" no siempre muestra AM/PM (depende del
-// idioma del sistema del navegador) — mostramos aparte el formato 12h
-// con AM/PM para que quede claro sin perder la precisión de minuto a minuto.
+// Hora en formato 12h con AM/PM seleccionable a mano (hora 1-12 + minuto
+// libre, sin tramos) — coincide con el formato que muestran apps externas
+// como Harbiz ("09:32am"), así se copia directo sin convertir a 24h.
+const HORAS_12 = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
+
+function horaA24h(horaH, horaM, ampm) {
+  let h = Number(horaH) % 12
+  if (ampm === 'PM') h += 12
+  const m = String(horaM).padStart(2, '0').slice(0, 2)
+  return `${String(h).padStart(2, '0')}:${m}`
+}
+
 function formatHora12(horaHHMM) {
   if (!horaHHMM) return ''
   const [h, m] = horaHHMM.split(':').map(Number)
@@ -58,7 +67,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
   const [fasesCliente, setFasesCliente] = useState(null)
-  const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', hora: '10:00' })
+  const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', horaH: '10', horaM: '00', ampm: 'AM' })
 
   // Admin: acceso a Seguimiento/Valoración de TODOS los clientes (no solo
   // los suyos), porque necesita poder supervisar el trabajo de cualquier
@@ -136,7 +145,8 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     event.preventDefault()
     if (!revisionForm.clienteNombre) return
     const semana = semanaActualISO()
-    const nuevaRevision = { persona: miPersona?.nombre || miEmail || 'Admin', dia: revisionForm.dia, hora: revisionForm.hora, fecha: todayISO() }
+    const hora24 = horaA24h(revisionForm.horaH, revisionForm.horaM, revisionForm.ampm)
+    const nuevaRevision = { persona: miPersona?.nombre || miEmail || 'Admin', dia: revisionForm.dia, hora: hora24, fecha: todayISO() }
 
     const existente = seguimientos.find((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semana)
     const actualizado = existente
@@ -352,12 +362,27 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                     {DIAS_SEMANA.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
                   </select>
                   <span className="seguimiento-hora-picker">
+                    <select value={revisionForm.horaH} onChange={(e) => setRevisionForm({ ...revisionForm, horaH: e.target.value })}>
+                      {HORAS_12.map((h) => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                    <span>:</span>
                     <input
-                      type="time"
-                      value={revisionForm.hora}
-                      onChange={(e) => setRevisionForm({ ...revisionForm, hora: e.target.value })}
+                      type="number"
+                      min="0"
+                      max="59"
+                      className="seguimiento-minuto-input"
+                      value={revisionForm.horaM}
+                      onChange={(e) => {
+                        const raw = e.target.value.slice(0, 2)
+                        const clamped = raw === '' ? '' : String(Math.min(59, Math.max(0, Number(raw))))
+                        setRevisionForm({ ...revisionForm, horaM: clamped })
+                      }}
+                      onBlur={(e) => setRevisionForm({ ...revisionForm, horaM: String(e.target.value || '0').padStart(2, '0') })}
                     />
-                    {revisionForm.hora && <span className="seguimiento-hora-ampm">{formatHora12(revisionForm.hora)}</span>}
+                    <select value={revisionForm.ampm} onChange={(e) => setRevisionForm({ ...revisionForm, ampm: e.target.value })}>
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
                   </span>
                   <button type="submit" className="primary-action">Registrar</button>
                 </form>

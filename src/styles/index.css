@@ -2209,19 +2209,14 @@ tbody td {
   padding: 7px 6px;
 }
 
-.seguimiento-hora-picker input[type='time'] {
+.seguimiento-minuto-input {
+  width: 48px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  padding: 6px 8px;
+  padding: 6px 6px;
   font-size: 14px;
   background: #fff;
-}
-
-.seguimiento-hora-ampm {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
+  text-align: center;
 }
 
 .tabs-bar {
