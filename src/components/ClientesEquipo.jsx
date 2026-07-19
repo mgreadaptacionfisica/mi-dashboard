@@ -229,11 +229,9 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                     <span> — ✅ Todos los clientes tienen el seguimiento de esta semana revisado.</span>
                   ) : (
                     <span style={{ color: 'var(--color-text-secondary)' }}>
-                      {' '}— faltan por revisar: {misClientes
-                        .filter((c) => !revisionesSemanales.some((r) => r.clienteNombre === c.Nombre && r.semana === semanaActual && r.revisado))
-                        .map((c) => c.Nombre)
-                        .join(', ')}
-                      . El check se marca desde el "📋 Seguimiento" de cada cliente.
+                      {' '}— faltan {resumen.total - resumen.revisados} de {resumen.total} clientes por revisar. El
+                      aviso <span className="semana-pendiente-badge" style={{ verticalAlign: 'middle' }}>⏳</span> junto
+                      al nombre marca quién falta; el check se marca desde el "📋 Seguimiento" de cada cliente.
                     </span>
                   )}
                 </div>
@@ -287,9 +285,15 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       const registroSemana = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaActual)
                       const progresoTareas = progresoSemana(registroSemana)
                       const tareasPendientes = progresoTareas.total - progresoTareas.revisadas
+                      const semanaRevisadaCliente = revisionesSemanales.some((r) => r.clienteNombre === cliente.Nombre && r.semana === semanaActual && r.revisado)
                       return (
                         <tr key={`${cliente.id || cliente.Nombre}-${index}`}>
-                          <td style={{ fontWeight: 600 }}>{cliente.Nombre || '—'}</td>
+                          <td style={{ fontWeight: 600 }}>
+                            {cliente.Nombre || '—'}
+                            {!semanaRevisadaCliente && (
+                              <span className="semana-pendiente-badge" title="Semana sin revisar y cerrar todavía">⏳</span>
+                            )}
+                          </td>
                           <td>{cliente['Servicio contratado'] || '—'}</td>
                           {esAdmin && <td>{trabajadores.length ? trabajadores.join(', ') : '—'}</td>}
                           <td>

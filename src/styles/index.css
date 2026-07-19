@@ -2631,6 +2631,16 @@ textarea {
   line-height: 1;
 }
 
+/* Aviso junto al nombre del cliente cuando la semana todavía no está
+   revisada y cerrada (check final) — sustituye a la leyenda con la lista
+   de nombres, que se hacía muy larga con muchos clientes. */
+.semana-pendiente-badge {
+  display: inline-block;
+  margin-left: 5px;
+  font-size: 12px;
+  cursor: help;
+}
+
 /* ---------- Comunicación: muro del equipo ---------- */
 
 .muro-page {

@@ -147,8 +147,11 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], contac
                 {pendientesCheckFinal.length > 0 && (
                   <div className="seguimiento-cierre-banner" style={{ marginTop: 16 }}>
                     <div>
-                      <strong>Te falta cerrar la semana de:</strong>{' '}
-                      <span style={{ color: 'var(--color-text-secondary)' }}>{pendientesCheckFinal.map((c) => c.Nombre).join(', ')}</span>
+                      <strong>Te falta cerrar la semana</strong>{' '}
+                      <span style={{ color: 'var(--color-text-secondary)' }}>
+                        de {pendientesCheckFinal.length} cliente{pendientesCheckFinal.length === 1 ? '' : 's'} — mira
+                        el aviso ⏳ junto al nombre en la lista de abajo.
+                      </span>
                     </div>
                     {typeof onNavigate === 'function' && (
                       <button type="button" className="secondary-action" onClick={() => onNavigate('clientes-equipo')}>Ir a revisar →</button>
@@ -199,7 +202,11 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], contac
                     {seguimiento?.resumenClientes.map(({ cliente, progreso, ultimaRevision }, i) => (
                       <li key={i} className="seguimiento-resumen-item">
                         <div>
-                          <strong>{cliente.Nombre}</strong> — {cliente['Servicio contratado'] || 'Sin servicio'}
+                          <strong>{cliente.Nombre}</strong>
+                          {pendientesCheckFinal.some((c) => c.Nombre === cliente.Nombre) && (
+                            <span className="semana-pendiente-badge" title="Semana sin revisar y cerrar todavía">⏳</span>
+                          )}
+                          {' '}— {cliente['Servicio contratado'] || 'Sin servicio'}
                           <div className="seguimiento-resumen-meta">
                             {progreso.total > 0 ? (
                               <span className={`seguimiento-progreso-badge ${progreso.porcentaje === 100 ? 'seguimiento-progreso-completo' : progreso.porcentaje === 0 ? 'seguimiento-progreso-pendiente' : ''}`}>
