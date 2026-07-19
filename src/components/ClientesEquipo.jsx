@@ -23,9 +23,6 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-const HORAS_12 = Array.from({ length: 12 }, (_, i) => String(i + 1))
-const MINUTOS = ['00', '15', '30', '45']
-
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
 // propósito de ClientesAdmin.jsx (sidebar item "Clientes"), que lleva toda
 // la parte de contabilidad/gestión (importes, plazos, cobros, altas/bajas,
@@ -49,7 +46,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
   const [fasesCliente, setFasesCliente] = useState(null)
-  const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', hora: '10', minuto: '00', ampm: 'AM' })
+  const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', hora: '10:00' })
 
   // Admin: acceso a Seguimiento/Valoración de TODOS los clientes (no solo
   // los suyos), porque necesita poder supervisar el trabajo de cualquier
@@ -127,8 +124,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     event.preventDefault()
     if (!revisionForm.clienteNombre) return
     const semana = semanaActualISO()
-    const horaTexto = `${revisionForm.hora}:${revisionForm.minuto} ${revisionForm.ampm}`
-    const nuevaRevision = { persona: miPersona?.nombre || miEmail || 'Admin', dia: revisionForm.dia, hora: horaTexto, fecha: todayISO() }
+    const nuevaRevision = { persona: miPersona?.nombre || miEmail || 'Admin', dia: revisionForm.dia, hora: revisionForm.hora, fecha: todayISO() }
 
     const existente = seguimientos.find((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semana)
     const actualizado = existente
@@ -343,19 +339,11 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                   <select value={revisionForm.dia} onChange={(e) => setRevisionForm({ ...revisionForm, dia: e.target.value })}>
                     {DIAS_SEMANA.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
                   </select>
-                  <div className="seguimiento-hora-picker">
-                    <select value={revisionForm.hora} onChange={(e) => setRevisionForm({ ...revisionForm, hora: e.target.value })}>
-                      {HORAS_12.map((h) => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                    <span>:</span>
-                    <select value={revisionForm.minuto} onChange={(e) => setRevisionForm({ ...revisionForm, minuto: e.target.value })}>
-                      {MINUTOS.map((m) => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                    <select value={revisionForm.ampm} onChange={(e) => setRevisionForm({ ...revisionForm, ampm: e.target.value })}>
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
+                  <input
+                    type="time"
+                    value={revisionForm.hora}
+                    onChange={(e) => setRevisionForm({ ...revisionForm, hora: e.target.value })}
+                  />
                   <button type="submit" className="primary-action">Registrar</button>
                 </form>
 
