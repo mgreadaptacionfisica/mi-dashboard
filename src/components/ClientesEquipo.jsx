@@ -120,14 +120,15 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   // Raúl: toda la operatividad vive en Seguimiento y Valoración; Mi Ficha
   // se queda solo con los datos del técnico y un resumen). Deja constancia
   // de cuándo se revisó a un cliente (día/hora), aparte del check final y
-  // de las tareas — solo tiene sentido para un técnico revisando lo suyo,
-  // no para el admin en su vista global.
+  // de las tareas. Visible también para admin (antes se ocultaba del todo
+  // si no tenía ficha de técnico) — si no hay miPersona se registra con su
+  // email como identificador.
   const registrarRevisionPropia = (event) => {
     event.preventDefault()
-    if (!revisionForm.clienteNombre || !miPersona) return
+    if (!revisionForm.clienteNombre) return
     const semana = semanaActualISO()
     const horaTexto = `${revisionForm.hora}:${revisionForm.minuto} ${revisionForm.ampm}`
-    const nuevaRevision = { persona: miPersona.nombre, dia: revisionForm.dia, hora: horaTexto, fecha: todayISO() }
+    const nuevaRevision = { persona: miPersona?.nombre || miEmail || 'Admin', dia: revisionForm.dia, hora: horaTexto, fecha: todayISO() }
 
     const existente = seguimientos.find((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semana)
     const actualizado = existente
@@ -256,6 +257,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       <th title="Inicio / mitad / fin de semana">Contacto semanal</th>
                       <th>Inicio</th>
                       <th>Contacto</th>
+                      <th>Última revisión</th>
                       <th>Acciones</th>
                     </tr>
                   </thead>
@@ -302,6 +304,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                               <> · <a href={cliente.Drive} target="_blank" rel="noopener noreferrer">Drive</a></>
                             )}
                           </td>
+                          <td style={{ color: 'var(--color-text-secondary)' }}>{ultimaRevisionCliente(seguimientos, cliente.Nombre) || 'nunca'}</td>
                           <td>
                             <button type="button" className="row-action-btn" onClick={() => setSeguimientoCliente(cliente)}>
                               📋 Seguimiento
@@ -318,7 +321,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       )
                     })}
                     {filtrados.length === 0 && (
-                      <tr><td colSpan={esAdmin ? 8 : 7} className="lead-log-empty">
+                      <tr><td colSpan={esAdmin ? 9 : 8} className="lead-log-empty">
                         {misClientes.length === 0 ? 'No hay clientes activos asignados.' : 'Sin resultados con ese filtro.'}
                       </td></tr>
                     )}
@@ -327,7 +330,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
               </div>
             </div>
 
-            {!esAdmin && miPersona && (
+            {misClientes.length > 0 && (
               <div className="table-card" style={{ marginTop: 20 }}>
                 <div className="card-header">
                   <div><div className="card-title">Registrar última revisión</div></div>
