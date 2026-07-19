@@ -23,6 +23,18 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
+// El input nativo type="time" no siempre muestra AM/PM (depende del
+// idioma del sistema del navegador) — mostramos aparte el formato 12h
+// con AM/PM para que quede claro sin perder la precisión de minuto a minuto.
+function formatHora12(horaHHMM) {
+  if (!horaHHMM) return ''
+  const [h, m] = horaHHMM.split(':').map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return ''
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
 // propósito de ClientesAdmin.jsx (sidebar item "Clientes"), que lleva toda
 // la parte de contabilidad/gestión (importes, plazos, cobros, altas/bajas,
@@ -339,11 +351,14 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                   <select value={revisionForm.dia} onChange={(e) => setRevisionForm({ ...revisionForm, dia: e.target.value })}>
                     {DIAS_SEMANA.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
                   </select>
-                  <input
-                    type="time"
-                    value={revisionForm.hora}
-                    onChange={(e) => setRevisionForm({ ...revisionForm, hora: e.target.value })}
-                  />
+                  <span className="seguimiento-hora-picker">
+                    <input
+                      type="time"
+                      value={revisionForm.hora}
+                      onChange={(e) => setRevisionForm({ ...revisionForm, hora: e.target.value })}
+                    />
+                    {revisionForm.hora && <span className="seguimiento-hora-ampm">{formatHora12(revisionForm.hora)}</span>}
+                  </span>
                   <button type="submit" className="primary-action">Registrar</button>
                 </form>
 
@@ -351,7 +366,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                   <ul className="lead-log-list" style={{ margin: '10px 20px 20px' }}>
                     {seguimientoResumen.revisionesRecientes.map((r, i) => (
                       <li key={i}>
-                        Revisaste a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {r.hora} ({r.fecha})
+                        Revisaste a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {formatHora12(r.hora) || r.hora} ({r.fecha})
                       </li>
                     ))}
                   </ul>
