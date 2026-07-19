@@ -4,8 +4,27 @@ import ValoracionCliente from './ValoracionCliente'
 import FasesObjetivos from './FasesObjetivos'
 import { faseAutomatica, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
-import { semanaActualISO, formatRangoSemana, resumenRevisionesSemana, PUNTOS_CONTACTO, contactoVacio } from '../utils/seguimientoHelpers'
+import {
+  semanaActualISO,
+  formatRangoSemana,
+  resumenRevisionesSemana,
+  PUNTOS_CONTACTO,
+  contactoVacio,
+  DIAS_SEMANA,
+  semanaVacia,
+  progresoSemana,
+  ultimaRevisionCliente,
+} from '../utils/seguimientoHelpers'
 import { upsertContactoSemanalRemote } from '../lib/queries/contactosSemanales'
+import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
+import { seguimientoTecnico } from '../utils/equipoHelpers'
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+const HORAS_12 = Array.from({ length: 12 }, (_, i) => String(i + 1))
+const MINUTOS = ['00', '15', '30', '45']
 
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
 // propósito de ClientesAdmin.jsx (sidebar item "Clientes"), que lleva toda
@@ -25,11 +44,12 @@ function formatDate(value) {
   return iso ? formatFechaISO(iso) : value
 }
 
-export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, onRefrescar, refrescando }) {
+export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, onRefrescar, refrescando, onNavigate }) {
   const [search, setSearch] = useState('')
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
   const [fasesCliente, setFasesCliente] = useState(null)
+  const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', hora: '10', minuto: '00', ampm: 'AM' })
 
   // Admin: acceso a Seguimiento/Valoración de TODOS los clientes (no solo
   // los suyos), porque necesita poder supervisar el trabajo de cualquier
@@ -96,6 +116,39 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     upsertContactoSemanalRemote(actualizado)
   }
 
+  // "Registrar última revisión" (movido aquí desde Mi Ficha, a petición de
+  // Raúl: toda la operatividad vive en Seguimiento y Valoración; Mi Ficha
+  // se queda solo con los datos del técnico y un resumen). Deja constancia
+  // de cuándo se revisó a un cliente (día/hora), aparte del check final y
+  // de las tareas — solo tiene sentido para un técnico revisando lo suyo,
+  // no para el admin en su vista global.
+  const registrarRevisionPropia = (event) => {
+    event.preventDefault()
+    if (!revisionForm.clienteNombre || !miPersona) return
+    const semana = semanaActualISO()
+    const horaTexto = `${revisionForm.hora}:${revisionForm.minuto} ${revisionForm.ampm}`
+    const nuevaRevision = { persona: miPersona.nombre, dia: revisionForm.dia, hora: horaTexto, fecha: todayISO() }
+
+    const existente = seguimientos.find((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semana)
+    const actualizado = existente
+      ? { ...existente, revisiones: [nuevaRevision, ...(existente.revisiones || [])] }
+      : { clienteNombre: revisionForm.clienteNombre, semana, dias: semanaVacia(), comentarios: '', revisiones: [nuevaRevision] }
+
+    setSeguimientos((prev) => {
+      const existe = prev.some((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semana)
+      if (existe) {
+        return prev.map((s) => (s.clienteNombre === revisionForm.clienteNombre && s.semana === semana) ? actualizado : s)
+      }
+      return [...prev, actualizado]
+    })
+    upsertSeguimientoRemote(actualizado)
+  }
+
+  const seguimientoResumen = useMemo(
+    () => seguimientoTecnico(misClientes, seguimientos, { semanaActualISO, progresoSemana, ultimaRevisionCliente }),
+    [misClientes, seguimientos]
+  )
+
   return (
     <>
       <header className="topbar">
@@ -103,17 +156,22 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           <div className="topbar-title">Seguimiento y Valoración</div>
           <div className="topbar-subtitle">{esAdmin ? 'Clientes activos de todo el equipo' : 'Tus clientes activos'}</div>
         </div>
-        {typeof onRefrescar === 'function' && (
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={onRefrescar}
-            disabled={refrescando}
-            title="El panel no se actualiza solo: si un compañero acaba de marcar algo, pulsa aquí para verlo sin recargar la página."
-          >
-            {refrescando ? '⏳ Actualizando…' : '🔄 Actualizar'}
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {typeof onNavigate === 'function' && (
+            <button type="button" className="secondary-action" onClick={() => onNavigate('mi-ficha')}>🧑 Mi Ficha</button>
+          )}
+          {typeof onRefrescar === 'function' && (
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={onRefrescar}
+              disabled={refrescando}
+              title="El panel no se actualiza solo: si un compañero acaba de marcar algo, pulsa aquí para verlo sin recargar la página."
+            >
+              {refrescando ? '⏳ Actualizando…' : '🔄 Actualizar'}
+            </button>
+          )}
+        </div>
       </header>
 
       <main className="page-content">
@@ -258,6 +316,47 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                 </table>
               </div>
             </div>
+
+            {!esAdmin && miPersona && (
+              <div className="table-card" style={{ marginTop: 20 }}>
+                <div className="card-header">
+                  <div><div className="card-title">Registrar última revisión</div></div>
+                </div>
+                <form className="seguimiento-revision-form" onSubmit={registrarRevisionPropia}>
+                  <select value={revisionForm.clienteNombre} onChange={(e) => setRevisionForm({ ...revisionForm, clienteNombre: e.target.value })}>
+                    <option value="">Selecciona cliente</option>
+                    {misClientes.map((c) => <option key={c.Nombre} value={c.Nombre}>{c.Nombre}</option>)}
+                  </select>
+                  <select value={revisionForm.dia} onChange={(e) => setRevisionForm({ ...revisionForm, dia: e.target.value })}>
+                    {DIAS_SEMANA.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+                  </select>
+                  <div className="seguimiento-hora-picker">
+                    <select value={revisionForm.hora} onChange={(e) => setRevisionForm({ ...revisionForm, hora: e.target.value })}>
+                      {HORAS_12.map((h) => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                    <span>:</span>
+                    <select value={revisionForm.minuto} onChange={(e) => setRevisionForm({ ...revisionForm, minuto: e.target.value })}>
+                      {MINUTOS.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                    <select value={revisionForm.ampm} onChange={(e) => setRevisionForm({ ...revisionForm, ampm: e.target.value })}>
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </div>
+                  <button type="submit" className="primary-action">Registrar</button>
+                </form>
+
+                {seguimientoResumen?.revisionesRecientes?.length > 0 && (
+                  <ul className="lead-log-list" style={{ margin: '10px 20px 20px' }}>
+                    {seguimientoResumen.revisionesRecientes.map((r, i) => (
+                      <li key={i}>
+                        Revisaste a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {r.hora} ({r.fecha})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </>
         )}
       </main>

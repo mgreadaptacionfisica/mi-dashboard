@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import SeguimientoCliente from './SeguimientoCliente'
 import CalendarioTecnico from './CalendarioTecnico'
 import {
   actividadTecnico,
@@ -8,28 +7,20 @@ import {
   mesActualISO,
   mesLabel,
 } from '../utils/equipoHelpers'
-import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, semanaVacia, DIAS_SEMANA } from '../utils/seguimientoHelpers'
-import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
+import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, resumenRevisionesSemana } from '../utils/seguimientoHelpers'
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-const HORAS_12 = Array.from({ length: 12 }, (_, i) => String(i + 1))
-const MINUTOS = ['00', '15', '30', '45']
 const SEGUIMIENTO_HELPERS = { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente }
 
-// Vista de auto-servicio del equipo técnico: su propia ficha, su pago, su
-// seguimiento semanal y su registro de contacto/revisiones — la misma
-// información que antes solo veía Raúl desde Equipo.jsx (detalle de
-// técnico), pero recortada a "lo mío" y sin las acciones de gestión
-// (editar/eliminar miembro, marcar pago) que siguen siendo solo de admin.
-// Se identifica quién ha iniciado sesión cruzando su email con su ficha en
-// Equipo, mismo patrón que ClientesEquipo/MuroEquipo/VideosParaEditar.
-export default function MiFicha({ team, clientes = [], seguimientos = [], setSeguimientos, contactosSemanales = [], setContactosSemanales, gastosEmpresa = [], tareas = [], valoraciones = [], objetivosClienteFase = [], revisionesSemanales = [], setRevisionesSemanales, miEmail }) {
+// Vista de auto-servicio del equipo técnico — a petición de Raúl, esta
+// página ya NO tiene operatividad (nada de marcar tareas, contacto,
+// check final ni registrar revisiones: todo eso vive en "Seguimiento y
+// Valoración", ver ClientesEquipo.jsx). Aquí solo hay datos propios del
+// técnico (ficha, pago) y un resumen tipo dashboard de lo que ha hecho y
+// lo que le falta por hacer esta semana, con un botón para ir a hacer el
+// trabajo real. Se identifica quién ha iniciado sesión cruzando su email
+// con su ficha en Equipo, mismo patrón que ClientesEquipo/MuroEquipo.
+export default function MiFicha({ team, clientes = [], seguimientos = [], contactosSemanales = [], gastosEmpresa = [], tareas = [], revisionesSemanales = [], miEmail, onNavigate }) {
   const [vista, setVista] = useState('resumen')
-  const [seguimientoClienteAbierto, setSeguimientoClienteAbierto] = useState(null)
-  const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', hora: '10', minuto: '00', ampm: 'AM' })
 
   const misTareasConFecha = useMemo(
     () => tareas.filter((t) => t.propietarioEmail === miEmail && t.fecha),
@@ -56,40 +47,31 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], setSeg
     [actividad, contactosSemanales]
   )
 
+  const semanaActual = semanaActualISO()
+  const checkFinal = useMemo(
+    () => (actividad ? resumenRevisionesSemana(actividad.clientesAsignados, revisionesSemanales, semanaActual) : null),
+    [actividad, revisionesSemanales, semanaActual]
+  )
+  const pendientesCheckFinal = useMemo(() => {
+    if (!actividad) return []
+    return actividad.clientesAsignados.filter(
+      (c) => !revisionesSemanales.some((r) => r.clienteNombre === c.Nombre && r.semana === semanaActual && r.revisado)
+    )
+  }, [actividad, revisionesSemanales, semanaActual])
+
   const mesKey = mesActualISO()
   const pagoRegistrado = miPersona && gastosEmpresa.find((g) => g.origen === 'equipo' && g.personaNombre === miPersona.nombre && g.mes === mesKey)
-
-  const registrarRevisionPropia = (event) => {
-    event.preventDefault()
-    if (!revisionForm.clienteNombre || !miPersona) return
-    const semanaActual = semanaActualISO()
-    const horaTexto = `${revisionForm.hora}:${revisionForm.minuto} ${revisionForm.ampm}`
-    const nuevaRevision = { persona: miPersona.nombre, dia: revisionForm.dia, hora: horaTexto, fecha: todayISO() }
-
-    const existente = seguimientos.find((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual)
-    const actualizado = existente
-      ? { ...existente, revisiones: [nuevaRevision, ...(existente.revisiones || [])] }
-      : { clienteNombre: revisionForm.clienteNombre, semana: semanaActual, dias: semanaVacia(), comentarios: '', revisiones: [nuevaRevision] }
-
-    setSeguimientos((prev) => {
-      const existe = prev.some((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual)
-      if (existe) {
-        return prev.map((s) =>
-          (s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual) ? actualizado : s
-        )
-      }
-      return [...prev, actualizado]
-    })
-    upsertSeguimientoRemote(actualizado)
-  }
 
   return (
     <>
       <header className="topbar">
         <div>
           <div className="topbar-title">Mi Ficha</div>
-          <div className="topbar-subtitle">Tus datos, tu pago y tu seguimiento semanal</div>
+          <div className="topbar-subtitle">Tus datos, tu pago y un resumen de tu semana</div>
         </div>
+        {typeof onNavigate === 'function' && (
+          <button type="button" className="primary-action" onClick={() => onNavigate('clientes-equipo')}>📋 Ir a Seguimiento y Valoración</button>
+        )}
       </header>
 
       <main className="page-content">
@@ -116,164 +98,131 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], setSeg
 
             {vista === 'resumen' && (
               <>
-            <div className="team-grid" style={{ marginBottom: 20 }}>
-              <div className="team-card">
-                <div className="team-card-header">
-                  <div>
-                    <h3>{miPersona.nombre}</h3>
-                    <p className="team-role">{miPersona.rol}</p>
-                  </div>
-                </div>
-                <div className="team-card-body">
-                  <p><strong>Email:</strong> {miPersona.email}</p>
-                  <p><strong>Teléfono:</strong> {miPersona.telefono}</p>
-                  {miPersona.carpetaDrive && (
-                    <p><strong>Carpeta Drive:</strong> <a href={miPersona.carpetaDrive} target="_blank" rel="noopener noreferrer">Abrir 📁</a></p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="kpi-grid">
-              <div className="kpi-card">
-                <div className="kpi-card-header"><span className="kpi-card-label">Clientes activos</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)' }}>✅</div></div>
-                <div className="kpi-card-value">{actividad.activos}</div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-card-header"><span className="kpi-card-label">Tarifa actual</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)' }}>💶</div></div>
-                <div className="kpi-card-value">{actividad.tarifaActual}€/cliente</div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-card-header"><span className="kpi-card-label">Contacto semanal</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>📞</div></div>
-                <div className="kpi-card-value">{contacto?.total > 0 ? `${contacto.hechos}/${contacto.total}` : '—'}</div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-card-header"><span className="kpi-card-label">Progreso tareas semana</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)' }}>🗓️</div></div>
-                <div className="kpi-card-value">{seguimiento?.porcentajeGeneral != null ? `${seguimiento.porcentajeGeneral}%` : '—'}</div>
-              </div>
-            </div>
-
-            <div className="team-payment-box" style={{ marginTop: 20 }}>
-              <div>
-                <p className="team-payment-label">Pago de {mesLabel(mesKey)}</p>
-                <p className="team-payment-amount">{actividad.totalMes.toLocaleString('es-ES')}€</p>
-              </div>
-              {pagoRegistrado ? (
-                <span className="status-pill status-activo">✅ Pagado el {pagoRegistrado.fecha}</span>
-              ) : (
-                <span className="status-pill status-pendiente">⏳ Pendiente de pago</span>
-              )}
-            </div>
-
-            <div className="table-card" style={{ marginTop: 20 }}>
-              <div className="card-header">
-                <div><div className="card-title">Historial mensual de pago</div></div>
-              </div>
-              <div className="team-history-table">
-                <div className="team-history-row team-history-header" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                  <span>Mes</span><span>Clientes activos</span><span>Tarifa</span><span>Total</span>
-                </div>
-                {actividad.historial.length === 0 && <p className="lead-log-empty">Sin historial todavía.</p>}
-                {actividad.historial.map((row) => (
-                  <div className="team-history-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }} key={row.mes}>
-                    <span>{row.mes}</span>
-                    <span>{row.clientes}</span>
-                    <span>{row.tarifa}€</span>
-                    <strong>{row.total.toLocaleString('es-ES')}€</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="table-card" style={{ marginTop: 20 }}>
-              <div className="card-header">
-                <div><div className="card-title">Seguimiento semanal por cliente</div></div>
-              </div>
-              <p className="lead-log-empty" style={{ padding: '0 20px' }}>
-                El contacto semanal (inicio/mitad/fin) y el check final de cada cliente se gestionan ahora desde "📋 Seguimiento y Valoración", junto con las tareas de la semana — todo en un mismo sitio.
-              </p>
-              <ul className="lead-log-list seguimiento-resumen-list">
-                {seguimiento?.resumenClientes.map(({ cliente, progreso, ultimaRevision }, i) => (
-                  <li key={i} className="seguimiento-resumen-item">
-                    <div>
-                      <strong>{cliente.Nombre}</strong> — {cliente['Servicio contratado'] || 'Sin servicio'}
-                      <div className="seguimiento-resumen-meta">
-                        {progreso.total > 0 ? (
-                          <span className={`seguimiento-progreso-badge ${progreso.porcentaje === 100 ? 'seguimiento-progreso-completo' : progreso.porcentaje === 0 ? 'seguimiento-progreso-pendiente' : ''}`}>
-                            {progreso.revisadas}/{progreso.total} ({progreso.porcentaje}%)
-                          </span>
-                        ) : (
-                          <span className="seguimiento-progreso-badge seguimiento-progreso-vacio">Sin tareas esta semana</span>
-                        )}
-                        <span className="seguimiento-ultima-revision">Última revisión: {ultimaRevision || 'nunca'}</span>
+                <div className="team-grid" style={{ marginBottom: 20 }}>
+                  <div className="team-card">
+                    <div className="team-card-header">
+                      <div>
+                        <h3>{miPersona.nombre}</h3>
+                        <p className="team-role">{miPersona.rol}</p>
                       </div>
                     </div>
-                    <button type="button" className="secondary-action" onClick={() => setSeguimientoClienteAbierto(cliente)}>Ver semana</button>
-                  </li>
-                ))}
-                {(!seguimiento || seguimiento.resumenClientes.length === 0) && (
-                  <p className="lead-log-empty">Sin clientes activos asignados.</p>
-                )}
-              </ul>
-            </div>
-
-            <div className="table-card" style={{ marginTop: 20 }}>
-              <div className="card-header">
-                <div><div className="card-title">Registrar última revisión</div></div>
-              </div>
-              <form className="seguimiento-revision-form" onSubmit={registrarRevisionPropia}>
-                <select value={revisionForm.clienteNombre} onChange={(e) => setRevisionForm({ ...revisionForm, clienteNombre: e.target.value })}>
-                  <option value="">Selecciona cliente</option>
-                  {actividad.clientesAsignados.map((c) => <option key={c.Nombre} value={c.Nombre}>{c.Nombre}</option>)}
-                </select>
-                <select value={revisionForm.dia} onChange={(e) => setRevisionForm({ ...revisionForm, dia: e.target.value })}>
-                  {DIAS_SEMANA.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
-                </select>
-                <div className="seguimiento-hora-picker">
-                  <select value={revisionForm.hora} onChange={(e) => setRevisionForm({ ...revisionForm, hora: e.target.value })}>
-                    {HORAS_12.map((h) => <option key={h} value={h}>{h}</option>)}
-                  </select>
-                  <span>:</span>
-                  <select value={revisionForm.minuto} onChange={(e) => setRevisionForm({ ...revisionForm, minuto: e.target.value })}>
-                    {MINUTOS.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                  <select value={revisionForm.ampm} onChange={(e) => setRevisionForm({ ...revisionForm, ampm: e.target.value })}>
-                    <option value="AM">AM</option>
-                    <option value="PM">PM</option>
-                  </select>
+                    <div className="team-card-body">
+                      <p><strong>Email:</strong> {miPersona.email}</p>
+                      <p><strong>Teléfono:</strong> {miPersona.telefono}</p>
+                      {miPersona.carpetaDrive && (
+                        <p><strong>Carpeta Drive:</strong> <a href={miPersona.carpetaDrive} target="_blank" rel="noopener noreferrer">Abrir 📁</a></p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <button type="submit" className="primary-action">Registrar</button>
-              </form>
 
-              {seguimiento?.revisionesRecientes?.length > 0 && (
-                <ul className="lead-log-list" style={{ marginTop: 10 }}>
-                  {seguimiento.revisionesRecientes.map((r, i) => (
-                    <li key={i}>
-                      Revisaste a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {r.hora} ({r.fecha})
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+                <div className="kpi-grid">
+                  <div className="kpi-card">
+                    <div className="kpi-card-header"><span className="kpi-card-label">Clientes activos</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)' }}>✅</div></div>
+                    <div className="kpi-card-value">{actividad.activos}</div>
+                  </div>
+                  <div className="kpi-card">
+                    <div className="kpi-card-header"><span className="kpi-card-label">Tarifa actual</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)' }}>💶</div></div>
+                    <div className="kpi-card-value">{actividad.tarifaActual}€/cliente</div>
+                  </div>
+                  <div className="kpi-card">
+                    <div className="kpi-card-header"><span className="kpi-card-label">Contacto semanal</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>📞</div></div>
+                    <div className="kpi-card-value">{contacto?.total > 0 ? `${contacto.hechos}/${contacto.total}` : '—'}</div>
+                  </div>
+                  <div className="kpi-card">
+                    <div className="kpi-card-header"><span className="kpi-card-label">Progreso tareas semana</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)' }}>🗓️</div></div>
+                    <div className="kpi-card-value">{seguimiento?.porcentajeGeneral != null ? `${seguimiento.porcentajeGeneral}%` : '—'}</div>
+                  </div>
+                  <div className="kpi-card">
+                    <div className="kpi-card-header">
+                      <span className="kpi-card-label">Seguimiento revisado</span>
+                      <div className="kpi-icon" style={{ background: checkFinal?.total > 0 && checkFinal.revisados === checkFinal.total ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>
+                        {checkFinal?.total > 0 && checkFinal.revisados === checkFinal.total ? '✅' : '⏳'}
+                      </div>
+                    </div>
+                    <div className="kpi-card-value">{checkFinal?.total > 0 ? `${checkFinal.revisados}/${checkFinal.total}` : '—'}</div>
+                  </div>
+                </div>
+
+                {pendientesCheckFinal.length > 0 && (
+                  <div className="seguimiento-cierre-banner" style={{ marginTop: 16 }}>
+                    <div>
+                      <strong>Te falta cerrar la semana de:</strong>{' '}
+                      <span style={{ color: 'var(--color-text-secondary)' }}>{pendientesCheckFinal.map((c) => c.Nombre).join(', ')}</span>
+                    </div>
+                    {typeof onNavigate === 'function' && (
+                      <button type="button" className="secondary-action" onClick={() => onNavigate('clientes-equipo')}>Ir a revisar →</button>
+                    )}
+                  </div>
+                )}
+
+                <div className="team-payment-box" style={{ marginTop: 20 }}>
+                  <div>
+                    <p className="team-payment-label">Pago de {mesLabel(mesKey)}</p>
+                    <p className="team-payment-amount">{actividad.totalMes.toLocaleString('es-ES')}€</p>
+                  </div>
+                  {pagoRegistrado ? (
+                    <span className="status-pill status-activo">✅ Pagado el {pagoRegistrado.fecha}</span>
+                  ) : (
+                    <span className="status-pill status-pendiente">⏳ Pendiente de pago</span>
+                  )}
+                </div>
+
+                <div className="table-card" style={{ marginTop: 20 }}>
+                  <div className="card-header">
+                    <div><div className="card-title">Historial mensual de pago</div></div>
+                  </div>
+                  <div className="team-history-table">
+                    <div className="team-history-row team-history-header" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                      <span>Mes</span><span>Clientes activos</span><span>Tarifa</span><span>Total</span>
+                    </div>
+                    {actividad.historial.length === 0 && <p className="lead-log-empty">Sin historial todavía.</p>}
+                    {actividad.historial.map((row) => (
+                      <div className="team-history-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }} key={row.mes}>
+                        <span>{row.mes}</span>
+                        <span>{row.clientes}</span>
+                        <span>{row.tarifa}€</span>
+                        <strong>{row.total.toLocaleString('es-ES')}€</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="table-card" style={{ marginTop: 20 }}>
+                  <div className="card-header">
+                    <div>
+                      <div className="card-title">Seguimiento semanal por cliente</div>
+                      <div className="card-subtitle">Solo consulta — las tareas, el contacto, la valoración, las fases y el registro de revisiones se gestionan desde "📋 Seguimiento y Valoración".</div>
+                    </div>
+                  </div>
+                  <ul className="lead-log-list seguimiento-resumen-list">
+                    {seguimiento?.resumenClientes.map(({ cliente, progreso, ultimaRevision }, i) => (
+                      <li key={i} className="seguimiento-resumen-item">
+                        <div>
+                          <strong>{cliente.Nombre}</strong> — {cliente['Servicio contratado'] || 'Sin servicio'}
+                          <div className="seguimiento-resumen-meta">
+                            {progreso.total > 0 ? (
+                              <span className={`seguimiento-progreso-badge ${progreso.porcentaje === 100 ? 'seguimiento-progreso-completo' : progreso.porcentaje === 0 ? 'seguimiento-progreso-pendiente' : ''}`}>
+                                {progreso.revisadas}/{progreso.total} ({progreso.porcentaje}%)
+                              </span>
+                            ) : (
+                              <span className="seguimiento-progreso-badge seguimiento-progreso-vacio">Sin tareas esta semana</span>
+                            )}
+                            <span className="seguimiento-ultima-revision">Última revisión: {ultimaRevision || 'nunca'}</span>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                    {(!seguimiento || seguimiento.resumenClientes.length === 0) && (
+                      <p className="lead-log-empty">Sin clientes activos asignados.</p>
+                    )}
+                  </ul>
+                </div>
               </>
             )}
           </>
         )}
       </main>
-
-      {seguimientoClienteAbierto && (
-        <SeguimientoCliente
-          cliente={seguimientoClienteAbierto}
-          seguimientos={seguimientos}
-          setSeguimientos={setSeguimientos}
-          valoraciones={valoraciones}
-          objetivosClienteFase={objetivosClienteFase}
-          revisionesSemanales={revisionesSemanales}
-          setRevisionesSemanales={setRevisionesSemanales}
-          miEmail={miEmail}
-          onClose={() => setSeguimientoClienteAbierto(null)}
-        />
-      )}
     </>
   )
 }
