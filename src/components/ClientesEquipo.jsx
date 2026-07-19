@@ -177,6 +177,16 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                   style={{ maxWidth: 260 }}
                 />
               </div>
+
+              <div className="contacto-leyenda" style={{ margin: '0 20px 16px' }}>
+                {PUNTOS_CONTACTO.map((p) => (
+                  <div key={p.id} className="contacto-leyenda-item">
+                    <strong>{p.label} · {p.dia}</strong>
+                    <span>{p.hint}</span>
+                  </div>
+                ))}
+              </div>
+
               <div className="table-wrapper">
                 <table>
                   <thead>
