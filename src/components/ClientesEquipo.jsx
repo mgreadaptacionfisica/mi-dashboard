@@ -4,6 +4,8 @@ import ValoracionCliente from './ValoracionCliente'
 import FasesObjetivos from './FasesObjetivos'
 import { faseAutomatica, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
+import { semanaActualISO, formatRangoSemana, resumenSemana } from '../utils/seguimientoHelpers'
+import { upsertCierreSeguimientoRemote } from '../lib/queries/cierresSeguimiento'
 
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
 // propósito de ClientesAdmin.jsx (sidebar item "Clientes"), que lleva toda
@@ -23,7 +25,7 @@ function formatDate(value) {
   return iso ? formatFechaISO(iso) : value
 }
 
-export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase }) {
+export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, cierresSeguimiento = [], setCierresSeguimiento }) {
   const [search, setSearch] = useState('')
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
@@ -61,6 +63,46 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
       .some((value) => (value || '').toLowerCase().includes(term)))
   }, [misClientes, search])
 
+  // "Check final" del seguimiento semanal (a petición de Raúl): contador de
+  // cuántos de MIS clientes (los del técnico, o todos si es admin) tienen
+  // ya el seguimiento de esta semana 100% revisado, más un cierre manual y
+  // persistente para dejar constancia de que se revisó todo. Se identifica
+  // por persona: el nombre del técnico, o 'ADMIN' para el cierre global del
+  // admin sobre todo el equipo — cada uno cierra su propio ámbito.
+  const semanaActual = semanaActualISO()
+  const personaCierre = esAdmin ? 'ADMIN' : miNombre
+  const resumen = useMemo(
+    () => resumenSemana(misClientes, seguimientos, semanaActual),
+    [misClientes, seguimientos, semanaActual]
+  )
+  const cierreActual = cierresSeguimiento.find((c) => c.persona === personaCierre && c.semana === semanaActual)
+  const semanaCerrada = cierreActual?.cerrado || false
+  const todoRevisado = resumen.total > 0 && resumen.revisados === resumen.total
+
+  const toggleCierreSemana = () => {
+    if (!personaCierre || typeof setCierresSeguimiento !== 'function') return
+    const cerrando = !semanaCerrada
+    if (cerrando && !todoRevisado) {
+      const seguir = window.confirm(
+        `Todavía hay ${resumen.total - resumen.revisados} de ${resumen.total} clientes sin el seguimiento de esta semana 100% revisado. ¿Cerrar la semana igualmente?`
+      )
+      if (!seguir) return
+    }
+    const actualizado = {
+      persona: personaCierre,
+      semana: semanaActual,
+      cerrado: cerrando,
+      cerradoEn: new Date().toISOString(),
+      cerradoPor: miEmail || '',
+    }
+    setCierresSeguimiento((prev) => {
+      const existe = prev.some((c) => c.persona === personaCierre && c.semana === semanaActual)
+      if (existe) return prev.map((c) => (c.persona === personaCierre && c.semana === semanaActual ? { ...c, ...actualizado } : c))
+      return [...prev, actualizado]
+    })
+    upsertCierreSeguimientoRemote(actualizado)
+  }
+
   return (
     <>
       <header className="topbar">
@@ -87,7 +129,32 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                 </div>
                 <div className="kpi-card-value">{misClientes.length}</div>
               </div>
+              <div className="kpi-card">
+                <div className="kpi-card-header">
+                  <span className="kpi-card-label">Seguimiento revisado esta semana</span>
+                  <div className="kpi-icon" style={{ background: todoRevisado ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>
+                    {todoRevisado ? '✅' : '⏳'}
+                  </div>
+                </div>
+                <div className="kpi-card-value">{resumen.revisados}/{resumen.total}</div>
+              </div>
             </div>
+
+            {personaCierre && (
+              <div className={`seguimiento-cierre-banner${semanaCerrada ? ' seguimiento-cierre-banner-cerrado' : ''}`}>
+                <div>
+                  <strong>Semana del {formatRangoSemana(semanaActual)}</strong>
+                  {semanaCerrada ? (
+                    <span> — ✅ Cerrada{cierreActual?.cerradoPor ? ` por ${cierreActual.cerradoPor}` : ''}{cierreActual?.cerradoEn ? ` el ${new Date(cierreActual.cerradoEn).toLocaleDateString('es-ES')}` : ''}.</span>
+                  ) : (
+                    <span style={{ color: 'var(--color-text-secondary)' }}> — todavía sin cerrar {esAdmin ? '(cierre global del equipo)' : '(tus clientes)'}.</span>
+                  )}
+                </div>
+                <button type="button" className="secondary-action" onClick={toggleCierreSemana}>
+                  {semanaCerrada ? '🔓 Reabrir semana' : '✅ Cerrar semana'}
+                </button>
+              </div>
+            )}
 
             <div className="table-card">
               <div className="card-header">

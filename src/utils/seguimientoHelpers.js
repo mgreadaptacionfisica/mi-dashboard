@@ -62,6 +62,22 @@ export function progresoSemana(registro) {
   return { total, revisadas, porcentaje: total > 0 ? Math.round((revisadas / total) * 100) : null }
 }
 
+// Resumen del "check final" semanal (a petición de Raúl): de una lista de
+// clientes ya filtrada (los propios de un técnico, o todos para el admin),
+// cuenta cuántos tienen el seguimiento de una semana concreta 100%
+// revisado (todas sus tareas marcadas como revisado=true). Un cliente sin
+// ningún registro esa semana, o con tareas todavía sin marcar, cuenta como
+// "no revisado" — así el contador nunca da falsos positivos.
+export function resumenSemana(clientes, seguimientos, semanaISO) {
+  const total = clientes.length
+  const revisados = clientes.filter((c) => {
+    const registro = seguimientos.find((s) => s.clienteNombre === c.Nombre && s.semana === semanaISO)
+    const progreso = progresoSemana(registro)
+    return progreso.total > 0 && progreso.revisadas === progreso.total
+  }).length
+  return { total, revisados }
+}
+
 // Los 3 puntos de contacto semanal con el cliente por parte del técnico.
 // "hint" es lo que se le debe preguntar/decir al cliente en ese mensaje.
 export const PUNTOS_CONTACTO = [
