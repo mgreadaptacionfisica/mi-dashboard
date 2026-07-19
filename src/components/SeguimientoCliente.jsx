@@ -20,6 +20,7 @@ function todayISO() {
 export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, miEmail, onClose }) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [tareaDraft, setTareaDraft] = useState({})
+  const [cambioDraft, setCambioDraft] = useState('')
   // Texto libre cuando se elige "Otra" en el desplegable de bloques, para
   // poder escribir algo que no esté en la lista fija (A/1, B/2, Cardio...).
   const [tareaOtroDraft, setTareaOtroDraft] = useState({})
@@ -36,10 +37,11 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
 
   const diasActuales = registro?.dias || semanaVacia()
   const comentarios = registro?.comentarios || ''
+  const cambiosPendientes = registro?.cambiosPendientes || []
   const progreso = progresoSemana(registro)
 
   const actualizarSemana = (patch) => {
-    const base = registro || { clienteNombre: cliente.Nombre, semana: mondayISO, dias: semanaVacia(), comentarios: '', revisiones: [] }
+    const base = registro || { clienteNombre: cliente.Nombre, semana: mondayISO, dias: semanaVacia(), comentarios: '', cambiosPendientes: [], revisiones: [] }
     const actualizado = { ...base, ...patch }
     setSeguimientos((prev) => {
       const existe = prev.some((s) => s.clienteNombre === cliente.Nombre && s.semana === mondayISO)
@@ -80,6 +82,27 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
 
   const setComentarios = (texto) => {
     actualizarSemana({ comentarios: texto })
+  }
+
+  // Cambios/tareas de la semana con checkbox propio (independiente de las
+  // tareas diarias de arriba) — a petición de Raúl, para poder tachar cada
+  // cambio propuesto cuando ya se ha hecho, en vez de un solo texto libre.
+  const addCambio = () => {
+    const texto = cambioDraft.trim()
+    if (!texto) return
+    actualizarSemana({ cambiosPendientes: [...cambiosPendientes, { texto, hecho: false, hechoEn: null }] })
+    setCambioDraft('')
+  }
+
+  const toggleCambio = (index) => {
+    const actualizado = cambiosPendientes.map((c, i) =>
+      i === index ? { ...c, hecho: !c.hecho, hechoEn: !c.hecho ? new Date().toISOString() : null } : c
+    )
+    actualizarSemana({ cambiosPendientes: actualizado })
+  }
+
+  const removeCambio = (index) => {
+    actualizarSemana({ cambiosPendientes: cambiosPendientes.filter((_, i) => i !== index) })
   }
 
   const faseActual = useMemo(() => {
@@ -194,11 +217,31 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
 
         <div>
           <label className="lead-detail-label">Cambios y revisado (comentario semanal)</label>
+          <div className="seguimiento-tareas-list" style={{ marginBottom: 8 }}>
+            {cambiosPendientes.length === 0 && <span className="lead-log-empty">Sin cambios pendientes</span>}
+            {cambiosPendientes.map((cambio, i) => (
+              <label key={i} className={`seguimiento-tarea-chip ${cambio.hecho ? 'seguimiento-tarea-revisada' : ''}`}>
+                <input type="checkbox" checked={cambio.hecho} onChange={() => toggleCambio(i)} />
+                {cambio.texto}
+                <button type="button" onClick={() => removeCambio(i)}>✕</button>
+              </label>
+            ))}
+          </div>
+          <div className="seguimiento-add-tarea" style={{ marginBottom: 10 }}>
+            <input
+              type="text"
+              placeholder="Añadir un cambio o tarea pendiente..."
+              value={cambioDraft}
+              onChange={(e) => setCambioDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCambio() } }}
+            />
+            <button type="button" className="secondary-action" onClick={addCambio}>＋</button>
+          </div>
           <textarea
             rows={3}
             value={comentarios}
             onChange={(e) => setComentarios(e.target.value)}
-            placeholder="Notas para la próxima semana, cambios propuestos, comentarios del equipo..."
+            placeholder="Notas generales para la próxima semana, comentarios del equipo..."
           />
         </div>
 

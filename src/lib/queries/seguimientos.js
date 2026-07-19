@@ -6,6 +6,7 @@ function fromRow(row) {
     semana: row.semana,
     dias: row.dias || {},
     comentarios: row.comentarios || '',
+    cambiosPendientes: row.cambios_pendientes || [],
     revisiones: row.revisiones || [],
   }
 }
@@ -16,6 +17,7 @@ function toRow(registro) {
     semana: registro.semana,
     dias: registro.dias || {},
     comentarios: registro.comentarios || '',
+    cambios_pendientes: registro.cambiosPendientes || [],
     revisiones: registro.revisiones || [],
   }
 }

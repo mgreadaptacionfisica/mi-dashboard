@@ -27,6 +27,9 @@
 //     domingo: { tareas: [] },
 //   },
 //   comentarios: '',
+//   cambiosPendientes: [
+//     { texto: 'Subir carga en press militar', hecho: false, hechoEn: null },
+//   ],
 // }
 const seguimientos = []
 
