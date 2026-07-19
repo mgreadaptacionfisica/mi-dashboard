@@ -17,7 +17,6 @@ function todayISO() {
 // para el equipo técnico. Se embebe en el detalle de cada técnico dentro de Equipo.jsx.
 export default function ContactoSemanal({ clientes, contactos, setContactos }) {
   const [weekOffset, setWeekOffset] = useState(0)
-  const [notaAbierta, setNotaAbierta] = useState(null) // { clienteNombre, puntoId } | null
 
   const mondayISO = useMemo(() => {
     const base = mondayOf(new Date())
@@ -64,22 +63,6 @@ export default function ContactoSemanal({ clientes, contactos, setContactos }) {
     actualizarPunto(clienteNombre, puntoId, { hecho: !actual, fecha: !actual ? todayISO() : null })
   }
 
-  const setComentarioPunto = (clienteNombre, puntoId, comentario) => {
-    actualizarPunto(clienteNombre, puntoId, { comentario })
-  }
-
-  const comentariosSemana = useMemo(() => {
-    const lista = []
-    clientes.forEach((cliente) => {
-      const registro = registrosPorCliente[cliente.Nombre]
-      PUNTOS_CONTACTO.forEach((p) => {
-        const texto = registro?.[p.id]?.comentario?.trim()
-        if (texto) lista.push({ cliente: cliente.Nombre, punto: p.label, texto })
-      })
-    })
-    return lista
-  }, [clientes, registrosPorCliente])
-
   if (clientes.length === 0) {
     return <p className="lead-log-empty">Todavía no tiene clientes asignados.</p>
   }
@@ -111,73 +94,30 @@ export default function ContactoSemanal({ clientes, contactos, setContactos }) {
         </div>
         {clientes.map((cliente) => {
           const registro = registrosPorCliente[cliente.Nombre]
-          const notaAbiertaAqui = notaAbierta?.clienteNombre === cliente.Nombre ? notaAbierta.puntoId : null
           return (
-            <div key={cliente.Nombre}>
-              <div className="contacto-semanal-row">
-                <span className="contacto-semanal-nombre">{cliente.Nombre}</span>
-                {PUNTOS_CONTACTO.map((p) => {
-                  const punto = registro?.[p.id]
-                  const tieneComentario = Boolean(punto?.comentario?.trim())
-                  return (
-                    <div key={p.id} className="contacto-check-cell">
-                      <label
-                        className={`contacto-check ${punto?.hecho ? 'contacto-check-hecho' : ''}`}
-                        title={punto?.hecho && punto.fecha ? `Contactado el ${punto.fecha}` : p.hint}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={Boolean(punto?.hecho)}
-                          onChange={() => togglePunto(cliente.Nombre, p.id, Boolean(punto?.hecho))}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className={`contacto-nota-btn ${tieneComentario ? 'contacto-nota-btn-activa' : ''}`}
-                        title={tieneComentario ? 'Ver/editar comentario' : 'Añadir comentario'}
-                        onClick={() => setNotaAbierta(
-                          notaAbiertaAqui === p.id ? null : { clienteNombre: cliente.Nombre, puntoId: p.id }
-                        )}
-                      >
-                        {tieneComentario ? '📝' : '💬'}
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-              {notaAbiertaAqui && (() => {
-                const punto = PUNTOS_CONTACTO.find((p) => p.id === notaAbiertaAqui)
-                const valor = registro?.[notaAbiertaAqui]?.comentario || ''
+            <div className="contacto-semanal-row" key={cliente.Nombre}>
+              <span className="contacto-semanal-nombre">{cliente.Nombre}</span>
+              {PUNTOS_CONTACTO.map((p) => {
+                const punto = registro?.[p.id]
                 return (
-                  <div className="contacto-nota-editor">
-                    <label className="lead-detail-label">
-                      Comentario — {cliente.Nombre} · {punto.label}
+                  <div key={p.id} className="contacto-check-cell">
+                    <label
+                      className={`contacto-check ${punto?.hecho ? 'contacto-check-hecho' : ''}`}
+                      title={punto?.hecho && punto.fecha ? `Contactado el ${punto.fecha}` : p.hint}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(punto?.hecho)}
+                        onChange={() => togglePunto(cliente.Nombre, p.id, Boolean(punto?.hecho))}
+                      />
                     </label>
-                    <textarea
-                      rows={2}
-                      autoFocus
-                      placeholder="Si todo va bien no hace falta escribir nada. Si el cliente comenta algo que hay que cambiar o revisar, apúntalo aquí."
-                      value={valor}
-                      onChange={(e) => setComentarioPunto(cliente.Nombre, notaAbiertaAqui, e.target.value)}
-                    />
                   </div>
                 )
-              })()}
+              })}
             </div>
           )
         })}
       </div>
-
-      {comentariosSemana.length > 0 && (
-        <div className="contacto-comentarios-resumen">
-          <h4 className="team-activity-subtitle">Comentarios de esta semana</h4>
-          <ul className="lead-log-list">
-            {comentariosSemana.map((item, i) => (
-              <li key={i}><strong>{item.cliente}</strong> ({item.punto}): {item.texto}</li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   )
 }

@@ -2494,39 +2494,6 @@ textarea {
   gap: 4px;
 }
 
-.contacto-nota-btn {
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 12px;
-  opacity: 0.45;
-  padding: 0;
-  line-height: 1;
-}
-
-.contacto-nota-btn-activa {
-  opacity: 1;
-}
-
-.contacto-nota-editor {
-  padding: 8px 8px 10px;
-  margin: 2px 0 4px;
-  background: rgba(245, 158, 11, 0.06);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  border-radius: 10px;
-}
-
-.contacto-nota-editor textarea {
-  margin-top: 4px;
-}
-
-.contacto-comentarios-resumen {
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
 .contacto-semanal-table {
   display: flex;
   flex-direction: column;
