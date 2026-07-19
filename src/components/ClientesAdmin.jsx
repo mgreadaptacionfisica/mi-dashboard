@@ -115,7 +115,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function ClientesAdmin({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase }) {
+export default function ClientesAdmin({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, miEmail }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
   // Por defecto solo se ven los clientes ACTIVO (menos ruido visual); desde
@@ -810,6 +810,9 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
           setSeguimientos={setSeguimientos}
           valoraciones={valoraciones}
           objetivosClienteFase={objetivosClienteFase}
+          revisionesSemanales={revisionesSemanales}
+          setRevisionesSemanales={setRevisionesSemanales}
+          miEmail={miEmail}
           onClose={() => setSeguimientoCliente(null)}
         />
       )}

@@ -62,19 +62,20 @@ export function progresoSemana(registro) {
   return { total, revisadas, porcentaje: total > 0 ? Math.round((revisadas / total) * 100) : null }
 }
 
-// Resumen del "check final" semanal (a petición de Raúl): de una lista de
-// clientes ya filtrada (los propios de un técnico, o todos para el admin),
-// cuenta cuántos tienen el seguimiento de una semana concreta 100%
-// revisado (todas sus tareas marcadas como revisado=true). Un cliente sin
-// ningún registro esa semana, o con tareas todavía sin marcar, cuenta como
-// "no revisado" — así el contador nunca da falsos positivos.
-export function resumenSemana(clientes, seguimientos, semanaISO) {
+// Resumen del "check final" semanal, POR CLIENTE (a petición de Raúl): de
+// una lista de clientes ya filtrada (los propios de un técnico, o todos
+// para el admin), cuenta cuántos tienen marcado a mano el check de
+// "semana revisada" (revisiones_semanales_cliente) para una semana
+// concreta. El check es manual — lo marca el técnico/admin desde el modal
+// de Seguimiento de cada cliente cuando ya está todo revisado, hechos los
+// cambios oportunos, y preparada la semana siguiente. No se calcula solo a
+// partir de las tareas: sirve justo para llevar la cuenta de cuántos
+// clientes le faltan por repasar y cerrar antes de terminar la semana.
+export function resumenRevisionesSemana(clientes, revisiones, semanaISO) {
   const total = clientes.length
-  const revisados = clientes.filter((c) => {
-    const registro = seguimientos.find((s) => s.clienteNombre === c.Nombre && s.semana === semanaISO)
-    const progreso = progresoSemana(registro)
-    return progreso.total > 0 && progreso.revisadas === progreso.total
-  }).length
+  const revisados = clientes.filter((c) =>
+    revisiones.some((r) => r.clienteNombre === c.Nombre && r.semana === semanaISO && r.revisado)
+  ).length
   return { total, revisados }
 }
 

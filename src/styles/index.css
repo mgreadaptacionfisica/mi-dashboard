@@ -3128,3 +3128,30 @@ textarea {
   background: linear-gradient(135deg, #d1fae5, #f0fdf4);
   border-color: #a7f3d0;
 }
+
+/* Check final por cliente, dentro del modal de Seguimiento (una semana
+   concreta, respeta la navegación de semanas del modal). */
+.seguimiento-check-final {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.seguimiento-check-final label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.seguimiento-check-final-marcado {
+  background: #f0fdf4;
+  border-color: #a7f3d0;
+}
+
+.seguimiento-check-final .valoracion-referencia {
+  margin: 6px 0 0;
+}

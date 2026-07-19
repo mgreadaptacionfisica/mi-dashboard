@@ -10,13 +10,14 @@ import {
   progresoSemana,
 } from '../utils/seguimientoHelpers'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
+import { upsertRevisionSemanalRemote } from '../lib/queries/revisionesSemanales'
 import { faseAutomatica, faseInfo, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], onClose }) {
+export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, miEmail, onClose }) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [tareaDraft, setTareaDraft] = useState({})
   // Texto libre cuando se elige "Otra" en el desplegable de bloques, para
@@ -86,6 +87,30 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
     return faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre), spadiTope)
   }, [objetivosClienteFase, valoraciones, cliente])
   const faseActualInfo = faseInfo(faseActual)
+
+  // "Check final" del seguimiento semanal, POR CLIENTE (a petición de
+  // Raúl): se marca a mano para la semana que se está viendo en este
+  // modal (respeta la navegación de semanas de arriba) — NO se calcula
+  // solo, es una confirmación explícita de que ya está todo hecho.
+  const revisionSemana = revisionesSemanales.find((r) => r.clienteNombre === cliente.Nombre && r.semana === mondayISO)
+  const semanaRevisada = revisionSemana?.revisado || false
+
+  const toggleRevisionSemana = () => {
+    if (typeof setRevisionesSemanales !== 'function') return
+    const actualizado = {
+      clienteNombre: cliente.Nombre,
+      semana: mondayISO,
+      revisado: !semanaRevisada,
+      revisadoEn: new Date().toISOString(),
+      revisadoPor: miEmail || '',
+    }
+    setRevisionesSemanales((prev) => {
+      const existe = prev.some((r) => r.clienteNombre === cliente.Nombre && r.semana === mondayISO)
+      if (existe) return prev.map((r) => (r.clienteNombre === cliente.Nombre && r.semana === mondayISO ? { ...r, ...actualizado } : r))
+      return [...prev, actualizado]
+    })
+    upsertRevisionSemanalRemote(actualizado)
+  }
 
   return (
     <div className="client-modal-overlay" onClick={onClose}>
@@ -175,6 +200,21 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
             onChange={(e) => setComentarios(e.target.value)}
             placeholder="Notas para la próxima semana, cambios propuestos, comentarios del equipo..."
           />
+        </div>
+
+        <div className={`seguimiento-check-final${semanaRevisada ? ' seguimiento-check-final-marcado' : ''}`}>
+          <label>
+            <input type="checkbox" checked={semanaRevisada} onChange={toggleRevisionSemana} />
+            <span>Semana revisada y cerrada para {cliente.Nombre}</span>
+          </label>
+          <p className="valoracion-referencia">
+            ℹ️ Marca esto solo cuando: esté todo revisado, hayas hecho los cambios oportunos en el seguimiento, y ya tengas preparada la semana que viene para este cliente.
+          </p>
+          {semanaRevisada && revisionSemana?.revisadoEn && (
+            <p className="valoracion-referencia">
+              ✅ Revisado el {new Date(revisionSemana.revisadoEn).toLocaleDateString('es-ES')}{revisionSemana.revisadoPor ? ` por ${revisionSemana.revisadoPor}` : ''}.
+            </p>
+          )}
         </div>
       </div>
     </div>
