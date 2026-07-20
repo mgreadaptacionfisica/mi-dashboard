@@ -20,8 +20,12 @@ import { supabase } from './supabaseClient'
 // — recortado a "lo suyo", sin las acciones de gestión de Equipo.jsx (que
 // sigue siendo solo admin). Se la damos también a admin porque Raúl es a
 // la vez entrenador con clientes propios asignados (ver ClientesEquipo.jsx).
+// 'enlaces' (EnlacesInteres.jsx) es solo para admin: enlaces personales de
+// Raúl (dashboards de clientes, etc.) para copiar y enviar rápido — no
+// tiene sentido para el resto de roles, así que va solo en este array
+// (y la RLS de supabase-sql/50_enlaces_interes.sql lo refuerza en el servidor).
 export const SECCIONES_POR_ROL = {
-  admin: ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'mi-ficha', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales'],
+  admin: ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'mi-ficha', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales', 'enlaces'],
   closer: ['ventas', 'comunicacion', 'manuales'],
   tecnico: ['clientes-equipo', 'mi-ficha', 'operaciones', 'tareas', 'comunicacion', 'manuales'],
   contenido: ['operaciones', 'comunicacion', 'manuales'],

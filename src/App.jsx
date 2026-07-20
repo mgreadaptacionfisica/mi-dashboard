@@ -25,6 +25,7 @@ const Operaciones = lazy(() => import('./components/Operaciones'))
 const MuroEquipo = lazy(() => import('./components/MuroEquipo'))
 const MisTareas = lazy(() => import('./components/MisTareas'))
 const Manuales = lazy(() => import('./components/Manuales'))
+const EnlacesInteres = lazy(() => import('./components/EnlacesInteres'))
 // Clientes: último módulo migrado a Supabase. Los 64 clientes reales se
 // recuperaron del estado en memoria del panel (nunca hubo persistencia
 // real antes) y se migraron con supabase-sql/04_clientes.sql + 04b.
@@ -208,6 +209,14 @@ const manualesDataPromise = async () => {
   return { default: remoto || [] }
 }
 
+// Enlaces de interés: tabla nueva admin-only (RLS bloquea a los demás
+// roles en el servidor), sin datos estáticos previos.
+const enlacesInteresDataPromise = async () => {
+  const { fetchEnlacesInteres } = await import('./lib/queries/enlacesInteres')
+  const remoto = await fetchEnlacesInteres()
+  return { default: remoto || [] }
+}
+
 function PlaceholderView({ name }) {
   return (
     <>
@@ -282,6 +291,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [revisionesSemanales, setRevisionesSemanales] = useState([])
   const [tareasPersonales, setTareasPersonales] = useState([])
   const [manuales, setManuales] = useState([])
+  const [enlacesInteres, setEnlacesInteres] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
@@ -294,8 +304,8 @@ function InternalApp({ session, rol, onLogout }) {
       contactosSemanalesDataPromise(), mensajesEquipoDataPromise(), valoracionesClientesDataPromise(),
       tareasPersonalesDataPromise(), manualesDataPromise(), objetivosFaseDataPromise(),
       reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(), objetivosClienteFaseDataPromise(),
-      revisionesSemanalesDataPromise(),
-    ]).then(async ([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of, rr, tp, ocf, rs]) => {
+      revisionesSemanalesDataPromise(), enlacesInteresDataPromise(),
+    ]).then(async ([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of, rr, tp, ocf, rs, ei]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -313,6 +323,7 @@ function InternalApp({ session, rol, onLogout }) {
       setValoracionesClientes(vc.default)
       setTareasPersonales(ta.default)
       setManuales(ma.default)
+      setEnlacesInteres(ei.default)
       setObjetivosFase(of.default)
       setReglasRecurrentes(rr.default)
       setTarifasPasarela(tp.default)
@@ -420,6 +431,7 @@ function InternalApp({ session, rol, onLogout }) {
       case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} miEmail={session?.user?.email} rol={rol} />
       case 'tareas':       return <MisTareas tareas={tareasPersonales} setTareas={setTareasPersonales} miEmail={session?.user?.email} />
       case 'manuales':     return <Manuales manuales={manuales} setManuales={setManuales} rol={rol} />
+      case 'enlaces':      return <EnlacesInteres enlaces={enlacesInteres} setEnlaces={setEnlacesInteres} />
       default:             return null
     }
   }
