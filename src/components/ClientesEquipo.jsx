@@ -285,6 +285,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       const registroSemana = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaActual)
                       const progresoTareas = progresoSemana(registroSemana)
                       const tareasPendientes = progresoTareas.total - progresoTareas.revisadas
+                      const cambiosSinHacer = (registroSemana?.cambiosPendientes || []).filter((c) => !c.hecho).length
                       const semanaRevisadaCliente = revisionesSemanales.some((r) => r.clienteNombre === cliente.Nombre && r.semana === semanaActual && r.revisado)
                       return (
                         <tr key={`${cliente.id || cliente.Nombre}-${index}`}>
@@ -333,6 +334,11 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                               {tareasPendientes > 0 && (
                                 <span className="tareas-pendientes-badge" title={`${tareasPendientes} tarea${tareasPendientes === 1 ? '' : 's'} sin revisar esta semana`}>
                                   {tareasPendientes}
+                                </span>
+                              )}
+                              {cambiosSinHacer > 0 && (
+                                <span className="cambios-pendientes-badge" title={`${cambiosSinHacer} cambio${cambiosSinHacer === 1 ? '' : 's'} sin marcar como hecho en "Cambios y revisado"`}>
+                                  {cambiosSinHacer}
                                 </span>
                               )}
                             </button>
