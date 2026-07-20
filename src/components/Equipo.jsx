@@ -265,7 +265,10 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
   const seguimientoPorTecnico = useMemo(() => {
     return team.tecnico.reduce((acc, persona) => {
       const clientesAsignados = actividadPorTecnico[persona.nombre]?.clientesAsignados || []
-      acc[persona.nombre] = seguimientoTecnico(clientesAsignados, seguimientos, SEGUIMIENTO_HELPERS)
+      // soloPersona=persona.nombre: si un cliente se comparte entre dos
+      // técnicos, aquí en la ficha de cada uno solo se ve lo que ese
+      // técnico ha registrado él mismo, no lo del compañero.
+      acc[persona.nombre] = seguimientoTecnico(clientesAsignados, seguimientos, SEGUIMIENTO_HELPERS, persona.nombre)
       return acc
     }, {})
   }, [team, seguimientos, actividadPorTecnico])
@@ -284,7 +287,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
     if (!revisionForm.clienteNombre || !revisionForm.persona) return
     const semanaActual = semanaActualISO()
     const horaTexto = `${revisionForm.hora}:${revisionForm.minuto} ${revisionForm.ampm}`
-    const nuevaRevision = { persona: revisionForm.persona, dia: revisionForm.dia, hora: horaTexto, fecha: todayISO() }
+    const nuevaRevision = { persona: revisionForm.persona, dia: revisionForm.dia, hora: horaTexto, fecha: todayISO(), registradoEn: new Date().toISOString() }
 
     const existente = seguimientos.find((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual)
     const actualizado = existente

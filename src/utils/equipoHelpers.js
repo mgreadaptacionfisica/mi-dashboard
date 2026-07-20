@@ -96,7 +96,14 @@ export function actividadTecnico(persona, clientes) {
 
 // Resumen del seguimiento semanal (progreso de tareas revisadas de la
 // semana actual, por cliente y agregado) para los clientes de un técnico.
-export function seguimientoTecnico(clientesAsignados, seguimientos, helpers) {
+//
+// soloPersona (opcional): si se indica, revisionesRecientes solo incluye
+// los registros hechos por esa persona exacta — a petición de Raúl, para
+// que cada técnico vea únicamente lo que ha registrado él mismo (no lo
+// que otro compañero haya registrado en un cliente que comparten), y
+// para que el admin pueda ver el registro propio de cada técnico en su
+// ficha sin mezclarlos entre sí.
+export function seguimientoTecnico(clientesAsignados, seguimientos, helpers, soloPersona) {
   const { semanaActualISO, progresoSemana, ultimaRevisionCliente } = helpers
   const semanaActual = semanaActualISO()
   let totalTareas = 0
@@ -119,7 +126,11 @@ export function seguimientoTecnico(clientesAsignados, seguimientos, helpers) {
         .filter((s) => s.clienteNombre === cliente.Nombre)
         .flatMap((s) => (s.revisiones || []).map((r) => ({ ...r, clienteNombre: cliente.Nombre })))
     )
-    .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))
+    .filter((r) => !soloPersona || r.persona === soloPersona)
+    // registradoEn es el momento real en que se pulsó "Registrar" (para
+    // ordenar bien); fecha (solo día) es el respaldo para registros
+    // antiguos que todavía no lo tenían.
+    .sort((a, b) => (b.registradoEn || b.fecha || '').localeCompare(a.registradoEn || a.fecha || ''))
     .slice(0, 15)
 
   return {

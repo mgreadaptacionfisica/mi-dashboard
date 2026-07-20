@@ -146,7 +146,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     if (!revisionForm.clienteNombre) return
     const semana = semanaActualISO()
     const hora24 = horaA24h(revisionForm.horaH, revisionForm.horaM, revisionForm.ampm)
-    const nuevaRevision = { persona: miPersona?.nombre || miEmail || 'Admin', dia: revisionForm.dia, hora: hora24, fecha: todayISO() }
+    const nuevaRevision = { persona: miPersona?.nombre || miEmail || 'Admin', dia: revisionForm.dia, hora: hora24, fecha: todayISO(), registradoEn: new Date().toISOString() }
 
     const existente = seguimientos.find((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semana)
     const actualizado = existente
@@ -163,9 +163,13 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     upsertSeguimientoRemote(actualizado)
   }
 
+  // "Mi última revisión" se filtra a la persona que ha iniciado sesión —
+  // si un cliente se comparte con otro técnico, aquí solo se ve lo que
+  // has registrado tú, no lo suyo (para no liarse entre compañeros).
+  const miIdentidadRevision = miPersona?.nombre || miEmail || 'Admin'
   const seguimientoResumen = useMemo(
-    () => seguimientoTecnico(misClientes, seguimientos, { semanaActualISO, progresoSemana, ultimaRevisionCliente }),
-    [misClientes, seguimientos]
+    () => seguimientoTecnico(misClientes, seguimientos, { semanaActualISO, progresoSemana, ultimaRevisionCliente }, miIdentidadRevision),
+    [misClientes, seguimientos, miIdentidadRevision]
   )
 
   return (
@@ -397,15 +401,14 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                   <button type="submit" className="primary-action">Registrar</button>
                 </form>
 
-                {seguimientoResumen?.revisionesRecientes?.length > 0 && (
-                  <ul className="lead-log-list" style={{ margin: '10px 20px 20px' }}>
-                    {seguimientoResumen.revisionesRecientes.map((r, i) => (
-                      <li key={i}>
-                        Revisaste a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {formatHora12(r.hora) || r.hora} ({r.fecha})
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {seguimientoResumen?.revisionesRecientes?.[0] && (() => {
+                  const r = seguimientoResumen.revisionesRecientes[0]
+                  return (
+                    <p className="valoracion-referencia" style={{ margin: '10px 20px 20px' }}>
+                      🕒 Tu último registro: revisaste a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {formatHora12(r.hora) || r.hora} ({r.fecha})
+                    </p>
+                  )
+                })()}
               </div>
             )}
           </>
