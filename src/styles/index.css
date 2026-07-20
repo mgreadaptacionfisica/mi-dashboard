@@ -1548,11 +1548,63 @@ tbody td {
   }
 }
 
-@media (max-width: 768px) {
+/* Botón ☰ flotante que abre/cierra el sidebar en móvil y tablet (ver
+   Sidebar.jsx). Oculto en escritorio: ahí el sidebar sigue fijo como
+   siempre y este botón no pinta nada. */
+.sidebar-mobile-toggle {
+  display: none;
+}
+
+/* Fondo oscuro detrás del cajón abierto en móvil/tablet: toca fuera y se
+   cierra (ver Sidebar.jsx, onClick del overlay). */
+.sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .sidebar-mobile-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 210;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border: none;
+    background: var(--color-sidebar);
+    color: #fff;
+    font-size: 19px;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 150;
+  }
+
+  /* El sidebar pasa a ser un cajón que entra desde la izquierda por
+     encima del contenido (position: fixed + transform), en vez de
+     empujar todo hacia abajo como una lista larga apilada. Sigue
+     ocupando el ancho completo de la pantalla en el layout normal
+     (.main-content con margin-left: 0) hasta que se abre. */
   .sidebar {
-    width: 100%;
-    height: auto;
-    position: relative;
+    width: min(78vw, 300px);
+    height: 100vh;
+    position: fixed;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 200;
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
   }
 
   .main-content {
@@ -1560,7 +1612,7 @@ tbody td {
   }
 
   .topbar {
-    padding: 0 16px;
+    padding: 0 16px 0 64px;
     height: auto;
     flex-direction: column;
     align-items: flex-start;
@@ -1571,6 +1623,11 @@ tbody td {
 
   .page-content {
     padding: 16px;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
   .onboarding-page {
@@ -1655,9 +1712,10 @@ tbody td {
 }
 
 @media (max-width: 900px) {
+  /* El ancho/posición fijos del sidebar en este rango ya los define el
+     otro bloque @media (max-width: 900px) más arriba (cajón off-canvas):
+     aquí solo queda el ajuste de la rejilla de gráficos. */
   .charts-grid { grid-template-columns: 1fr; }
-  .sidebar { width: 200px; }
-  .app-layout:not(.app-layout-public) .main-content { margin-left: 200px; }
 }
 
 /* ---------- Ventas: pipeline de leads ---------- */

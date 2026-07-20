@@ -273,44 +273,46 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
               <div className="card-subtitle">Clientes activos ordenados por fecha de fin</div>
             </div>
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Categoría</th>
-                <th>Servicio</th>
-                <th>Fecha fin</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {renovaciones.map(c => (
-                <tr key={c.id}>
-                  <td style={{ fontWeight: 500 }}>{c.nombre}</td>
-                  <td>
-                    <span className={`status-pill ${c.categoria === 'Programa Readáptate' ? 'status-activo' : 'status-pendiente'}`}>
-                      {c.categoria === 'Programa Readáptate' ? '⭐ Readáptate' : c.categoria === 'Programa Previene' ? '🔵 Previene' : c.categoria}
-                    </span>
-                  </td>
-                  <td>{c.servicio}</td>
-                  <td style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
-                    {c.fechaFin ? new Date(c.fechaFin + 'T00:00:00').toLocaleDateString('es-ES') : '—'}
-                  </td>
-                  <td>
-                    <span style={{
-                      fontSize: 12, fontWeight: 600,
-                      color: diasColor(c.diasRestantes)
-                    }}>
-                      {diasLabel(c.diasRestantes)}
-                    </span>
-                  </td>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Categoría</th>
+                  <th>Servicio</th>
+                  <th>Fecha fin</th>
+                  <th>Estado</th>
                 </tr>
-              ))}
-              {renovaciones.length === 0 && (
-                <tr><td colSpan={5} className="lead-log-empty">No hay clientes activos con fecha de fin reconocible.</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {renovaciones.map(c => (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight: 500 }}>{c.nombre}</td>
+                    <td>
+                      <span className={`status-pill ${c.categoria === 'Programa Readáptate' ? 'status-activo' : 'status-pendiente'}`}>
+                        {c.categoria === 'Programa Readáptate' ? '⭐ Readáptate' : c.categoria === 'Programa Previene' ? '🔵 Previene' : c.categoria}
+                      </span>
+                    </td>
+                    <td>{c.servicio}</td>
+                    <td style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
+                      {c.fechaFin ? new Date(c.fechaFin + 'T00:00:00').toLocaleDateString('es-ES') : '—'}
+                    </td>
+                    <td>
+                      <span style={{
+                        fontSize: 12, fontWeight: 600,
+                        color: diasColor(c.diasRestantes)
+                      }}>
+                        {diasLabel(c.diasRestantes)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {renovaciones.length === 0 && (
+                  <tr><td colSpan={5} className="lead-log-empty">No hay clientes activos con fecha de fin reconocible.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
     </>
