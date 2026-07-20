@@ -52,6 +52,12 @@ function addMonthsISO(fechaISO, meses) {
   return fecha.toISOString().slice(0, 10)
 }
 
+function addDaysISO(fechaISO, dias) {
+  const [y, m, d] = fechaISO.split('-').map(Number)
+  const fecha = new Date(y, m - 1, d + dias)
+  return fecha.toISOString().slice(0, 10)
+}
+
 function LeadCard({ lead, onOpen }) {
   return (
     <button type="button" className="lead-card" onClick={onOpen}>
@@ -90,6 +96,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
   const [reagendarForm, setReagendarForm] = useState({ fecha: '', hora: '' })
   const [showResultadoNoRealizada, setShowResultadoNoRealizada] = useState(false)
   const [resultadoDraft, setResultadoDraft] = useState('no_show')
+  const [showElegirSeguimiento, setShowElegirSeguimiento] = useState(false)
   const [uploadingInforme, setUploadingInforme] = useState(false)
 
   // Antes exigía que "rol" fuera exactamente "Closer", así que a alguien con
@@ -127,6 +134,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
     setReagendarForm({ fecha: '', hora: '' })
     setShowResultadoNoRealizada(false)
     setResultadoDraft('no_show')
+    setShowElegirSeguimiento(false)
   }
 
   const closeDetail = () => {
@@ -196,11 +204,52 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
     updateLead(activeLead.id, { etapa: 'realizada', etapaAnterior: activeLead.etapa, resultadoLlamada: 'realizada' })
   }
 
+  // "Modificada / reagendada" quiere decir que ya se ha hablado de una
+  // nueva fecha en el momento, así que se pasa directo al formulario de
+  // reagendar (comportamiento de siempre). "No show" y "Cancelada" son
+  // más ambiguos — puede que la persona quiera una nueva hora ya mismo, o
+  // puede que no responda y haya que insistir en unos días — así que ahí
+  // se pregunta primero qué hacer (ver showElegirSeguimiento).
   const confirmarNoRealizada = () => {
     if (!activeLead) return
     updateLead(activeLead.id, { resultadoLlamada: resultadoDraft })
     setShowResultadoNoRealizada(false)
+    if (resultadoDraft === 'modificada') {
+      setShowReagendar(true)
+    } else {
+      setShowElegirSeguimiento(true)
+    }
+  }
+
+  const elegirReagendarAhora = () => {
+    setShowElegirSeguimiento(false)
     setShowReagendar(true)
+  }
+
+  // Pasa el lead a "seguimiento" (en vez de reagendar ya) y lo deja listo
+  // para aparecer en la pestaña Recontactar con un aviso a los 2 días —
+  // mismo mecanismo que ya existe ahí (fechaContacto + fila "atrasado" en
+  // rojo), solo que alimentado desde una llamada cancelada/no-show en vez
+  // de un seguimiento manual.
+  const pasarASeguimientoPorCancelacion = () => {
+    if (!activeLead) return
+    const motivoTexto = RESULTADO_NO_REALIZADA.find((r) => r.id === activeLead.resultadoLlamada)?.label || 'Llamada no realizada'
+    updateLead(activeLead.id, {
+      etapa: 'seguimiento',
+      etapaAnterior: 'agendada',
+      origenSeguimiento: 'reagendar',
+      seguimiento: { realizado: false, contesta: null, compraTrasSeguimiento: null },
+      recontacto: {
+        canal: 'WhatsApp',
+        contacto: activeLead.telefono || '',
+        motivo: `${motivoTexto} — reagendar`,
+        fechaContacto: addDaysISO(todayISO(), 2),
+        contactado: false,
+        respondido: null,
+        comprado: null,
+      },
+    })
+    setShowElegirSeguimiento(false)
   }
 
   const confirmarReagendar = (event) => {
@@ -210,10 +259,23 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
       fechaAgenda: reagendarForm.fecha || activeLead.fechaAgenda,
       horaAgenda: reagendarForm.hora || activeLead.horaAgenda,
       resultadoLlamada: null,
+      origenSeguimiento: null,
       etapa: 'agendada',
     })
     setShowReagendar(false)
     setReagendarForm({ fecha: '', hora: '' })
+  }
+
+  // No quiso reagendar tras la llamada cancelada/no-show (a diferencia de
+  // "No compró tras seguimiento", que es el motivo cuando sí se llegó a
+  // dar la llamada). Un clic, igual que setCompraTrasSeguimiento(false).
+  const marcarNoReagenda = () => {
+    if (!activeLead) return
+    updateLead(activeLead.id, {
+      etapa: 'perdida',
+      etapaAnterior: activeLead.etapa,
+      motivoPerdida: 'No quiso reagendar tras cancelación',
+    })
   }
 
   const marcarCompraEnLlamada = (compro) => {
@@ -221,7 +283,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
     if (compro) {
       setShowVentaForm(true)
     } else {
-      updateLead(activeLead.id, { compraEnLlamada: false, etapa: 'seguimiento', etapaAnterior: activeLead.etapa })
+      updateLead(activeLead.id, { compraEnLlamada: false, etapa: 'seguimiento', etapaAnterior: activeLead.etapa, origenSeguimiento: null })
     }
   }
 
@@ -628,7 +690,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
               )}
 
               {/* ---- Etapa: Agendada ---- */}
-              {activeLead.etapa === 'agendada' && !showReagendar && !showResultadoNoRealizada && (
+              {activeLead.etapa === 'agendada' && !showReagendar && !showResultadoNoRealizada && !showElegirSeguimiento && (
                 <>
                   <div>
                     <label className="lead-detail-label">Checklist pre-llamada</label>
@@ -654,6 +716,17 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
                   <div className="modal-actions">
                     <button type="button" className="secondary-action" onClick={() => setShowResultadoNoRealizada(false)}>Cancelar</button>
                     <button type="button" className="primary-action" onClick={confirmarNoRealizada}>Confirmar</button>
+                  </div>
+                </div>
+              )}
+
+              {showElegirSeguimiento && (
+                <div className="lead-venta-form">
+                  <p className="plan-subtitle-inline">¿Qué hacemos con esta llamada?</p>
+                  <p className="lead-detail-label">Puedes reagendarla ya mismo, o pasarla a seguimiento para intentarlo en unos días — aparecerá en la pestaña 🔁 Recontactar con aviso a los 2 días.</p>
+                  <div className="modal-actions">
+                    <button type="button" className="secondary-action" onClick={elegirReagendarAhora}>🔁 Reagendar ahora</button>
+                    <button type="button" className="primary-action" onClick={pasarASeguimientoPorCancelacion}>📅 Pasar a seguimiento</button>
                   </div>
                 </div>
               )}
@@ -684,9 +757,16 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
               )}
 
               {/* ---- Etapa: Seguimiento ---- */}
-              {activeLead.etapa === 'seguimiento' && !showVentaForm && !showLostForm && (
+              {activeLead.etapa === 'seguimiento' && !showVentaForm && !showLostForm && !showReagendar && (
                 <div>
-                  <p className="plan-subtitle-inline">Seguimiento</p>
+                  <p className="plan-subtitle-inline">
+                    {activeLead.origenSeguimiento === 'reagendar' ? 'Seguimiento — pendiente de reagendar' : 'Seguimiento'}
+                  </p>
+                  {activeLead.origenSeguimiento === 'reagendar' && (
+                    <p className="lead-detail-label" style={{ marginBottom: 8 }}>
+                      La llamada se marcó como "{RESULTADO_NO_REALIZADA.find((r) => r.id === activeLead.resultadoLlamada)?.label || 'no realizada'}". Fecha de aviso en la pestaña 🔁 Recontactar.
+                    </p>
+                  )}
                   <div className="lead-detail-actions" style={{ marginBottom: 8 }}>
                     <button type="button"
                       className={`secondary-action ${activeLead.seguimiento?.contesta === true ? 'active-toggle' : ''}`}
@@ -696,11 +776,19 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
                       onClick={() => setContesta(false)}>No contesta</button>
                   </div>
                   {activeLead.seguimiento?.contesta === true && (
-                    <div className="lead-detail-actions">
-                      <span className="lead-detail-label" style={{ alignSelf: 'center' }}>¿Compra?</span>
-                      <button type="button" className="primary-action" onClick={() => setCompraTrasSeguimiento(true)}>Sí ✅</button>
-                      <button type="button" className="danger-action" onClick={() => setCompraTrasSeguimiento(false)}>No</button>
-                    </div>
+                    activeLead.origenSeguimiento === 'reagendar' ? (
+                      <div className="lead-detail-actions">
+                        <span className="lead-detail-label" style={{ alignSelf: 'center' }}>¿Reagenda?</span>
+                        <button type="button" className="primary-action" onClick={() => setShowReagendar(true)}>Sí, reagendar</button>
+                        <button type="button" className="danger-action" onClick={marcarNoReagenda}>No</button>
+                      </div>
+                    ) : (
+                      <div className="lead-detail-actions">
+                        <span className="lead-detail-label" style={{ alignSelf: 'center' }}>¿Compra?</span>
+                        <button type="button" className="primary-action" onClick={() => setCompraTrasSeguimiento(true)}>Sí ✅</button>
+                        <button type="button" className="danger-action" onClick={() => setCompraTrasSeguimiento(false)}>No</button>
+                      </div>
+                    )
                   )}
                 </div>
               )}

@@ -17,6 +17,10 @@ function fromRow(row) {
     compraEnLlamada: row.compra_en_llamada,
     objeciones: row.objeciones || [],
     seguimiento: row.seguimiento || { realizado: false, contesta: null, compraTrasSeguimiento: null },
+    // 'reagendar' cuando el lead pasó a seguimiento por una llamada
+    // cancelada/no-show (en vez del seguimiento normal post-llamada, cuando
+    // no compró en el momento) — ver 51_origen_seguimiento_ventas.sql.
+    origenSeguimiento: row.origen_seguimiento || null,
     notasSeguimiento: row.notas_seguimiento || [],
     grabacionUrl: row.grabacion_url || '',
     motivoPerdida: row.motivo_perdida,
@@ -44,6 +48,7 @@ const CAMPO_A_COLUMNA = {
   compraEnLlamada: 'compra_en_llamada',
   objeciones: 'objeciones',
   seguimiento: 'seguimiento',
+  origenSeguimiento: 'origen_seguimiento',
   notasSeguimiento: 'notas_seguimiento',
   grabacionUrl: 'grabacion_url',
   motivoPerdida: 'motivo_perdida',
