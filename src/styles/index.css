@@ -1196,11 +1196,16 @@ tbody td {
 }
 
 .modal-form input,
-.modal-form select {
+.modal-form select,
+.modal-form textarea {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 13px;
+}
+
+.modal-form textarea {
+  width: 100%;
 }
 
 .modal-actions {
