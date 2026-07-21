@@ -2594,16 +2594,22 @@ textarea {
 .registro-rapido-tabla th,
 .registro-rapido-tabla td {
   vertical-align: top;
-  min-width: 150px;
+  min-width: 120px;
 }
 
 .registro-rapido-tabla th:first-child,
 .registro-rapido-cliente {
-  min-width: 160px;
+  min-width: 150px;
   position: sticky;
   left: 0;
   background: #fff;
   z-index: 1;
+}
+
+.registro-rapido-celda-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .registro-rapido-nombre {
@@ -2619,12 +2625,6 @@ textarea {
 
 .registro-rapido-nombre:hover {
   text-decoration: underline;
-}
-
-.registro-rapido-celda {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .registro-rapido-chip {

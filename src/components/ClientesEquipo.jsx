@@ -525,46 +525,53 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                         {DIAS_SEMANA.map((d) => {
                           const tareas = dias[d.id]?.tareas || []
                           const cellKey = `${cliente.Nombre}|${d.id}`
+                          // Los clientes hacen 3 sesiones al día como mucho, así
+                          // que no dejamos añadir más de 3 por día (a petición
+                          // de Raúl): al llegar a 3 desaparece el "＋ sesión".
+                          const lleno = tareas.length >= 3
                           return (
                             <td key={d.id} className="registro-rapido-celda">
-                              {tareas.map((t, i) => (
-                                <button
-                                  key={i}
-                                  type="button"
-                                  className={`registro-rapido-chip ${t.revisado ? 'registro-rapido-chip-hecho' : ''}`}
-                                  onClick={() => toggleTareaRapida(cliente.Nombre, d.id, i)}
-                                  title={t.revisado ? 'Hecho — clic para desmarcar' : 'Clic para marcar hecho'}
-                                >
-                                  {t.revisado ? '✅' : '⬜'} {t.texto}
-                                </button>
-                              ))}
-                              {addCell === cellKey ? (
-                                <form
-                                  className="registro-rapido-addform"
-                                  onSubmit={(e) => {
-                                    e.preventDefault()
-                                    addTareaRapida(cliente.Nombre, d.id, addTexto)
-                                    setAddTexto('')
-                                    setAddCell(null)
-                                  }}
-                                >
-                                  <input
-                                    autoFocus
-                                    value={addTexto}
-                                    placeholder="Sesión…"
-                                    onChange={(e) => setAddTexto(e.target.value)}
-                                    onBlur={() => { if (!addTexto.trim()) setAddCell(null) }}
-                                  />
-                                </form>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="registro-rapido-add"
-                                  onClick={() => { setAddCell(cellKey); setAddTexto('') }}
-                                >
-                                  ＋ sesión
-                                </button>
-                              )}
+                              <div className="registro-rapido-celda-inner">
+                                {tareas.map((t, i) => (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    className={`registro-rapido-chip ${t.revisado ? 'registro-rapido-chip-hecho' : ''}`}
+                                    onClick={() => toggleTareaRapida(cliente.Nombre, d.id, i)}
+                                    title={t.revisado ? 'Hecho — clic para desmarcar' : 'Clic para marcar hecho'}
+                                  >
+                                    {t.revisado ? '✅' : '⬜'} {t.texto}
+                                  </button>
+                                ))}
+                                {!lleno && addCell === cellKey && (
+                                  <form
+                                    className="registro-rapido-addform"
+                                    onSubmit={(e) => {
+                                      e.preventDefault()
+                                      addTareaRapida(cliente.Nombre, d.id, addTexto)
+                                      setAddTexto('')
+                                      setAddCell(null)
+                                    }}
+                                  >
+                                    <input
+                                      autoFocus
+                                      value={addTexto}
+                                      placeholder="Sesión…"
+                                      onChange={(e) => setAddTexto(e.target.value)}
+                                      onBlur={() => { if (!addTexto.trim()) setAddCell(null) }}
+                                    />
+                                  </form>
+                                )}
+                                {!lleno && addCell !== cellKey && (
+                                  <button
+                                    type="button"
+                                    className="registro-rapido-add"
+                                    onClick={() => { setAddCell(cellKey); setAddTexto('') }}
+                                  >
+                                    ＋ sesión
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           )
                         })}
