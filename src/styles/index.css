@@ -2580,6 +2580,97 @@ textarea {
   }
 }
 
+/* ---------- Registro rápido (Seguimiento y Valoración: rejilla cliente × día) ---------- */
+
+.registro-rapido-leyenda {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 12px;
+  padding: 0 20px 12px;
+}
+
+.registro-rapido-tabla th,
+.registro-rapido-tabla td {
+  vertical-align: top;
+  min-width: 150px;
+}
+
+.registro-rapido-tabla th:first-child,
+.registro-rapido-cliente {
+  min-width: 160px;
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.registro-rapido-nombre {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-align: left;
+  padding: 0;
+}
+
+.registro-rapido-nombre:hover {
+  text-decoration: underline;
+}
+
+.registro-rapido-celda {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.registro-rapido-chip {
+  border: 1px solid var(--color-border);
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.registro-rapido-chip-hecho {
+  background: #d1fae5;
+  color: #065f46;
+  text-decoration: line-through;
+}
+
+.registro-rapido-add {
+  border: 1px dashed var(--color-border);
+  background: none;
+  color: var(--color-text-secondary);
+  border-radius: 8px;
+  padding: 2px 7px;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.registro-rapido-add:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.registro-rapido-addform input {
+  width: 100%;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  padding: 3px 7px;
+  font-size: 11px;
+}
+
 @media (max-width: 768px) {
   .lead-detail-row,
   .lead-detail-columns {

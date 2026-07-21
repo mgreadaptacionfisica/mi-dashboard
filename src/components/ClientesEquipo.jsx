@@ -12,6 +12,7 @@ import {
   contactoVacio,
   DIAS_SEMANA,
   semanaVacia,
+  diaVacio,
   progresoSemana,
   ultimaRevisionCliente,
 } from '../utils/seguimientoHelpers'
@@ -64,10 +65,17 @@ function formatDate(value) {
 
 export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, onRefrescar, refrescando, onNavigate }) {
   const [search, setSearch] = useState('')
+  const [vista, setVista] = useState('tabla')
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   const [valoracionCliente, setValoracionCliente] = useState(null)
   const [fasesCliente, setFasesCliente] = useState(null)
   const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', horaH: '10', horaM: '00', ampm: 'AM' })
+  // Celda del "Registro rápido" que está mostrando ahora mismo el campo
+  // para teclear una sesión nueva (clave "NombreCliente|diaId"), y el
+  // borrador de texto — para no montar un input por cada celda de toda la
+  // rejilla, solo por la que estás usando.
+  const [addCell, setAddCell] = useState(null)
+  const [addTexto, setAddTexto] = useState('')
 
   // Admin: acceso a Seguimiento/Valoración de TODOS los clientes (no solo
   // los suyos), porque necesita poder supervisar el trabajo de cualquier
@@ -132,6 +140,45 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
       return [...prev, actualizado]
     })
     upsertContactoSemanalRemote(actualizado)
+  }
+
+  // "Registro rápido": editar las tareas de la semana de un cliente sin
+  // abrir su modal de Seguimiento. Es exactamente el mismo dato (dias ->
+  // tareas -> { texto, revisado }) que se ve dentro de SeguimientoCliente,
+  // solo que en una rejilla cliente × día para repasar en bloque. mutarDias
+  // recibe el objeto de días actual y devuelve el nuevo.
+  const actualizarSeguimientoSemana = (clienteNombre, mutarDias) => {
+    if (typeof setSeguimientos !== 'function') return
+    const existente = seguimientos.find((s) => s.clienteNombre === clienteNombre && s.semana === semanaActual)
+    const base = existente
+      ? { ...existente, dias: { ...(existente.dias || semanaVacia()) } }
+      : { clienteNombre, semana: semanaActual, dias: semanaVacia(), comentarios: '', cambiosPendientes: [], revisiones: [] }
+    const actualizado = { ...base, dias: mutarDias(base.dias) }
+    setSeguimientos((prev) => {
+      const existe = prev.some((s) => s.clienteNombre === clienteNombre && s.semana === semanaActual)
+      if (existe) return prev.map((s) => (s.clienteNombre === clienteNombre && s.semana === semanaActual ? actualizado : s))
+      return [...prev, actualizado]
+    })
+    upsertSeguimientoRemote(actualizado)
+  }
+
+  const toggleTareaRapida = (clienteNombre, diaId, index) => {
+    actualizarSeguimientoSemana(clienteNombre, (dias) => {
+      const dia = dias[diaId] || diaVacio()
+      const tareas = dia.tareas.map((t, i) => (
+        i === index ? { ...t, revisado: !t.revisado, revisadoEn: !t.revisado ? new Date().toISOString() : null } : t
+      ))
+      return { ...dias, [diaId]: { tareas } }
+    })
+  }
+
+  const addTareaRapida = (clienteNombre, diaId, texto) => {
+    const limpio = (texto || '').trim()
+    if (!limpio) return
+    actualizarSeguimientoSemana(clienteNombre, (dias) => {
+      const dia = dias[diaId] || diaVacio()
+      return { ...dias, [diaId]: { tareas: [...dia.tareas, { texto: limpio, revisado: false, revisadoEn: null }] } }
+    })
   }
 
   // "Registrar última revisión" (movido aquí desde Mi Ficha, a petición de
@@ -205,6 +252,19 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
         )}
 
         {(esAdmin || miPersona) && (
+          <>
+            <div className="tabs-bar">
+              <button type="button" className={`tab-btn ${vista === 'tabla' ? 'tab-btn-active' : ''}`} onClick={() => setVista('tabla')}>
+                📋 Tabla de clientes
+              </button>
+              <button type="button" className={`tab-btn ${vista === 'registro' ? 'tab-btn-active' : ''}`} onClick={() => setVista('registro')}>
+                ⚡ Registro rápido
+              </button>
+            </div>
+          </>
+        )}
+
+        {(esAdmin || miPersona) && vista === 'tabla' && (
           <>
             <div className="kpi-grid">
               <div className="kpi-card">
@@ -412,6 +472,114 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
               </div>
             )}
           </>
+        )}
+
+        {(esAdmin || miPersona) && vista === 'registro' && (
+          <div className="table-card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">Registro rápido de sesiones</div>
+                <div className="card-subtitle">
+                  Semana del {formatRangoSemana(semanaActual)} · marca cada sesión sin entrar en la ficha. Clic en el nombre para abrir el seguimiento completo.
+                </div>
+              </div>
+              <input
+                className="filter-input"
+                placeholder="Buscar cliente..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ maxWidth: 260 }}
+              />
+            </div>
+
+            <div className="registro-rapido-leyenda">
+              <span><span className="registro-rapido-chip registro-rapido-chip-hecho" style={{ pointerEvents: 'none' }}>✅ Hecho</span></span>
+              <span><span className="registro-rapido-chip" style={{ pointerEvents: 'none' }}>⬜ Pendiente</span></span>
+              <span style={{ color: 'var(--color-text-secondary)' }}>Clic en una sesión para marcarla / desmarcarla</span>
+            </div>
+
+            <div className="table-wrapper">
+              <table className="registro-rapido-tabla">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    {DIAS_SEMANA.map((d) => <th key={d.id}>{d.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtrados.map((cliente, index) => {
+                    const registroSemana = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaActual)
+                    const dias = registroSemana?.dias || {}
+                    return (
+                      <tr key={`reg-${cliente.id || cliente.Nombre}-${index}`}>
+                        <td className="registro-rapido-cliente">
+                          <button
+                            type="button"
+                            className="registro-rapido-nombre"
+                            onClick={() => setSeguimientoCliente(cliente)}
+                            title="Abrir seguimiento completo"
+                          >
+                            {cliente.Nombre || '—'}
+                          </button>
+                        </td>
+                        {DIAS_SEMANA.map((d) => {
+                          const tareas = dias[d.id]?.tareas || []
+                          const cellKey = `${cliente.Nombre}|${d.id}`
+                          return (
+                            <td key={d.id} className="registro-rapido-celda">
+                              {tareas.map((t, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  className={`registro-rapido-chip ${t.revisado ? 'registro-rapido-chip-hecho' : ''}`}
+                                  onClick={() => toggleTareaRapida(cliente.Nombre, d.id, i)}
+                                  title={t.revisado ? 'Hecho — clic para desmarcar' : 'Clic para marcar hecho'}
+                                >
+                                  {t.revisado ? '✅' : '⬜'} {t.texto}
+                                </button>
+                              ))}
+                              {addCell === cellKey ? (
+                                <form
+                                  className="registro-rapido-addform"
+                                  onSubmit={(e) => {
+                                    e.preventDefault()
+                                    addTareaRapida(cliente.Nombre, d.id, addTexto)
+                                    setAddTexto('')
+                                    setAddCell(null)
+                                  }}
+                                >
+                                  <input
+                                    autoFocus
+                                    value={addTexto}
+                                    placeholder="Sesión…"
+                                    onChange={(e) => setAddTexto(e.target.value)}
+                                    onBlur={() => { if (!addTexto.trim()) setAddCell(null) }}
+                                  />
+                                </form>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="registro-rapido-add"
+                                  onClick={() => { setAddCell(cellKey); setAddTexto('') }}
+                                >
+                                  ＋ sesión
+                                </button>
+                              )}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                  {filtrados.length === 0 && (
+                    <tr><td colSpan={DIAS_SEMANA.length + 1} className="lead-log-empty">
+                      {misClientes.length === 0 ? 'No hay clientes activos asignados.' : 'Sin resultados con ese filtro.'}
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </main>
 
