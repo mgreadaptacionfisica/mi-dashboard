@@ -6,7 +6,7 @@ import ValoracionCliente from './ValoracionCliente'
 import FasesObjetivos from './FasesObjetivos'
 import CobrosPendientes from './CobrosPendientes'
 import { insertClienteRemote, updateClienteRemote, deleteClienteRemote } from '../lib/queries/clientes'
-import { generarPlazosPorNumero } from '../lib/plazos'
+import { generarPlazosPorNumero, generarPlazosDesdeFecha } from '../lib/plazos'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 
 const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
@@ -27,6 +27,7 @@ const initialForm = {
   otraRenovacion: '',
   importeRenovacion: RENOVACIONES[0].precio,
   fechaRenovacion: '',
+  pagoRenovacion: 'COMPLETO',
   pago: 'COMPLETO',
   importeTotal: '',
   plazosDetalle: [],
@@ -225,7 +226,35 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
     // historial: las correcciones de importe/fecha se hacen desde
     // "Cobros pendientes".
     const planExistente = isEditing && editingIndex !== null ? (clientes[editingIndex].Plazos || []) : []
-    const plazosFinal = planExistente.length > 0 ? planExistente : generarPlazos(formData.pago, formData.importeTotal)
+    const plazosContrato = planExistente.length > 0 ? planExistente : generarPlazos(formData.pago, formData.importeTotal)
+
+    // Cobros de la RENOVACIÓN: antes se guardaban solo como campos sueltos
+    // en la ficha ("Importe/Fecha renovación") y no llegaban nunca a Cobros
+    // pendientes ni a contabilidad. Ahora, si el cliente renueva, se generan
+    // como plazos extra dentro del mismo array Plazos (pueden ser 1 pago o
+    // 2/3 plazos, según "pagoRenovacion"), marcados con origen:'renovacion'
+    // y la fecha de esa renovación. Idempotente: si ya existen plazos de
+    // renovación para esa misma fecha (p. ej. al reeditar el cliente), se
+    // conservan tal cual —con su estado de cobro— y no se duplican; cuando
+    // el cliente vuelva a renovar en OTRA fecha, se crean unos nuevos.
+    let plazosFinal = plazosContrato
+    const importeRenov = Number(formData.importeRenovacion) || 0
+    const fechaRenovValida = /^\d{4}-\d{2}-\d{2}$/.test(formData.fechaRenovacion || '')
+    if (formData.renueva === 'Sí' && importeRenov > 0 && fechaRenovValida) {
+      const yaGenerada = plazosContrato.some((p) => p.origen === 'renovacion' && p.renovacionFecha === formData.fechaRenovacion)
+      if (!yaGenerada) {
+        const nRenov = formData.pagoRenovacion === '3 PLAZOS' ? 3 : formData.pagoRenovacion === '2 PLAZOS' ? 2 : 1
+        const maxNumero = plazosContrato.reduce((m, p) => Math.max(m, p.numero || 0), 0)
+        const plazosRenov = generarPlazosDesdeFecha(nRenov, importeRenov, formData.fechaRenovacion).map((p, i) => ({
+          ...p,
+          numero: maxNumero + i + 1,
+          origen: 'renovacion',
+          renovacionFecha: formData.fechaRenovacion,
+          concepto: `Renovación${nombreRenovacion ? ' — ' + nombreRenovacion : ''}${nRenov > 1 ? ` (${i + 1}/${nRenov})` : ''}`,
+        }))
+        plazosFinal = [...plazosContrato, ...plazosRenov]
+      }
+    }
 
     // Los clientes nunca tuvieron id propio (ni en el CSV ni en el estado
     // en memoria); se genera uno estable al crear y se conserva al editar,
@@ -280,6 +309,11 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
     const servicioEncontrado = SERVICIOS.find(s => s.nombre === servicioActual)
     const renovacionActual = cliente['Forma de renovación'] || ''
     const renovacionEncontrada = RENOVACIONES.find(r => r.nombre === renovacionActual)
+    // Refleja el tipo de pago de la renovación a partir de cuántos plazos de
+    // renovación ya tiene generados (1 = COMPLETO, 2/3 = a plazos). Si aún
+    // no hay ninguno, por defecto COMPLETO.
+    const nPlazosRenov = (cliente.Plazos || []).filter(p => p.origen === 'renovacion').length
+    const pagoRenovActual = nPlazosRenov >= 3 ? '3 PLAZOS' : nPlazosRenov === 2 ? '2 PLAZOS' : 'COMPLETO'
     setFormData({
       nombre: cliente.Nombre || '',
       email: cliente.Email || '',
@@ -300,6 +334,7 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
       otraRenovacion: renovacionActual && !renovacionEncontrada ? renovacionActual : '',
       importeRenovacion: cliente['Importe renovación'] || RENOVACIONES[0].precio,
       fechaRenovacion: parseFechaFlexible(cliente['Fecha renovación']) || cliente['Fecha renovación'] || '',
+      pagoRenovacion: pagoRenovActual,
       pago: cliente.Pago || 'COMPLETO',
       importeTotal: cliente['Importe total'] || '',
       plazosDetalle: cliente.Plazos || [],
@@ -781,7 +816,7 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
                     value={formData.importeRenovacion}
                     onChange={event => setFormData({ ...formData, importeRenovacion: event.target.value })}
                   />
-                  <label className="lead-detail-label">Fecha de renovación</label>
+                  <label className="lead-detail-label">Fecha de renovación (fecha del primer cobro)</label>
                   <input
                     type="date"
                     value={/^\d{4}-\d{2}-\d{2}$/.test(formData.fechaRenovacion) ? formData.fechaRenovacion : ''}
@@ -792,6 +827,17 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
                       Fecha guardada sin interpretar: "{formData.fechaRenovacion}". Selecciónala de nuevo en el calendario.
                     </p>
                   )}
+                  <label className="lead-detail-label">Tipo de pago de la renovación</label>
+                  <select value={formData.pagoRenovacion} onChange={event => setFormData({ ...formData, pagoRenovacion: event.target.value })}>
+                    <option value="COMPLETO">COMPLETO (pago único)</option>
+                    <option value="2 PLAZOS">2 PLAZOS</option>
+                    <option value="3 PLAZOS">3 PLAZOS</option>
+                  </select>
+                  <p style={{ margin: '-2px 0 4px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                    {(clientes[editingIndex]?.Plazos || []).some(p => p.origen === 'renovacion' && p.renovacionFecha === formData.fechaRenovacion)
+                      ? 'Esta renovación ya tiene su cobro creado en "Cobros pendientes". Para corregir importes o fechas, edítalo allí.'
+                      : 'Al guardar se creará el cobro (o los plazos) de la renovación en "Cobros pendientes", con el primer pago en la fecha de renovación.'}
+                  </p>
                 </div>
               )}
               <div className="modal-actions">
