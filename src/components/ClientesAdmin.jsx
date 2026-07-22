@@ -6,6 +6,7 @@ import ValoracionCliente from './ValoracionCliente'
 import FasesObjetivos from './FasesObjetivos'
 import CobrosPendientes from './CobrosPendientes'
 import { insertClienteRemote, updateClienteRemote, deleteClienteRemote } from '../lib/queries/clientes'
+import { renombrarClienteEnHistorial } from '../lib/queries/renombrarCliente'
 import { generarPlazosPorNumero, generarPlazosDesdeFecha } from '../lib/plazos'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 
@@ -116,7 +117,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function ClientesAdmin({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, miEmail }) {
+export default function ClientesAdmin({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, miEmail }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
   // Por defecto solo se ven los clientes ACTIVO (menos ruido visual); desde
@@ -283,8 +284,25 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
     }
 
     if (isEditing && editingIndex !== null) {
+      const nombreViejo = clientes[editingIndex]?.Nombre || ''
+      const nombreNuevo = formData.nombre
       setClientes(prev => prev.map((item, index) => index === editingIndex ? clienteActualizado : item))
       updateClienteRemote(id, clienteActualizado)
+
+      // Si se ha corregido el nombre, arrastra ese cambio a todo el
+      // historial del cliente (seguimiento, contacto, valoración, fases,
+      // revisiones): el panel enlaza por nombre, así que sin esto el
+      // historial se quedaría colgando del nombre viejo. Se actualiza en
+      // memoria (para verlo al instante, sin recargar) y en Supabase.
+      if (nombreViejo && nombreNuevo && nombreViejo !== nombreNuevo) {
+        const renombra = (arr) => arr.map((r) => (r.clienteNombre === nombreViejo ? { ...r, clienteNombre: nombreNuevo } : r))
+        if (typeof setSeguimientos === 'function') setSeguimientos(renombra)
+        if (typeof setContactosSemanales === 'function') setContactosSemanales(renombra)
+        if (typeof setValoraciones === 'function') setValoraciones(renombra)
+        if (typeof setObjetivosClienteFase === 'function') setObjetivosClienteFase(renombra)
+        if (typeof setRevisionesSemanales === 'function') setRevisionesSemanales(renombra)
+        renombrarClienteEnHistorial(nombreViejo, nombreNuevo)
+      }
     } else {
       setClientes(prev => [clienteActualizado, ...prev])
       insertClienteRemote(clienteActualizado)
