@@ -33,7 +33,7 @@ const ETIQUETA_ROL = {
 // desde la izquierda: empieza oculto (mobileOpen = false), el botón ☰
 // flotante lo abre, y se cierra solo al tocar fuera (overlay) o al elegir
 // una sección — así no hay que ir cerrándolo a mano cada vez.
-export default function Sidebar({ activeView, onNavigate, seccionesPermitidas = [], rol, email, onLogout }) {
+export default function Sidebar({ activeView, onNavigate, seccionesPermitidas = [], rol, email, onLogout, modoDemo = false, onToggleModoDemo }) {
   const navItems = TODOS_LOS_ITEMS.filter(item => seccionesPermitidas.includes(item.id))
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -79,6 +79,16 @@ export default function Sidebar({ activeView, onNavigate, seccionesPermitidas = 
         </nav>
 
         <div className="sidebar-footer">
+          {typeof onToggleModoDemo === 'function' && (
+            <button
+              type="button"
+              onClick={onToggleModoDemo}
+              className={`sidebar-demo-btn ${modoDemo ? 'sidebar-demo-btn-on' : ''}`}
+              title="Enmascara los datos personales y bloquea el guardado, para enseñar o grabar el panel sin exponer datos reales."
+            >
+              🕶️ Modo demo: {modoDemo ? 'ON' : 'OFF'}
+            </button>
+          )}
           <div style={{ color: 'rgba(255,255,255,0.55)', marginBottom: 4 }}>
             {ETIQUETA_ROL[rol] || 'Sin rol'}{email ? ` · ${email}` : ''}
           </div>

@@ -1,7 +1,9 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import Onboarding from './components/Onboarding'
 import PanelLogin from './components/PanelLogin'
 import { getSession, onAuthChange, signOut, getRole, seccionesDelRol } from './lib/auth'
+import { activarDemo } from './lib/demoGuard'
+import { enmascararTodo } from './utils/modoDemo'
 
 // Rutas públicas: se sirven solas, sin sidebar ni el resto del panel interno,
 // y sin cargar los módulos que contienen datos de clientes.
@@ -294,6 +296,32 @@ function InternalApp({ session, rol, onLogout }) {
   const [enlacesInteres, setEnlacesInteres] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
+  // Modo demo / presentación (solo admin): enmascara los datos personales en
+  // pantalla y bloquea las escrituras a Supabase (ver demoGuard.js), para
+  // poder enseñar o grabar el panel sin exponer datos reales de clientes.
+  // Se recuerda en el navegador para que, si se recarga a mitad de una
+  // grabación, siga enmascarado y no se escape nada.
+  const esAdmin = rol === 'admin'
+  const [modoDemo, setModoDemo] = useState(() => esAdmin && localStorage.getItem('mg_modo_demo') === '1')
+  useEffect(() => { activarDemo(modoDemo) }, [modoDemo])
+  const toggleModoDemo = () => {
+    setModoDemo((v) => {
+      const nuevo = !v
+      activarDemo(nuevo)
+      try { localStorage.setItem('mg_modo_demo', nuevo ? '1' : '0') } catch (_) { /* noop */ }
+      return nuevo
+    })
+  }
+
+  const datosDemo = useMemo(
+    () => (modoDemo ? enmascararTodo({
+      clientes, team, ventas, seguimientos, contactosSemanales, valoraciones: valoracionesClientes,
+      objetivosClienteFase, revisionesSemanales, recontactos, ingresosEmpresa, gastosEmpresa, mensajesEquipo,
+    }) : null),
+    [modoDemo, clientes, team, ventas, seguimientos, contactosSemanales, valoracionesClientes,
+      objetivosClienteFase, revisionesSemanales, recontactos, ingresosEmpresa, gastosEmpresa, mensajesEquipo]
+  )
+
   useEffect(() => {
     let cancelled = false
     Promise.all([
@@ -404,14 +432,32 @@ function InternalApp({ session, rol, onLogout }) {
     // este rol (cambio de cuenta, rol reasignado, etc.): se cae a la
     // primera sección que sí tenga permitida.
     const vista = seccionesPermitidas.includes(activeView) ? activeView : (seccionesPermitidas[0] || null)
+
+    // Modo demo: si está activo, se sustituyen SOLO las listas de datos que
+    // se muestran (enmascaradas) por sus versiones ficticias; los setters y
+    // el resto de estados siguen siendo los reales. Las variables locales de
+    // abajo "tapan" (shadow) a las del estado dentro de esta función, así el
+    // resto del render no cambia. Las escrituras a Supabase están bloqueadas
+    // aparte (demoGuard.js), así que aunque se pulse algo no se altera nada.
+    const _src = datosDemo || {
+      clientes, team, ventas, seguimientos, contactosSemanales, valoraciones: valoracionesClientes,
+      objetivosClienteFase, revisionesSemanales, recontactos, ingresosEmpresa, gastosEmpresa, mensajesEquipo,
+    }
+    const {
+      clientes: dClientes, team: dTeam, ventas: dVentas, seguimientos: dSeguimientos,
+      contactosSemanales: dContactos, valoraciones: dValoraciones, objetivosClienteFase: dObjetivos,
+      revisionesSemanales: dRevisiones, recontactos: dRecontactos, ingresosEmpresa: dIngresosEmpresa,
+      gastosEmpresa: dGastosEmpresa, mensajesEquipo: dMensajes,
+    } = _src
+
     switch (vista) {
-      case 'dashboard':    return <Dashboard clientes={clientes} ventas={ventas} recontactos={recontactos} ingresosEmpresa={ingresosEmpresa} tareasPersonales={tareasPersonales} contenidoIdeas={contenidoIdeas} />
-      case 'ventas':       return <Ventas ventas={ventas} setVentas={setVentas} team={team} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={recontactos} setRecontactos={setRecontactos} />
-      case 'clientes':     return <ClientesAdmin clientes={clientes} setClientes={setClientes} team={team} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={objetivosClienteFase} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={revisionesSemanales} setRevisionesSemanales={setRevisionesSemanales} miEmail={session?.user?.email} />
-      case 'clientes-equipo': return <ClientesEquipo clientes={clientes} team={team} miEmail={session?.user?.email} rol={rol} seguimientos={seguimientos} setSeguimientos={setSeguimientos} valoraciones={valoracionesClientes} setValoraciones={setValoracionesClientes} objetivosClienteFase={objetivosClienteFase} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={revisionesSemanales} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
-      case 'equipo':       return <Equipo team={team} setTeam={setTeam} clientes={clientes} ventas={ventas} seguimientos={seguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={contactosSemanales} setContactosSemanales={setContactosSemanales} valoraciones={valoracionesClientes} objetivosClienteFase={objetivosClienteFase} revisionesSemanales={revisionesSemanales} setRevisionesSemanales={setRevisionesSemanales} miEmail={session?.user?.email} />
-      case 'mi-ficha':     return <MiFicha team={team} clientes={clientes} seguimientos={seguimientos} contactosSemanales={contactosSemanales} gastosEmpresa={gastosEmpresa} tareas={tareasPersonales} revisionesSemanales={revisionesSemanales} miEmail={session?.user?.email} onNavigate={irVistaPermitida} />
-      case 'comunicacion': return <MuroEquipo mensajes={mensajesEquipo} setMensajes={setMensajesEquipo} team={team} miEmail={session?.user?.email} rol={rol} />
+      case 'dashboard':    return <Dashboard clientes={dClientes} ventas={dVentas} recontactos={dRecontactos} ingresosEmpresa={dIngresosEmpresa} tareasPersonales={tareasPersonales} contenidoIdeas={contenidoIdeas} />
+      case 'ventas':       return <Ventas ventas={dVentas} setVentas={setVentas} team={dTeam} setClientes={setClientes} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={dRecontactos} setRecontactos={setRecontactos} />
+      case 'clientes':     return <ClientesAdmin clientes={dClientes} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} miEmail={session?.user?.email} />
+      case 'clientes-equipo': return <ClientesEquipo clientes={dClientes} team={dTeam} miEmail={session?.user?.email} rol={rol} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
+      case 'equipo':       return <Equipo team={dTeam} setTeam={setTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} valoraciones={dValoraciones} objetivosClienteFase={dObjetivos} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} miEmail={session?.user?.email} />
+      case 'mi-ficha':     return <MiFicha team={dTeam} clientes={dClientes} seguimientos={dSeguimientos} contactosSemanales={dContactos} gastosEmpresa={dGastosEmpresa} tareas={tareasPersonales} revisionesSemanales={dRevisiones} miEmail={session?.user?.email} onNavigate={irVistaPermitida} />
+      case 'comunicacion': return <MuroEquipo mensajes={dMensajes} setMensajes={setMensajesEquipo} team={dTeam} miEmail={session?.user?.email} rol={rol} />
       // Finanzas: datos personales de Raúl + datos de empresa (alimentados
       // automáticamente desde Ventas/Clientes/Equipo). Solo 'admin' tiene
       // 'finanzas' en sus secciones permitidas (ver SECCIONES_POR_ROL en
@@ -421,14 +467,14 @@ function InternalApp({ session, rol, onLogout }) {
         <Finanzas
           ingresosPersonales={ingresosPersonales} setIngresosPersonales={setIngresosPersonales}
           gastosPersonales={gastosPersonales} setGastosPersonales={setGastosPersonales}
-          ingresosEmpresa={ingresosEmpresa} setIngresosEmpresa={setIngresosEmpresa}
-          gastosEmpresa={gastosEmpresa} setGastosEmpresa={setGastosEmpresa}
+          ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa}
+          gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa}
           reglasRecurrentes={reglasRecurrentes} setReglasRecurrentes={setReglasRecurrentes}
           tarifasPasarela={tarifasPasarela} setTarifasPasarela={setTarifasPasarela}
         />
       )
       case 'onboarding':   return <Onboarding />
-      case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={team} sops={sops} setSops={setSops} miEmail={session?.user?.email} rol={rol} />
+      case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={dTeam} sops={sops} setSops={setSops} miEmail={session?.user?.email} rol={rol} />
       case 'tareas':       return <MisTareas tareas={tareasPersonales} setTareas={setTareasPersonales} miEmail={session?.user?.email} />
       case 'manuales':     return <Manuales manuales={manuales} setManuales={setManuales} rol={rol} />
       case 'enlaces':      return <EnlacesInteres enlaces={enlacesInteres} setEnlaces={setEnlacesInteres} />
@@ -445,8 +491,15 @@ function InternalApp({ session, rol, onLogout }) {
         rol={rol}
         email={session?.user?.email}
         onLogout={onLogout}
+        modoDemo={modoDemo}
+        onToggleModoDemo={esAdmin ? toggleModoDemo : undefined}
       />
       <div className="main-content">
+        {modoDemo && (
+          <div className="modo-demo-banner">
+            🕶️ Modo demo activo — datos enmascarados y guardado bloqueado. Seguro para enseñar o grabar.
+          </div>
+        )}
         {renderView()}
       </div>
     </div>
