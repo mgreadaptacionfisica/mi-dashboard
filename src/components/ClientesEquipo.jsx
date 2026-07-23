@@ -102,6 +102,17 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     return base.filter((c) => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
   }, [clientes, miNombre, esAdmin])
 
+  // Clientes compartidos con otro entrenador: a petición de Raúl, para
+  // distinguir de un vistazo cuáles reviso yo sí o sí y cuáles comparto (y
+  // con quién) para no pisarnos con el otro entrenador. "otros" son los
+  // profesionales asignados distintos a mí; si soy admin (sin ficha propia)
+  // muestro a todos los asignados cuando hay más de uno.
+  const compartidoCon = (cliente) => {
+    const trabajadores = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
+    if (trabajadores.length < 2) return []
+    return miNombre ? trabajadores.filter((w) => w !== miNombre) : trabajadores
+  }
+
   const filtrados = useMemo(() => {
     const term = search.toLowerCase().trim()
     if (!term) return misClientes
@@ -358,6 +369,11 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                             {!semanaRevisadaCliente && (
                               <span className="semana-pendiente-badge" title="Semana sin revisar y cerrar todavía">⏳</span>
                             )}
+                            {compartidoCon(cliente).length > 0 && (
+                              <div className="registro-compartido-badge" title={`Cliente compartido — coordina con ${compartidoCon(cliente).join(', ')} quién lo revisa`}>
+                                🤝 Compartido con {compartidoCon(cliente).join(', ')}
+                              </div>
+                            )}
                           </td>
                           <td>{cliente['Servicio contratado'] || '—'}</td>
                           {esAdmin && <td>{trabajadores.length ? trabajadores.join(', ') : '—'}</td>}
@@ -510,9 +526,10 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                   {filtrados.map((cliente, index) => {
                     const registroSemana = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaActual)
                     const dias = registroSemana?.dias || {}
+                    const otros = compartidoCon(cliente)
                     return (
                       <tr key={`reg-${cliente.id || cliente.Nombre}-${index}`}>
-                        <td className="registro-rapido-cliente">
+                        <td className={`registro-rapido-cliente ${otros.length ? 'registro-rapido-compartido' : ''}`}>
                           <button
                             type="button"
                             className="registro-rapido-nombre"
@@ -521,6 +538,11 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           >
                             {cliente.Nombre || '—'}
                           </button>
+                          {otros.length > 0 && (
+                            <div className="registro-compartido-badge" title={`Cliente compartido — coordina con ${otros.join(', ')} quién lo revisa`}>
+                              🤝 Compartido con {otros.join(', ')}
+                            </div>
+                          )}
                         </td>
                         {DIAS_SEMANA.map((d) => {
                           const tareas = dias[d.id]?.tareas || []
