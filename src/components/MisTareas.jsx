@@ -84,6 +84,17 @@ export default function MisTareas({ tareas = [], setTareas, miEmail }) {
     deleteTareaRemote(id)
   }
 
+  // Editar la fecha de una tarea ya creada (a petición de Raúl): se pulsa
+  // la fecha (o "Poner fecha" si no tenía) y aparece un selector; al elegir
+  // otra fecha se guarda al momento. Dejar la fecha vacía la quita.
+  const [editandoFecha, setEditandoFecha] = useState(null)
+  const cambiarFecha = (tarea, nuevaFecha) => {
+    if (typeof setTareas !== 'function') return
+    const fecha = nuevaFecha || null
+    setTareas((prev) => prev.map((t) => (t.id === tarea.id ? { ...t, fecha } : t)))
+    updateTareaRemote(tarea.id, { fecha })
+  }
+
   return (
     <>
       <header className="topbar">
@@ -153,10 +164,26 @@ export default function MisTareas({ tareas = [], setTareas, miEmail }) {
                     <span>{t.texto}</span>
                   </label>
                   <div className="tareas-item-meta">
-                    {t.fecha && (
-                      <span className={`status-pill ${ESTADO_CLASS[estado] || 'status-idea'}`}>
-                        {ESTADO_LABEL[estado] ? `${ESTADO_LABEL[estado]} · ` : ''}{formatFecha(t.fecha)}
-                      </span>
+                    {editandoFecha === t.id ? (
+                      <input
+                        type="date"
+                        autoFocus
+                        value={t.fecha || ''}
+                        onChange={(e) => cambiarFecha(t, e.target.value)}
+                        onBlur={() => setEditandoFecha(null)}
+                      />
+                    ) : t.fecha ? (
+                      <button
+                        type="button"
+                        className={`status-pill ${ESTADO_CLASS[estado] || 'status-idea'}`}
+                        style={{ border: 'none', cursor: 'pointer' }}
+                        title="Cambiar la fecha"
+                        onClick={() => setEditandoFecha(t.id)}
+                      >
+                        {ESTADO_LABEL[estado] ? `${ESTADO_LABEL[estado]} · ` : ''}{formatFecha(t.fecha)} ✎
+                      </button>
+                    ) : (
+                      <button type="button" className="row-action-btn" onClick={() => setEditandoFecha(t.id)}>📅 Poner fecha</button>
                     )}
                     <button type="button" className="row-action-btn" onClick={() => eliminar(t.id)}>Eliminar</button>
                   </div>
