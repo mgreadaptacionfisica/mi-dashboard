@@ -127,7 +127,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   // actividad (tareas o cambios) y NO se llegó a cerrar (check final), para
   // seguir avisando hasta que se cierre. No mueve ni copia nada: al pulsar
   // el aviso se abre esa misma semana en la ficha para terminarla tal cual.
-  const semanaAnterior = semanaAnteriorISO(semanaActual)
+  const semanaAnterior = semanaAnteriorISO(semanaActualISO())
   const semanaAnteriorSinCerrar = (cliente) => {
     const segPrev = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaAnterior)
     if (!segPrev) return false
