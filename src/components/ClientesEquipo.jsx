@@ -6,6 +6,7 @@ import { faseAutomatica, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valo
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import {
   semanaActualISO,
+  semanaAnteriorISO,
   formatRangoSemana,
   resumenRevisionesSemana,
   PUNTOS_CONTACTO,
@@ -67,6 +68,13 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   const [search, setSearch] = useState('')
   const [vista, setVista] = useState('tabla')
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
+  // Con qué semana se abre el modal de Seguimiento: 0 = actual, -1 = la
+  // anterior (para terminar de cerrar una semana pasada que quedó abierta).
+  const [seguimientoOffset, setSeguimientoOffset] = useState(0)
+  const abrirSeguimiento = (cliente, offset = 0) => {
+    setSeguimientoOffset(offset)
+    setSeguimientoCliente(cliente)
+  }
   const [valoracionCliente, setValoracionCliente] = useState(null)
   const [fasesCliente, setFasesCliente] = useState(null)
   const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', horaH: '10', horaM: '00', ampm: 'AM' })
@@ -112,6 +120,23 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     if (trabajadores.length < 2) return []
     return miNombre ? trabajadores.filter((w) => w !== miNombre) : trabajadores
   }
+
+  // "Semana anterior sin cerrar" (opción A a petición de Raúl): cuando pasa
+  // el lunes, la semana nueva se vacía y los avisos de la semana pasada
+  // desaparecían. Esto detecta si la semana ANTERIOR de un cliente tuvo
+  // actividad (tareas o cambios) y NO se llegó a cerrar (check final), para
+  // seguir avisando hasta que se cierre. No mueve ni copia nada: al pulsar
+  // el aviso se abre esa misma semana en la ficha para terminarla tal cual.
+  const semanaAnterior = semanaAnteriorISO(semanaActual)
+  const semanaAnteriorSinCerrar = (cliente) => {
+    const segPrev = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaAnterior)
+    if (!segPrev) return false
+    const tuvoActividad = progresoSemana(segPrev).total > 0 || (segPrev.cambiosPendientes || []).length > 0
+    if (!tuvoActividad) return false
+    const cerrada = revisionesSemanales.some((r) => r.clienteNombre === cliente.Nombre && r.semana === semanaAnterior && r.revisado)
+    return !cerrada
+  }
+  const clientesSemanaAnterior = misClientes.filter(semanaAnteriorSinCerrar)
 
   const filtrados = useMemo(() => {
     const term = search.toLowerCase().trim()
@@ -313,6 +338,20 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
               </div>
             )}
 
+            {clientesSemanaAnterior.length > 0 && (
+              <div className="seguimiento-semana-pasada-banner">
+                <strong>⚠️ La semana anterior quedó sin cerrar en {clientesSemanaAnterior.length} cliente{clientesSemanaAnterior.length === 1 ? '' : 's'}.</strong>
+                <span> Ábrelos y termínalos tal cual quedaron: </span>
+                {clientesSemanaAnterior.map((c, i) => (
+                  <span key={c.Nombre}>
+                    <button type="button" className="seguimiento-semana-pasada-link" onClick={() => abrirSeguimiento(c, -1)}>
+                      {c.Nombre}
+                    </button>{i < clientesSemanaAnterior.length - 1 ? ', ' : '.'}
+                  </span>
+                ))}
+              </div>
+            )}
+
             <div className="table-card">
               <div className="card-header">
                 <div>
@@ -369,6 +408,16 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                             {!semanaRevisadaCliente && (
                               <span className="semana-pendiente-badge" title="Semana sin revisar y cerrar todavía">⏳</span>
                             )}
+                            {semanaAnteriorSinCerrar(cliente) && (
+                              <button
+                                type="button"
+                                className="semana-pasada-badge"
+                                title="La semana anterior quedó sin cerrar — pulsa para abrirla y terminarla"
+                                onClick={() => abrirSeguimiento(cliente, -1)}
+                              >
+                                ⚠️ Semana pasada
+                              </button>
+                            )}
                             {compartidoCon(cliente).length > 0 && (
                               <div className="registro-compartido-badge" title={`Cliente compartido — coordina con ${compartidoCon(cliente).join(', ')} quién lo revisa`}>
                                 🤝 Compartido con {compartidoCon(cliente).join(', ')}
@@ -409,7 +458,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           </td>
                           <td style={{ color: 'var(--color-text-secondary)' }}>{ultimaRevisionCliente(seguimientos, cliente.Nombre) || 'nunca'}</td>
                           <td>
-                            <button type="button" className="row-action-btn" onClick={() => setSeguimientoCliente(cliente)}>
+                            <button type="button" className="row-action-btn" onClick={() => abrirSeguimiento(cliente, 0)}>
                               📋 Seguimiento
                               {tareasPendientes > 0 && (
                                 <span className="tareas-pendientes-badge" title={`${tareasPendientes} tarea${tareasPendientes === 1 ? '' : 's'} sin revisar esta semana`}>
@@ -533,11 +582,21 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           <button
                             type="button"
                             className="registro-rapido-nombre"
-                            onClick={() => setSeguimientoCliente(cliente)}
+                            onClick={() => abrirSeguimiento(cliente, 0)}
                             title="Abrir seguimiento completo"
                           >
                             {cliente.Nombre || '—'}
                           </button>
+                          {semanaAnteriorSinCerrar(cliente) && (
+                            <button
+                              type="button"
+                              className="semana-pasada-badge"
+                              title="La semana anterior quedó sin cerrar — pulsa para abrirla y terminarla"
+                              onClick={() => abrirSeguimiento(cliente, -1)}
+                            >
+                              ⚠️ Semana pasada
+                            </button>
+                          )}
                           {otros.length > 0 && (
                             <div className="registro-compartido-badge" title={`Cliente compartido — coordina con ${otros.join(', ')} quién lo revisa`}>
                               🤝 Compartido con {otros.join(', ')}
@@ -622,7 +681,8 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           revisionesSemanales={revisionesSemanales}
           setRevisionesSemanales={setRevisionesSemanales}
           miEmail={miEmail}
-          onClose={() => setSeguimientoCliente(null)}
+          weekOffsetInicial={seguimientoOffset}
+          onClose={() => { setSeguimientoCliente(null); setSeguimientoOffset(0) }}
         />
       )}
 

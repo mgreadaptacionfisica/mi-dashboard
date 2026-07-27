@@ -31,6 +31,14 @@ export function semanaActualISO() {
   return toISO(mondayOf(new Date()))
 }
 
+// Lunes de la semana anterior a un lunes ISO dado (para avisar de semanas
+// que quedaron sin cerrar cuando ya se ha pasado a la semana nueva).
+export function semanaAnteriorISO(mondayISO) {
+  const d = new Date(`${mondayISO}T00:00:00`)
+  d.setDate(d.getDate() - 7)
+  return toISO(d)
+}
+
 export function formatRangoSemana(mondayISO) {
   const inicio = new Date(`${mondayISO}T00:00:00`)
   const fin = new Date(inicio)

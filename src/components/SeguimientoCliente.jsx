@@ -17,8 +17,11 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, miEmail, onClose }) {
-  const [weekOffset, setWeekOffset] = useState(0)
+export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, miEmail, weekOffsetInicial = 0, onClose }) {
+  // weekOffsetInicial: 0 = semana actual (por defecto), -1 = abre en la
+  // semana anterior (cuando se entra desde el aviso "semana pasada sin
+  // cerrar" para terminarla tal cual quedó).
+  const [weekOffset, setWeekOffset] = useState(weekOffsetInicial)
   const [tareaDraft, setTareaDraft] = useState({})
   const [cambioDraft, setCambioDraft] = useState('')
   // Texto libre cuando se elige "Otra" en el desplegable de bloques, para
