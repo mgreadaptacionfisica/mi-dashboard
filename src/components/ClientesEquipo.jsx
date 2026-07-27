@@ -297,6 +297,20 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                 ⚡ Registro rápido
               </button>
             </div>
+
+            {clientesSemanaAnterior.length > 0 && (
+              <div className="seguimiento-semana-pasada-banner">
+                <strong>⚠️ Quedan tareas pendientes de la semana anterior y por cerrar la semana en {clientesSemanaAnterior.length} cliente{clientesSemanaAnterior.length === 1 ? '' : 's'}.</strong>
+                <span> Recomendamos hacerlo antes de empezar esta semana. Ábrelos y termínalos tal cual quedaron: </span>
+                {clientesSemanaAnterior.map((c, i) => (
+                  <span key={c.Nombre}>
+                    <button type="button" className="seguimiento-semana-pasada-link" onClick={() => abrirSeguimiento(c, -1)}>
+                      {c.Nombre}
+                    </button>{i < clientesSemanaAnterior.length - 1 ? ', ' : '.'}
+                  </span>
+                ))}
+              </div>
+            )}
           </>
         )}
 
@@ -335,20 +349,6 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                     </span>
                   )}
                 </div>
-              </div>
-            )}
-
-            {clientesSemanaAnterior.length > 0 && (
-              <div className="seguimiento-semana-pasada-banner">
-                <strong>⚠️ La semana anterior quedó sin cerrar en {clientesSemanaAnterior.length} cliente{clientesSemanaAnterior.length === 1 ? '' : 's'}.</strong>
-                <span> Ábrelos y termínalos tal cual quedaron: </span>
-                {clientesSemanaAnterior.map((c, i) => (
-                  <span key={c.Nombre}>
-                    <button type="button" className="seguimiento-semana-pasada-link" onClick={() => abrirSeguimiento(c, -1)}>
-                      {c.Nombre}
-                    </button>{i < clientesSemanaAnterior.length - 1 ? ', ' : '.'}
-                  </span>
-                ))}
               </div>
             )}
 
