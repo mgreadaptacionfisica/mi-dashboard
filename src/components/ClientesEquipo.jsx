@@ -458,7 +458,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           </td>
                           <td style={{ color: 'var(--color-text-secondary)' }}>{ultimaRevisionCliente(seguimientos, cliente.Nombre) || 'nunca'}</td>
                           <td>
-                            <button type="button" className="row-action-btn" onClick={() => abrirSeguimiento(cliente, 0)}>
+                            <button type="button" className="row-action-btn" onClick={() => abrirSeguimiento(cliente, semanaAnteriorSinCerrar(cliente) ? -1 : 0)}>
                               📋 Seguimiento
                               {tareasPendientes > 0 && (
                                 <span className="tareas-pendientes-badge" title={`${tareasPendientes} tarea${tareasPendientes === 1 ? '' : 's'} sin revisar esta semana`}>
@@ -582,7 +582,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           <button
                             type="button"
                             className="registro-rapido-nombre"
-                            onClick={() => abrirSeguimiento(cliente, 0)}
+                            onClick={() => abrirSeguimiento(cliente, semanaAnteriorSinCerrar(cliente) ? -1 : 0)}
                             title="Abrir seguimiento completo"
                           >
                             {cliente.Nombre || '—'}

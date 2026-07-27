@@ -4,6 +4,7 @@ import {
   DIAS_SEMANA,
   mondayOf,
   toISO,
+  semanaActualISO,
   formatRangoSemana,
   diaVacio,
   semanaVacia,
@@ -116,6 +117,14 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
   const revisionSemana = revisionesSemanales.find((r) => r.clienteNombre === cliente.Nombre && r.semana === mondayISO)
   const semanaRevisada = revisionSemana?.revisado || false
 
+  // Aviso "cierra esta semana antes de seguir" (opción C): si estás mirando
+  // una semana PASADA que tuvo actividad y aún no está cerrada (check final),
+  // se muestra un aviso empujando a cerrarla. No bloquea: puedes ir a la
+  // semana siguiente con la flecha si de verdad lo necesitas.
+  const esSemanaPasada = mondayISO < semanaActualISO()
+  const tuvoActividad = progreso.total > 0 || cambiosPendientes.length > 0
+  const avisarCerrarSemana = esSemanaPasada && tuvoActividad && !semanaRevisada
+
   const toggleRevisionSemana = () => {
     if (typeof setRevisionesSemanales !== 'function') return
     const actualizado = {
@@ -167,6 +176,13 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
           </strong>
           <button type="button" className="secondary-action" onClick={() => setWeekOffset((w) => w + 1)}>Semana siguiente →</button>
         </div>
+
+        {avisarCerrarSemana && (
+          <div className="seguimiento-cerrar-antes-banner">
+            ⚠️ <strong>Esta semana quedó sin cerrar.</strong> Revísala, haz los cambios que falten y márcala como
+            <strong> "Semana revisada y cerrada"</strong> (abajo) antes de seguir con la semana nueva.
+          </div>
+        )}
 
         <div className="seguimiento-dias-grid">
           {DIAS_SEMANA.map((dia) => {
