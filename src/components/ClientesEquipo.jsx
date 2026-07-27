@@ -6,7 +6,6 @@ import { faseAutomatica, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valo
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import {
   semanaActualISO,
-  semanaAnteriorISO,
   formatRangoSemana,
   resumenRevisionesSemana,
   PUNTOS_CONTACTO,
@@ -121,22 +120,45 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     return miNombre ? trabajadores.filter((w) => w !== miNombre) : trabajadores
   }
 
-  // "Semana anterior sin cerrar" (opción A a petición de Raúl): cuando pasa
-  // el lunes, la semana nueva se vacía y los avisos de la semana pasada
-  // desaparecían. Esto detecta si la semana ANTERIOR de un cliente tuvo
-  // actividad (tareas o cambios) y NO se llegó a cerrar (check final), para
-  // seguir avisando hasta que se cierre. No mueve ni copia nada: al pulsar
-  // el aviso se abre esa misma semana en la ficha para terminarla tal cual.
-  const semanaAnterior = semanaAnteriorISO(semanaActualISO())
-  const semanaAnteriorSinCerrar = (cliente) => {
-    const segPrev = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaAnterior)
-    if (!segPrev) return false
-    const tuvoActividad = progresoSemana(segPrev).total > 0 || (segPrev.cambiosPendientes || []).length > 0
-    if (!tuvoActividad) return false
-    const cerrada = revisionesSemanales.some((r) => r.clienteNombre === cliente.Nombre && r.semana === semanaAnterior && r.revisado)
-    return !cerrada
+  // "Semana pasada sin cerrar" (opción A/C a petición de Raúl): cuando pasa
+  // el lunes, la semana nueva se vacía y los avisos de lo que quedó pendiente
+  // desaparecían. Esto busca CUALQUIER semana pasada (de las últimas ~6) de
+  // un cliente que aún tenga tareas sin revisar o cambios sin hacer y que no
+  // se haya cerrado (check final), para seguir avisando hasta cerrarla. No
+  // se limita solo a la semana inmediatamente anterior, porque lo pendiente
+  // puede venir de un poco más atrás. Devuelve el lunes (ISO) de la semana
+  // pendiente más antigua, o null si no hay nada pendiente.
+  const limitePasadas = (() => {
+    const d = new Date(`${semanaActualISO()}T00:00:00`)
+    d.setDate(d.getDate() - 7 * 6)
+    const p = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  })()
+  const semanaPasadaPendiente = (cliente) => {
+    const actual = semanaActualISO()
+    const pasadas = seguimientos
+      .filter((s) => s.clienteNombre === cliente.Nombre && s.semana < actual && s.semana >= limitePasadas)
+      .sort((a, b) => a.semana.localeCompare(b.semana))
+    for (const seg of pasadas) {
+      const prog = progresoSemana(seg)
+      const tareasPend = prog.total - prog.revisadas
+      const cambiosPend = (seg.cambiosPendientes || []).filter((c) => !c.hecho).length
+      if (tareasPend <= 0 && cambiosPend <= 0) continue
+      const cerrada = revisionesSemanales.some((r) => r.clienteNombre === cliente.Nombre && r.semana === seg.semana && r.revisado)
+      if (!cerrada) return seg.semana
+    }
+    return null
   }
-  const clientesSemanaAnterior = misClientes.filter(semanaAnteriorSinCerrar)
+  // Offset (número de semanas hacia atrás, negativo) para abrir el modal en
+  // esa semana concreta.
+  const offsetSemana = (weekISO) => {
+    const a = new Date(`${semanaActualISO()}T00:00:00`)
+    const b = new Date(`${weekISO}T00:00:00`)
+    return Math.round((b - a) / (7 * 86400000))
+  }
+  const clientesSemanaAnterior = misClientes
+    .map((c) => ({ cliente: c, semana: semanaPasadaPendiente(c) }))
+    .filter((x) => x.semana)
 
   const filtrados = useMemo(() => {
     const term = search.toLowerCase().trim()
@@ -302,10 +324,10 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
               <div className="seguimiento-semana-pasada-banner">
                 <strong>⚠️ Quedan tareas pendientes de la semana anterior y por cerrar la semana en {clientesSemanaAnterior.length} cliente{clientesSemanaAnterior.length === 1 ? '' : 's'}.</strong>
                 <span> Recomendamos hacerlo antes de empezar esta semana. Ábrelos y termínalos tal cual quedaron: </span>
-                {clientesSemanaAnterior.map((c, i) => (
-                  <span key={c.Nombre}>
-                    <button type="button" className="seguimiento-semana-pasada-link" onClick={() => abrirSeguimiento(c, -1)}>
-                      {c.Nombre}
+                {clientesSemanaAnterior.map((x, i) => (
+                  <span key={x.cliente.Nombre}>
+                    <button type="button" className="seguimiento-semana-pasada-link" onClick={() => abrirSeguimiento(x.cliente, offsetSemana(x.semana))}>
+                      {x.cliente.Nombre}
                     </button>{i < clientesSemanaAnterior.length - 1 ? ', ' : '.'}
                   </span>
                 ))}
@@ -401,6 +423,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       const tareasPendientes = progresoTareas.total - progresoTareas.revisadas
                       const cambiosSinHacer = (registroSemana?.cambiosPendientes || []).filter((c) => !c.hecho).length
                       const semanaRevisadaCliente = revisionesSemanales.some((r) => r.clienteNombre === cliente.Nombre && r.semana === semanaActual && r.revisado)
+                      const semPend = semanaPasadaPendiente(cliente)
                       return (
                         <tr key={`${cliente.id || cliente.Nombre}-${index}`}>
                           <td style={{ fontWeight: 600 }}>
@@ -408,12 +431,12 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                             {!semanaRevisadaCliente && (
                               <span className="semana-pendiente-badge" title="Semana sin revisar y cerrar todavía">⏳</span>
                             )}
-                            {semanaAnteriorSinCerrar(cliente) && (
+                            {semPend && (
                               <button
                                 type="button"
                                 className="semana-pasada-badge"
-                                title="La semana anterior quedó sin cerrar — pulsa para abrirla y terminarla"
-                                onClick={() => abrirSeguimiento(cliente, -1)}
+                                title="Una semana pasada quedó sin cerrar — pulsa para abrirla y terminarla"
+                                onClick={() => abrirSeguimiento(cliente, offsetSemana(semPend))}
                               >
                                 ⚠️ Semana pasada
                               </button>
@@ -458,7 +481,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                           </td>
                           <td style={{ color: 'var(--color-text-secondary)' }}>{ultimaRevisionCliente(seguimientos, cliente.Nombre) || 'nunca'}</td>
                           <td>
-                            <button type="button" className="row-action-btn" onClick={() => abrirSeguimiento(cliente, semanaAnteriorSinCerrar(cliente) ? -1 : 0)}>
+                            <button type="button" className="row-action-btn" onClick={() => abrirSeguimiento(cliente, semPend ? offsetSemana(semPend) : 0)}>
                               📋 Seguimiento
                               {tareasPendientes > 0 && (
                                 <span className="tareas-pendientes-badge" title={`${tareasPendientes} tarea${tareasPendientes === 1 ? '' : 's'} sin revisar esta semana`}>
@@ -576,23 +599,24 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                     const registroSemana = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaActual)
                     const dias = registroSemana?.dias || {}
                     const otros = compartidoCon(cliente)
+                    const semPend = semanaPasadaPendiente(cliente)
                     return (
                       <tr key={`reg-${cliente.id || cliente.Nombre}-${index}`}>
                         <td className={`registro-rapido-cliente ${otros.length ? 'registro-rapido-compartido' : ''}`}>
                           <button
                             type="button"
                             className="registro-rapido-nombre"
-                            onClick={() => abrirSeguimiento(cliente, semanaAnteriorSinCerrar(cliente) ? -1 : 0)}
+                            onClick={() => abrirSeguimiento(cliente, semPend ? offsetSemana(semPend) : 0)}
                             title="Abrir seguimiento completo"
                           >
                             {cliente.Nombre || '—'}
                           </button>
-                          {semanaAnteriorSinCerrar(cliente) && (
+                          {semPend && (
                             <button
                               type="button"
                               className="semana-pasada-badge"
-                              title="La semana anterior quedó sin cerrar — pulsa para abrirla y terminarla"
-                              onClick={() => abrirSeguimiento(cliente, -1)}
+                              title="Una semana pasada quedó sin cerrar — pulsa para abrirla y terminarla"
+                              onClick={() => abrirSeguimiento(cliente, offsetSemana(semPend))}
                             >
                               ⚠️ Semana pasada
                             </button>
