@@ -140,10 +140,12 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
       .filter((s) => s.clienteNombre === cliente.Nombre && s.semana < actual && s.semana >= limitePasadas)
       .sort((a, b) => a.semana.localeCompare(b.semana))
     for (const seg of pasadas) {
-      const prog = progresoSemana(seg)
-      const tareasPend = prog.total - prog.revisadas
-      const cambiosPend = (seg.cambiosPendientes || []).filter((c) => !c.hecho).length
-      if (tareasPend <= 0 && cambiosPend <= 0) continue
+      // Se avisa por la semana pasada si tuvo actividad (tareas o cambios) y
+      // NO está cerrada (check final). Cubre las dos cosas que quiere Raúl:
+      // que queden tareas por hacer/revisar, y que la semana no se haya
+      // cerrado aunque las tareas ya estén revisadas.
+      const tuvoActividad = progresoSemana(seg).total > 0 || (seg.cambiosPendientes || []).length > 0
+      if (!tuvoActividad) continue
       const cerrada = revisionesSemanales.some((r) => r.clienteNombre === cliente.Nombre && r.semana === seg.semana && r.revisado)
       if (!cerrada) return seg.semana
     }
