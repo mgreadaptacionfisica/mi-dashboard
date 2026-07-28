@@ -305,6 +305,21 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
     setNoteDraft('')
   }
 
+  // Fecha de seguimiento/recontacto directamente desde la ficha del lead (a
+  // petición de Raúl): al ponerla aquí ya aparece en la pestaña 🔁 Recontactar
+  // con esa fecha, sin tener que ir allí a rellenarla. Se guarda dentro del
+  // objeto recontacto del lead (el mismo que lee Recontactar.jsx), rellenando
+  // por defecto canal WhatsApp y el teléfono del lead como contacto.
+  const setFechaSeguimiento = (fecha) => {
+    if (!activeLead) return
+    const base = {
+      canal: 'WhatsApp', contacto: activeLead.telefono || '', motivo: '',
+      fechaContacto: '', contactado: false, respondido: null, comprado: null,
+      ...(activeLead.recontacto || {}),
+    }
+    updateLead(activeLead.id, { recontacto: { ...base, fechaContacto: fecha || '' } })
+  }
+
   const setContesta = (valor) => {
     if (!activeLead) return
     updateLead(activeLead.id, { seguimiento: { ...activeLead.seguimiento, contesta: valor, compraTrasSeguimiento: valor ? activeLead.seguimiento?.compraTrasSeguimiento : null } })
@@ -920,6 +935,15 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
                     <input placeholder="Añadir nota de seguimiento..." value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} />
                     <button type="button" className="secondary-action" onClick={addSeguimiento}>Añadir</button>
                   </div>
+                  <label className="lead-detail-label" style={{ marginTop: 10 }}>📅 Fecha de seguimiento (recontacto)</label>
+                  <input
+                    type="date"
+                    value={activeLead.recontacto?.fechaContacto || ''}
+                    onChange={(e) => setFechaSeguimiento(e.target.value)}
+                  />
+                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '4px 0 0' }}>
+                    Al ponerla aquí, este lead aparece en la pestaña <strong>🔁 Recontactar</strong> con esta fecha, sin tener que ir allí a rellenarla.
+                  </p>
                 </div>
               </div>
             </div>
