@@ -2717,6 +2717,23 @@ textarea {
 
 /* Aviso dentro del modal de Seguimiento: "cierra esta semana antes de
    seguir" cuando estás en una semana pasada sin cerrar (opción C). */
+/* Notas de seguimiento del lead mostradas dentro de la celda "Motivo" en
+   Recontactar, para ver el contexto sin abrir el lead. */
+.recontactar-notas {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  max-width: 220px;
+}
+
+.recontactar-notas li {
+  padding: 2px 0;
+  border-top: 1px solid var(--color-border);
+  line-height: 1.35;
+}
+
 .seguimiento-cerrar-antes-banner {
   background: #fff7ed;
   border: 1px solid #fed7aa;

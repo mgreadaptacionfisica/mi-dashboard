@@ -117,6 +117,10 @@ export default function Recontactar({ ventas = [], setVentas, recontactos = [], 
       // Instagram y se puso un usuario), ese valor manda sobre el teléfono.
       contacto: lead.telefono || '',
       ...(lead.recontacto || {}),
+      // Notas de seguimiento escritas en la ficha del lead (Ventas), para
+      // mostrarlas aquí también — así el que recontacta ve el contexto sin
+      // tener que abrir el lead.
+      notasSeguimiento: lead.notasSeguimiento || [],
     }))
     const manuales = recontactos.map((r) => ({
       origenTipo: 'manual',
@@ -239,6 +243,13 @@ export default function Recontactar({ ventas = [], setVentas, recontactos = [], 
                         style={{ minWidth: 140 }}
                         onChange={(e) => onPatch({ motivo: e.target.value })}
                       />
+                      {(fila.notasSeguimiento || []).length > 0 && (
+                        <ul className="recontactar-notas">
+                          {fila.notasSeguimiento.map((n, i) => (
+                            <li key={i}><strong>{n.fecha}</strong> — {n.nota}</li>
+                          ))}
+                        </ul>
+                      )}
                     </td>
                     <td>
                       <input
