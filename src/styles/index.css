@@ -2093,6 +2093,11 @@ tbody td {
   align-items: center;
 }
 
+/* Variante del historial para el CEO: solo columnas de actividad, sin dinero. */
+.team-history-table-actividad .team-history-row {
+  grid-template-columns: 1fr 0.6fr 0.7fr 0.6fr;
+}
+
 .team-history-header {
   font-weight: 700;
   color: var(--color-text-secondary);

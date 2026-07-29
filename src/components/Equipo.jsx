@@ -453,7 +453,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                 comisionInfo={esCloser(persona) && !esCEO(persona) ? comisionPorCloser[persona.nombre] : null}
                 onEdit={() => startEditMember('ventas', index)}
                 onDelete={() => deleteMember('ventas', index)}
-                onDetail={esCloser(persona) && !esCEO(persona) ? () => setDetailCloser(persona) : null}
+                onDetail={esCloser(persona) ? () => setDetailCloser(persona) : null}
               />
             ))}
           </div>
@@ -596,7 +596,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     <div className="team-activity-kpi"><span>Checklist completo</span><strong>{act.checklistCompleto}/{act.totalLeads}</strong></div>
                   </div>
 
-                  {(() => {
+                  {!esCEO(detailCloser) && (() => {
                     const mesKey = mesActualISO()
                     const importe = comisionPorCloser[detailCloser.nombre]?.totalMes || 0
                     const pago = pagoRegistrado(detailCloser, mesKey)
@@ -620,10 +620,13 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     )
                   })()}
 
-                  <h4 className="team-activity-subtitle">Historial mensual (comisión + fijo)</h4>
-                  <div className="team-history-table">
+                  {/* Historial: para el CEO se muestra solo la actividad (sin las
+                      columnas de dinero); para el resto, con comisión + fijo. */}
+                  <h4 className="team-activity-subtitle">Historial mensual{esCEO(detailCloser) ? '' : ' (comisión + fijo)'}</h4>
+                  <div className={`team-history-table ${esCEO(detailCloser) ? 'team-history-table-actividad' : ''}`}>
                     <div className="team-history-row team-history-header">
-                      <span>Mes</span><span>Leads</span><span>Llamadas</span><span>Ventas</span><span>Facturado</span><span>Comisión</span><span>Fijo</span><span>Total</span>
+                      <span>Mes</span><span>Leads</span><span>Llamadas</span><span>Ventas</span>
+                      {!esCEO(detailCloser) && <><span>Facturado</span><span>Comisión</span><span>Fijo</span><span>Total</span></>}
                     </div>
                     {act.historial.length === 0 && <p className="lead-log-empty">Sin historial todavía.</p>}
                     {act.historial.map((row) => (
@@ -632,10 +635,14 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                         <span>{row.leads}</span>
                         <span>{row.llamadas}</span>
                         <span>{row.ventas}</span>
-                        <span>{row.facturado.toLocaleString('es-ES')}€</span>
-                        <span>{row.comision.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</span>
-                        <span>{row.fijo.toLocaleString('es-ES')}€</span>
-                        <strong>{row.total.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</strong>
+                        {!esCEO(detailCloser) && (
+                          <>
+                            <span>{row.facturado.toLocaleString('es-ES')}€</span>
+                            <span>{row.comision.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</span>
+                            <span>{row.fijo.toLocaleString('es-ES')}€</span>
+                            <strong>{row.total.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</strong>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
