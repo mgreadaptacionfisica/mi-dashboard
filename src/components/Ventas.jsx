@@ -927,6 +927,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
 
                   {ventaForm.tipoPago === 'plazos' && (
                     <select value={ventaForm.numPlazos} onChange={(e) => setVentaForm({ ...ventaForm, numPlazos: e.target.value })}>
+                      <option value="2">2 plazos</option>
                       <option value="3">3 plazos</option>
                       <option value="6">6 plazos</option>
                       <option value="9">9 plazos</option>
