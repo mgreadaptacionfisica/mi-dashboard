@@ -406,7 +406,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                     <tr>
                       <th>Nombre</th>
                       <th>Servicio</th>
-                      {esAdmin && <th>Entrenador</th>}
+                      {esAdmin && <th>Responsable</th>}
                       <th>Fase</th>
                       <th title="Inicio / mitad / fin de semana">Contacto semanal</th>
                       <th>Inicio</th>

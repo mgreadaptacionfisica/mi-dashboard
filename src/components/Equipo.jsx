@@ -15,6 +15,9 @@ const HORAS_12 = Array.from({ length: 12 }, (_, i) => String(i + 1))
 const MINUTOS = ['00', '15', '30', '45']
 
 const esCloser = (persona) => (persona.rol || '').toLowerCase().includes('closer')
+// El CEO (ej. Raúl) no cobra sueldo del equipo: se le oculta toda la parte
+// de comisión/tarifa/pago (a petición de Raúl).
+const esCEO = (persona) => (persona.rol || '').toLowerCase().includes('ceo')
 
 const ETAPA_LABELS = {
   agendada: 'Agendada',
@@ -422,7 +425,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                 key={`${persona.nombre}-${index}`}
                 persona={persona}
                 assignedCount={clienteCount[persona.nombre] ?? 0}
-                pagoInfo={actividadPorTecnico[persona.nombre]}
+                pagoInfo={esCEO(persona) ? null : actividadPorTecnico[persona.nombre]}
                 onEdit={() => startEditMember('tecnico', index)}
                 onDelete={() => deleteMember('tecnico', index)}
                 onDetail={() => abrirDetalleTecnico(persona)}
@@ -447,10 +450,10 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
               <PersonCard
                 key={`${persona.nombre}-${index}`}
                 persona={persona}
-                comisionInfo={esCloser(persona) ? comisionPorCloser[persona.nombre] : null}
+                comisionInfo={esCloser(persona) && !esCEO(persona) ? comisionPorCloser[persona.nombre] : null}
                 onEdit={() => startEditMember('ventas', index)}
                 onDelete={() => deleteMember('ventas', index)}
-                onDetail={esCloser(persona) ? () => setDetailCloser(persona) : null}
+                onDetail={esCloser(persona) && !esCEO(persona) ? () => setDetailCloser(persona) : null}
               />
             ))}
           </div>
@@ -676,14 +679,14 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                   <div className="team-activity-kpis">
                     <div className="team-activity-kpi"><span>Clientes asignados</span><strong>{act.totalAsignados}</strong></div>
                     <div className="team-activity-kpi"><span>Activos ahora</span><strong>{act.activos}</strong></div>
-                    <div className="team-activity-kpi"><span>Tarifa actual</span><strong>{act.tarifaActual}€/cliente</strong></div>
-                    <div className="team-activity-kpi"><span>Total a pagar este mes</span><strong>{act.totalMes.toLocaleString('es-ES')}€</strong></div>
+                    {!esCEO(detailTecnico) && <div className="team-activity-kpi"><span>Tarifa actual</span><strong>{act.tarifaActual}€/cliente</strong></div>}
+                    {!esCEO(detailTecnico) && <div className="team-activity-kpi"><span>Total a pagar este mes</span><strong>{act.totalMes.toLocaleString('es-ES')}€</strong></div>}
                     <div className="team-activity-kpi"><span>Contacto semanal (3x)</span><strong>{contacto?.total > 0 ? `${contacto.hechos}/${contacto.total} (${contacto.porcentaje}%)` : '—'}</strong></div>
                     <div className="team-activity-kpi"><span>Progreso tareas semana</span><strong>{seg?.porcentajeGeneral != null ? `${seg.porcentajeGeneral}%` : '—'}</strong></div>
                     <div className="team-activity-kpi"><span>Última revisión</span><strong style={{ fontSize: 13 }}>{seg?.ultimaRevisionGeneral || 'Sin revisiones'}</strong></div>
                   </div>
 
-                  {(() => {
+                  {!esCEO(detailTecnico) && (() => {
                     const mesKey = mesActualISO()
                     const importe = act.totalMes || 0
                     const pago = pagoRegistrado(detailTecnico, mesKey)
