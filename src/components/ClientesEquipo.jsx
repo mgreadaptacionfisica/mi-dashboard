@@ -96,9 +96,26 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   )
   const miNombre = miPersona?.nombre || null
 
+  // Nombre de Raúl (admin) como responsable de clientes, buscando su email en
+  // cualquier categoría del equipo (técnico, ventas, contenido) — porque como
+  // admin también lleva clientes propios y quiere poder filtrar "solo los
+  // míos" sin dejar de tener acceso a todo.
+  const miNombreAdmin = useMemo(() => {
+    if (!esAdmin) return null
+    const todos = [...(team?.tecnico || []), ...(team?.ventas || []), ...(team?.contenido || [])]
+    const p = todos.find((x) => x.email && miEmail && x.email.toLowerCase() === miEmail.toLowerCase())
+    return p?.nombre || null
+  }, [team, miEmail, esAdmin])
+
+  // Filtro del admin: "todos" (todo el equipo, como siempre) o "mios" (solo
+  // los clientes que Raúl tiene asignados). Para el técnico no aplica.
+  const [filtroAdmin, setFiltroAdmin] = useState('todos')
+
   const misClientes = useMemo(() => {
     const base = esAdmin
-      ? clientes
+      ? ((filtroAdmin === 'mios' && miNombreAdmin)
+        ? clientes.filter((c) => (c.Trabajadores || (c.Trabajador ? [c.Trabajador] : [])).includes(miNombreAdmin))
+        : clientes)
       : (miNombre
         ? clientes.filter((c) => {
           const trabajadores = c.Trabajadores || (c.Trabajador ? [c.Trabajador] : [])
@@ -107,7 +124,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
         : [])
     // Solo activos: seguimiento/valoración no aplica a quien ya no es cliente.
     return base.filter((c) => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
-  }, [clientes, miNombre, esAdmin])
+  }, [clientes, miNombre, esAdmin, filtroAdmin, miNombreAdmin])
 
   // Clientes compartidos con otro entrenador: a petición de Raúl, para
   // distinguir de un vistazo cuáles reviso yo sí o sí y cuáles comparto (y
@@ -313,6 +330,21 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
 
         {(esAdmin || miPersona) && (
           <>
+            {esAdmin && (
+              <div className="period-selector" style={{ marginBottom: 12 }}>
+                <button type="button" className={`period-btn ${filtroAdmin === 'todos' ? 'active' : ''}`} onClick={() => setFiltroAdmin('todos')}>
+                  👥 Todos del equipo
+                </button>
+                <button type="button" className={`period-btn ${filtroAdmin === 'mios' ? 'active' : ''}`} onClick={() => setFiltroAdmin('mios')}>
+                  🙋 Solo los míos
+                </button>
+              </div>
+            )}
+            {esAdmin && filtroAdmin === 'mios' && !miNombreAdmin && (
+              <p className="lead-log-empty" style={{ marginBottom: 12 }}>
+                Para filtrar "solo los míos" necesito tu ficha en Equipo con este mismo email. Añádete al equipo (o revisa que el email coincida) y podrás ver aquí solo tus clientes.
+              </p>
+            )}
             <div className="tabs-bar">
               <button type="button" className={`tab-btn ${vista === 'tabla' ? 'tab-btn-active' : ''}`} onClick={() => setVista('tabla')}>
                 📋 Tabla de clientes
