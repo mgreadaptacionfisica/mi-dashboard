@@ -119,6 +119,27 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
     return { activos, ganadas, perdidas, tasa }
   }, [ventas])
 
+  // Tasa de cierre por persona del equipo de ventas (a petición de Raúl:
+  // aunque no vea importes/comisiones, sí quiere ver la actividad y el
+  // rendimiento de cada closer). Se agrupan los leads por su closer.
+  const cierrePorCloser = useMemo(() => {
+    const mapa = {}
+    ventas.forEach((l) => {
+      const c = l.closer || 'Sin closer'
+      if (!mapa[c]) mapa[c] = { closer: c, ganadas: 0, perdidas: 0, activos: 0, total: 0 }
+      mapa[c].total += 1
+      if (l.etapa === 'ganada') mapa[c].ganadas += 1
+      else if (l.etapa === 'perdida') mapa[c].perdidas += 1
+      else mapa[c].activos += 1
+    })
+    return Object.values(mapa)
+      .map((x) => {
+        const cerradas = x.ganadas + x.perdidas
+        return { ...x, tasa: cerradas > 0 ? Math.round((x.ganadas / cerradas) * 100) : 0 }
+      })
+      .sort((a, b) => b.tasa - a.tasa || b.ganadas - a.ganadas)
+  }, [ventas])
+
   const updateLead = (id, patch) => {
     setVentas((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)))
     updateLeadRemote(id, patch)
@@ -602,6 +623,48 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="table-card" style={{ marginTop: 20 }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">Tasa de cierre por closer</div>
+              <div className="card-subtitle">Rendimiento de cada persona del equipo de ventas</div>
+            </div>
+          </div>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Closer</th>
+                  <th>Leads</th>
+                  <th>En proceso</th>
+                  <th>Ganadas</th>
+                  <th>Perdidas</th>
+                  <th>Tasa de cierre</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cierrePorCloser.map((c) => (
+                  <tr key={c.closer}>
+                    <td style={{ fontWeight: 600 }}>{c.closer}</td>
+                    <td>{c.total}</td>
+                    <td>{c.activos}</td>
+                    <td>{c.ganadas}</td>
+                    <td>{c.perdidas}</td>
+                    <td>
+                      <span className="status-pill" style={{ background: c.tasa >= 50 ? '#d1fae5' : c.tasa > 0 ? '#fef3c7' : '#fee2e2', color: c.tasa >= 50 ? '#065f46' : c.tasa > 0 ? '#92400e' : '#991b1b' }}>
+                        {c.ganadas + c.perdidas > 0 ? `${c.tasa}%` : '—'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {cierrePorCloser.length === 0 && (
+                  <tr><td colSpan={6} className="lead-log-empty">Todavía no hay leads registrados.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
         </>
         )}
