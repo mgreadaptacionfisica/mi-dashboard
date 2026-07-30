@@ -44,6 +44,7 @@ const initialVentaForm = {
   fechaInicio: '',
   conReserva: false,
   importeReserva: '',
+  planFinanciado: '',
 }
 
 function todayISO() {
@@ -382,7 +383,9 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
       ? (ventaForm.otroNombre.trim() || 'Servicio personalizado')
       : (servicioSeleccionado?.nombre || '')
     const importeNum = Number(ventaForm.importe) || 0
-    const pagoLabel = ventaForm.tipoPago === 'unico' ? 'PAGO ÚNICO' : `${ventaForm.numPlazos} PLAZOS`
+    const pagoLabel = ventaForm.tipoPago === 'unico' ? 'PAGO ÚNICO'
+      : ventaForm.tipoPago === 'financiado' ? 'FINANCIADO (HOTMART)'
+      : `${ventaForm.numPlazos} PLAZOS`
     const fechaInicio = ventaForm.fechaInicio || todayISO()
     const meses = ventaForm.servicioId === 'otro' ? 0 : (servicioSeleccionado?.meses || 0)
     const fechaFin = addMonthsISO(fechaInicio, meses)
@@ -406,6 +409,16 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
       plazosFinal = [plazoReserva, ...resto]
     } else {
       plazosFinal = generarPlazosPorNumero(numPlazosNum, importeNum)
+    }
+
+    // Financiado (Hotmart/seQura): se trata como un cobro único (Hotmart te
+    // adelanta el grueso y libera el resto después — eso lo refleja la
+    // comisión de pasarela con su nota de reserva de seguridad, no 12 cobros
+    // mensuales que en realidad no recibes). Se marca el concepto del cobro
+    // con "Financiado" y el plan del cliente, solo como referencia.
+    if (ventaForm.tipoPago === 'financiado') {
+      const etiqueta = `Financiado (Hotmart)${ventaForm.planFinanciado.trim() ? ' — ' + ventaForm.planFinanciado.trim() : ''}`
+      plazosFinal = plazosFinal.map((p) => (p.concepto === 'Reserva' ? p : { ...p, concepto: etiqueta }))
     }
 
     const nuevoCliente = {
@@ -486,6 +499,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
         importe: importeNum,
         tipoPago: ventaForm.tipoPago,
         numPlazos: ventaForm.tipoPago === 'plazos' ? Number(ventaForm.numPlazos) : null,
+        planFinanciado: ventaForm.tipoPago === 'financiado' ? ventaForm.planFinanciado.trim() : null,
         formaPago: ventaForm.formaPago,
         fechaCierre: todayISO(),
       },
@@ -988,17 +1002,25 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
                   <label className="lead-detail-label">Forma de cobro{ventaForm.conReserva ? ' del resto' : ''}</label>
                   <select value={ventaForm.tipoPago} onChange={(e) => setVentaForm({ ...ventaForm, tipoPago: e.target.value })}>
                     <option value="unico">Pago único</option>
-                    <option value="plazos">Pago a plazos</option>
+                    <option value="plazos">Pago a plazos (2 o 3, los gestionas tú)</option>
+                    <option value="financiado">Financiado (Hotmart / seQura)</option>
                   </select>
 
                   {ventaForm.tipoPago === 'plazos' && (
                     <select value={ventaForm.numPlazos} onChange={(e) => setVentaForm({ ...ventaForm, numPlazos: e.target.value })}>
                       <option value="2">2 plazos</option>
                       <option value="3">3 plazos</option>
-                      <option value="6">6 plazos</option>
-                      <option value="9">9 plazos</option>
-                      <option value="12">12 plazos</option>
                     </select>
+                  )}
+
+                  {ventaForm.tipoPago === 'financiado' && (
+                    <>
+                      <input placeholder="Plan del cliente (informativo, ej. 12 meses seQura)" value={ventaForm.planFinanciado}
+                        onChange={(e) => setVentaForm({ ...ventaForm, planFinanciado: e.target.value })} />
+                      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '-2px 0 4px' }}>
+                        Se registra como <b>un solo cobro</b>: Hotmart te adelanta el grueso y libera el resto después (la comisión y la reserva de seguridad se calculan solas). Elige HOTMART arriba como forma de pago.
+                      </p>
+                    </>
                   )}
 
                   <input type="date" placeholder="Fecha de inicio" value={ventaForm.fechaInicio}
@@ -1030,7 +1052,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
 
               {activeLead.etapa === 'ganada' && activeLead.venta && (
                 <div className="lead-venta-summary">
-                  ✅ Vendido: {activeLead.venta.servicio} · {activeLead.venta.importe}€ · {activeLead.venta.tipoPago === 'unico' ? 'pago único' : `${activeLead.venta.numPlazos} plazos`} · cerrado el {activeLead.venta.fechaCierre}
+                  ✅ Vendido: {activeLead.venta.servicio} · {activeLead.venta.importe}€ · {activeLead.venta.tipoPago === 'unico' ? 'pago único' : activeLead.venta.tipoPago === 'financiado' ? `financiado (Hotmart)${activeLead.venta.planFinanciado ? ' — ' + activeLead.venta.planFinanciado : ''}` : `${activeLead.venta.numPlazos} plazos`} · cerrado el {activeLead.venta.fechaCierre}
                 </div>
               )}
               {activeLead.etapa === 'perdida' && (
