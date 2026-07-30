@@ -6,7 +6,9 @@ import Recontactar from './Recontactar'
 import CalendarioVentas from './CalendarioVentas'
 import { insertLeadRemote, updateLeadRemote, deleteLeadRemote, uploadInformePrellamada, getInformePrellamadaUrl } from '../lib/queries/ventas'
 import { insertClienteRemote } from '../lib/queries/clientes'
-import { generarPlazosPorNumero } from '../lib/plazos'
+import { insertFinanzaRemote } from '../lib/queries/finanzas'
+import { construirComisionCobro } from '../utils/comisionesHelpers'
+import { generarPlazosPorNumero, generarPlazosDesdeFecha } from '../lib/plazos'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -40,6 +42,8 @@ const initialVentaForm = {
   tipoPago: 'unico',
   numPlazos: '3',
   fechaInicio: '',
+  conReserva: false,
+  importeReserva: '',
 }
 
 function todayISO() {
@@ -82,7 +86,7 @@ function LeadCard({ lead, onOpen }) {
   )
 }
 
-export default function Ventas({ ventas, setVentas, team, setClientes, setting, setSetting, adsKpi, setAdsKpi, adsNotas, setAdsNotas, anuncios, setAnuncios, recontactos, setRecontactos }) {
+export default function Ventas({ ventas, setVentas, team, setClientes, setIngresosEmpresa, setGastosEmpresa, tarifasPasarela = [], setting, setSetting, adsKpi, setAdsKpi, adsNotas, setAdsNotas, anuncios, setAnuncios, recontactos, setRecontactos }) {
   const [activeTab, setActiveTab] = useState('pipeline')
   const [showNewLead, setShowNewLead] = useState(false)
   const [leadForm, setLeadForm] = useState(initialLeadForm)
@@ -383,7 +387,26 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
     const meses = ventaForm.servicioId === 'otro' ? 0 : (servicioSeleccionado?.meses || 0)
     const fechaFin = addMonthsISO(fechaInicio, meses)
     const numPlazosNum = ventaForm.tipoPago === 'plazos' ? Number(ventaForm.numPlazos) : 1
-    const importePorPlazo = numPlazosNum > 0 ? Math.round((importeNum / numPlazosNum) * 100) / 100 : importeNum
+    // Reserva: si está marcada, se paga ese importe ahora (ya cobrado) y el
+    // RESTO del programa (total - reserva) es lo que se fracciona en el
+    // número de plazos elegido.
+    const reservaNum = ventaForm.conReserva ? (Number(ventaForm.importeReserva) || 0) : 0
+    const restoAFraccionar = reservaNum > 0 ? importeNum - reservaNum : importeNum
+    const importePorPlazo = numPlazosNum > 0 ? Math.round((restoAFraccionar / numPlazosNum) * 100) / 100 : restoAFraccionar
+
+    // Plan de cobro (Plazos): si hay reserva, primero un plazo "Reserva" ya
+    // pagado, y detrás el resto en 1 (pago único) o N plazos, con fechas a
+    // partir de la fecha de inicio. Sin reserva, se mantiene el comportamiento
+    // de siempre (plazos desde hoy).
+    let plazosFinal
+    if (reservaNum > 0) {
+      const plazoReserva = { numero: 1, importe: reservaNum, fecha: fechaInicio, pagado: true, fechaPago: todayISO(), concepto: 'Reserva' }
+      const resto = generarPlazosDesdeFecha(numPlazosNum, restoAFraccionar, fechaInicio)
+        .map((p, i) => ({ ...p, numero: i + 2 }))
+      plazosFinal = [plazoReserva, ...resto]
+    } else {
+      plazosFinal = generarPlazosPorNumero(numPlazosNum, importeNum)
+    }
 
     const nuevoCliente = {
       // Sin id no había forma de guardar el cliente en Supabase
@@ -419,13 +442,40 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
       // se generaba aquí, así que una venta cerrada desde el pipeline nunca
       // aparecía como cobro pendiente ni generaba el ingreso automático en
       // Finanzas > Ingresos empresa).
-      Plazos: generarPlazosPorNumero(numPlazosNum, importeNum),
+      Plazos: plazosFinal,
     }
 
     if (typeof setClientes === 'function') {
       setClientes((prev) => [nuevoCliente, ...prev])
     }
     insertClienteRemote(nuevoCliente)
+
+    // Reserva ya pagada: se registra como ingreso en Finanzas (empresa) al
+    // momento, con el mismo esquema (id determinista + comisión de pasarela)
+    // que usa Cobros pendientes al marcar un plazo cobrado — así se puede
+    // deshacer desde ahí sin dejar restos.
+    if (reservaNum > 0 && typeof setIngresosEmpresa === 'function') {
+      const hoy = todayISO()
+      const idBase = `fin-plazo-${nuevoCliente.id}-1`
+      const tarifa = tarifasPasarela.find((t) => t.id === ventaForm.formaPago)
+      const { gasto, notaReserva } = construirComisionCobro({ idBase, fecha: hoy, importeBruto: reservaNum, tarifa })
+      const ingreso = {
+        id: idBase,
+        fecha: hoy,
+        concepto: `Reserva — ${activeLead.nombre}${servicioNombre ? ' · ' + servicioNombre : ''}`,
+        importe: reservaNum,
+        notas: ['Reserva cobrada al cerrar la venta', notaReserva].filter(Boolean).join(' — '),
+        origen: 'cobro_cliente',
+        clienteId: nuevoCliente.id,
+        plazoNumero: 1,
+      }
+      setIngresosEmpresa((prev) => [ingreso, ...prev])
+      insertFinanzaRemote('ingresos_empresa', ingreso)
+      if (gasto && typeof setGastosEmpresa === 'function') {
+        setGastosEmpresa((prev) => [gasto, ...prev])
+        insertFinanzaRemote('gastos_empresa', gasto)
+      }
+    }
 
     updateLead(activeLead.id, {
       etapa: 'ganada',
@@ -919,7 +969,23 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setting, 
                     <option value="HOTMART">HOTMART</option>
                   </select>
 
-                  <label className="lead-detail-label">Forma de cobro</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '2px 0' }}>
+                    <input type="checkbox" checked={ventaForm.conReserva}
+                      onChange={(e) => setVentaForm({ ...ventaForm, conReserva: e.target.checked })} />
+                    Ha pagado una reserva
+                  </label>
+                  {ventaForm.conReserva && (
+                    <>
+                      <label className="lead-detail-label">Importe de la reserva (€) — ya cobrada</label>
+                      <input type="number" placeholder="Importe de la reserva (€)" value={ventaForm.importeReserva}
+                        onChange={(e) => setVentaForm({ ...ventaForm, importeReserva: e.target.value })} />
+                      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '-2px 0 4px' }}>
+                        La reserva se registra como cobrada en Finanzas. El resto ({ventaForm.conReserva && Number(ventaForm.importe) > 0 ? `${((Number(ventaForm.importe) || 0) - (Number(ventaForm.importeReserva) || 0)).toLocaleString('es-ES')}€` : 'precio − reserva'}) se cobra según la forma de cobro de abajo.
+                      </p>
+                    </>
+                  )}
+
+                  <label className="lead-detail-label">Forma de cobro{ventaForm.conReserva ? ' del resto' : ''}</label>
                   <select value={ventaForm.tipoPago} onChange={(e) => setVentaForm({ ...ventaForm, tipoPago: e.target.value })}>
                     <option value="unico">Pago único</option>
                     <option value="plazos">Pago a plazos</option>
