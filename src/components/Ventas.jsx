@@ -34,10 +34,10 @@ const initialLeadForm = {
 }
 
 const initialVentaForm = {
-  servicioId: SERVICIOS[0].id,
+  servicioId: SERVICIOS[0]?.id ?? '',
   otroNombre: '',
   tipoCliente: 'HIGH TICKET',
-  importe: SERVICIOS[0].precio,
+  importe: SERVICIOS[0]?.precio ?? '',
   formaPago: 'Stripe',
   tipoPago: 'unico',
   numPlazos: '3',
