@@ -1,0 +1,87 @@
+# CLAUDE.md — Panel interno MG Group (mi-dashboard)
+
+Este archivo es el "prompt madre" del proyecto: lo lee Claude automáticamente al
+empezar. Resume qué es, cómo está montado y qué NO hay que romper. Está escrito
+para que cualquier Claude (extensión de VS Code o sesión nueva) pueda continuar
+sin contexto previo.
+
+## Qué es
+Panel de gestión interno de MG Group (negocio de readaptación física /
+entrenamiento / salud). Lo usa el equipo por roles: **admin** (Raúl), **closer**
+(ventas), **tecnico** (entrenadores/fisios) y **contenido** (editores).
+Secciones: Dashboard, Ventas (pipeline + setting IG + ads + recontactar +
+calendario), Clientes (contabilidad/cobros), Seguimiento y Valoración, Equipo,
+Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
+(SOPs + contenido), Mis tareas, Manuales y Enlaces de interés (solo admin).
+
+## Stack y despliegue
+- **React + Vite** (frontend). Sin backend propio: el navegador habla directo
+  con Supabase.
+- **Supabase** (Postgres + Auth + Storage + RLS) = base de datos.
+  Credenciales en `.env.local` (no se commitea): `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_PUBLISHABLE_KEY`. También en Vercel → Environment Variables.
+- **Vercel** = hosting. Cada push a `main` en GitHub redespliega solo (1–2 min).
+  Repo: github.com/mgreadaptacionfisica/mi-dashboard.
+- **Login obligatorio**; el rol vive en `auth.users.raw_app_meta_data.rol`
+  (se asigna por SQL, no desde el navegador). Ver `src/lib/auth.js`.
+
+## Arquitectura (cómo fluye)
+- `src/App.jsx` (InternalApp): tiene TODO el estado en `useState` y lo carga en
+  un único `useEffect` con `Promise.all([...])`. Patrón "remoto con fallback
+  estático": cada `xDataPromise()` intenta `fetchX()` y si falla usa
+  `import('./data/x')`. `renderView()` es un `switch (vista)` que pinta cada
+  sección y le pasa datos + setters.
+- **Queries** en `src/lib/queries/*.js`: cada tabla tiene `fromRow`/`toRow`
+  (snake_case DB ↔ camelCase JS) y `fetch/insert/update/delete` (o `upsert`),
+  todos protegidos con `if (!supabase) return`.
+- **Fallbacks** en `src/data/*.js` (normalmente `[]`).
+- **Helpers** en `src/utils/*.js` (seguimiento, valoración, comisiones,
+  recurrencia, fechas, equipo, modoDemo).
+- **Estilos**: un único `src/styles/index.css` con variables CSS. Acento de
+  marca verde `#008A41`.
+
+## Convenciones (respétalas)
+- **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
+- **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
+  (la última es la 51; la siguiente sería la 52). Deben ser **idempotentes**
+  (`add column if not exists`, `create table if not exists`,
+  `drop policy if exists` + `create policy`) y terminar con
+  `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
+  como archivo y Raúl las corre a mano en Supabase → SQL Editor.
+- **RLS**: hay dos patrones. La mayoría de tablas son permisivas
+  (`using (auth.uid() is not null)`) y el control real es la UI/rol. Las tablas
+  sensibles usan rol: `(auth.jwt() -> 'app_metadata' ->> 'rol') = 'admin'`
+  (ej. `enlaces_interes`, `manuales` para escritura).
+- Antes de commitear, **validar sintaxis** de cada `.jsx/.js` tocado con
+  `@babel/parser` (sourceType module, plugin jsx) y el **balance de llaves** del
+  CSS. No hay tests.
+
+## Trampas conocidas (IMPORTANTE)
+- **El historial de cada cliente se enlaza por NOMBRE** (`cliente_nombre`), no
+  por id, en 5 tablas: `seguimientos`, `contactos_semanales`,
+  `valoraciones_clientes`, `objetivos_cliente_fase`,
+  `revisiones_semanales_cliente`. Al renombrar un cliente hay que arrastrar el
+  cambio a todas (ya existe `src/lib/queries/renombrarCliente.js`, llamado desde
+  ClientesAdmin). Ojo con `unique (cliente_nombre, semana)` en algunas.
+- **Modo demo** (`src/lib/demoGuard.js` + `src/utils/modoDemo.js`): interruptor
+  admin que enmascara datos personales y **bloquea TODA escritura a Supabase**
+  (interceptado en `src/lib/supabaseClient.js`). Útil para grabar/enseñar.
+- **Cobros → Finanzas**: al marcar un plazo cobrado (CobrosPendientes) se crea un
+  ingreso en `ingresos_empresa` con id determinista `fin-plazo-{clienteId}-{n}` +
+  la comisión de pasarela como gasto (ver `utils/comisionesHelpers.js`). El mismo
+  esquema lo usa la venta con reserva y hay que mantenerlo para poder "deshacer".
+- **Hotmart/seQura**: una venta financiada se registra como UN cobro (Hotmart
+  adelanta el grueso y libera el resto), no como plazos mensuales.
+- **Supabase (plan free) se pausa** tras días sin uso: si todo aparece a 0, hay
+  que reactivar el proyecto en supabase.com. No es un bug del código.
+
+## Flujo de trabajo con git
+Cambios → commit → `git push origin main` → Vercel despliega. **Nota**: cuando
+Claude corre en el entorno sandbox de Cowork, el push falla con 403 de proxy y
+Raúl lo sube a mano (git pull + push, o desde VS Code). La extensión Claude Code
+corriendo en local sí puede pushear directamente.
+
+## Dónde mirar para más detalle
+- `DOCUMENTACION_TECNICA.md` — documentación técnica completa.
+- `MIGRACION_SUPABASE.md` — estado de la migración a Supabase.
+- `src/lib/auth.js` — `SECCIONES_POR_ROL` (qué ve cada rol).
