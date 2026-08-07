@@ -11,6 +11,9 @@ import {
   PUNTOS_CONTACTO,
   contactoVacio,
   DIAS_SEMANA,
+  BLOQUES_SESION,
+  mondayOf,
+  toISO,
   semanaVacia,
   diaVacio,
   progresoSemana,
@@ -77,11 +80,17 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   const [valoracionCliente, setValoracionCliente] = useState(null)
   const [fasesCliente, setFasesCliente] = useState(null)
   const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', horaH: '10', horaM: '00', ampm: 'AM' })
-  // Celda del "Registro rápido" que está mostrando ahora mismo el campo
-  // para teclear una sesión nueva (clave "NombreCliente|diaId"), y el
-  // borrador de texto — para no montar un input por cada celda de toda la
-  // rejilla, solo por la que estás usando.
+  // Celda del "Registro rápido" que está mostrando ahora mismo el formulario
+  // para añadir una sesión nueva (clave "NombreCliente|diaId"), más el bloque
+  // elegido y el texto libre de "Otra" — para no montar un formulario por
+  // cada celda de toda la rejilla, solo por la que estás usando.
+  // El desplegable de bloques (antes solo estaba en el modal de Seguimiento)
+  // vive ahora aquí: el Registro rápido es el ÚNICO sitio donde se registra
+  // el día a día, así que necesita todo lo que tenía el modal (bloques fijos
+  // para que los nombres sean consistentes, y poder borrar una sesión mal
+  // puesta). En el modal la rejilla pasó a ser solo un resumen.
   const [addCell, setAddCell] = useState(null)
+  const [addBloque, setAddBloque] = useState(BLOQUES_SESION[0])
   const [addTexto, setAddTexto] = useState('')
 
   // Admin: acceso a Seguimiento/Valoración de TODOS los clientes (no solo
@@ -219,21 +228,34 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     upsertContactoSemanalRemote(actualizado)
   }
 
+  // Semana que se está viendo/editando en el "Registro rápido": 0 = la
+  // actual. Como el día a día solo se registra aquí (en el modal es un
+  // resumen de solo lectura), hace falta poder ir a una semana pasada para
+  // corregirla o terminarla antes de cerrarla.
+  const [registroOffset, setRegistroOffset] = useState(0)
+  const semanaRegistro = useMemo(() => {
+    const base = mondayOf(new Date())
+    base.setDate(base.getDate() + registroOffset * 7)
+    return toISO(base)
+  }, [registroOffset])
+
   // "Registro rápido": editar las tareas de la semana de un cliente sin
   // abrir su modal de Seguimiento. Es exactamente el mismo dato (dias ->
   // tareas -> { texto, revisado }) que se ve dentro de SeguimientoCliente,
   // solo que en una rejilla cliente × día para repasar en bloque. mutarDias
-  // recibe el objeto de días actual y devuelve el nuevo.
+  // recibe el objeto de días actual y devuelve el nuevo. Escribe siempre en
+  // semanaRegistro (la semana que se está viendo), no en la actual.
   const actualizarSeguimientoSemana = (clienteNombre, mutarDias) => {
     if (typeof setSeguimientos !== 'function') return
-    const existente = seguimientos.find((s) => s.clienteNombre === clienteNombre && s.semana === semanaActual)
+    const semana = semanaRegistro
+    const existente = seguimientos.find((s) => s.clienteNombre === clienteNombre && s.semana === semana)
     const base = existente
       ? { ...existente, dias: { ...(existente.dias || semanaVacia()) } }
-      : { clienteNombre, semana: semanaActual, dias: semanaVacia(), comentarios: '', cambiosPendientes: [], revisiones: [] }
+      : { clienteNombre, semana, dias: semanaVacia(), comentarios: '', cambiosPendientes: [], revisiones: [] }
     const actualizado = { ...base, dias: mutarDias(base.dias) }
     setSeguimientos((prev) => {
-      const existe = prev.some((s) => s.clienteNombre === clienteNombre && s.semana === semanaActual)
-      if (existe) return prev.map((s) => (s.clienteNombre === clienteNombre && s.semana === semanaActual ? actualizado : s))
+      const existe = prev.some((s) => s.clienteNombre === clienteNombre && s.semana === semana)
+      if (existe) return prev.map((s) => (s.clienteNombre === clienteNombre && s.semana === semana ? actualizado : s))
       return [...prev, actualizado]
     })
     upsertSeguimientoRemote(actualizado)
@@ -256,6 +278,25 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
       const dia = dias[diaId] || diaVacio()
       return { ...dias, [diaId]: { tareas: [...dia.tareas, { texto: limpio, revisado: false, revisadoEn: null }] } }
     })
+  }
+
+  // Borrar una sesión mal puesta sin abrir el modal (antes solo se podía
+  // desde el modal de Seguimiento, que ahora es de solo lectura).
+  const removeTareaRapida = (clienteNombre, diaId, index) => {
+    actualizarSeguimientoSemana(clienteNombre, (dias) => {
+      const dia = dias[diaId] || diaVacio()
+      return { ...dias, [diaId]: { tareas: dia.tareas.filter((_, i) => i !== index) } }
+    })
+  }
+
+  // Texto final de la sesión a partir del desplegable: si es "Otra" se usa lo
+  // tecleado a mano (y si está vacío, se queda en "Otra"); si no, el bloque tal cual.
+  const textoSesionNueva = () => (addBloque === 'Otra' ? (addTexto.trim() || 'Otra') : addBloque)
+
+  const cerrarAddCell = () => {
+    setAddCell(null)
+    setAddBloque(BLOQUES_SESION[0])
+    setAddTexto('')
   }
 
   // "Registrar última revisión" (movido aquí desde Mi Ficha, a petición de
@@ -544,10 +585,18 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
               </div>
             </div>
 
+          </>
+        )}
+
+        {(esAdmin || miPersona) && vista === 'registro' && (
+          <>
             {misClientes.length > 0 && (
-              <div className="table-card" style={{ marginTop: 20 }}>
+              <div className="table-card" style={{ marginBottom: 20 }}>
                 <div className="card-header">
-                  <div><div className="card-title">Registrar última revisión</div></div>
+                  <div>
+                    <div className="card-title">Registrar última revisión</div>
+                    <div className="card-subtitle">Deja constancia de cuándo revisaste a cada cliente (aparte de marcar sus sesiones abajo).</div>
+                  </div>
                 </div>
                 <form className="seguimiento-revision-form" onSubmit={registrarRevisionPropia}>
                   <select value={revisionForm.clienteNombre} onChange={(e) => setRevisionForm({ ...revisionForm, clienteNombre: e.target.value })}>
@@ -593,139 +642,177 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                 })()}
               </div>
             )}
-          </>
-        )}
-
-        {(esAdmin || miPersona) && vista === 'registro' && (
-          <div className="table-card">
-            <div className="card-header">
-              <div>
-                <div className="card-title">Registro rápido de sesiones</div>
-                <div className="card-subtitle">
-                  Semana del {formatRangoSemana(semanaActual)} · marca cada sesión sin entrar en la ficha. Clic en el nombre para abrir el seguimiento completo.
+            <div className="table-card">
+              <div className="card-header">
+                <div>
+                  <div className="card-title">Registro rápido de sesiones</div>
+                  <div className="card-subtitle">
+                    Aquí se registra el día a día: añade, marca y quita sesiones. En el "📋 Seguimiento" de cada cliente esto se ve como resumen (no se edita). Clic en el nombre para abrirlo.
+                  </div>
                 </div>
+                <input
+                  className="filter-input"
+                  placeholder="Buscar cliente..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{ maxWidth: 260 }}
+                />
               </div>
-              <input
-                className="filter-input"
-                placeholder="Buscar cliente..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ maxWidth: 260 }}
-              />
-            </div>
 
-            <div className="registro-rapido-leyenda">
-              <span><span className="registro-rapido-chip registro-rapido-chip-hecho" style={{ pointerEvents: 'none' }}>✅ Hecho</span></span>
-              <span><span className="registro-rapido-chip" style={{ pointerEvents: 'none' }}>⬜ Pendiente</span></span>
-              <span style={{ color: 'var(--color-text-secondary)' }}>Clic en una sesión para marcarla / desmarcarla</span>
-            </div>
+              <div className="seguimiento-week-nav registro-rapido-week-nav">
+                <button type="button" className="secondary-action" onClick={() => setRegistroOffset((w) => w - 1)}>← Semana anterior</button>
+                <strong>
+                  Semana del {formatRangoSemana(semanaRegistro)}{registroOffset === 0 ? ' (actual)' : ''}
+                </strong>
+                {registroOffset === 0 ? (
+                  <button type="button" className="secondary-action" onClick={() => setRegistroOffset((w) => w + 1)}>Semana siguiente →</button>
+                ) : (
+                  <button type="button" className="secondary-action" onClick={() => setRegistroOffset(0)}>Volver a esta semana →</button>
+                )}
+              </div>
 
-            <div className="table-wrapper">
-              <table className="registro-rapido-tabla">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    {DIAS_SEMANA.map((d) => <th key={d.id}>{d.label}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtrados.map((cliente, index) => {
-                    const registroSemana = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaActual)
-                    const dias = registroSemana?.dias || {}
-                    const otros = compartidoCon(cliente)
-                    const semPend = semanaPasadaPendiente(cliente)
-                    return (
-                      <tr key={`reg-${cliente.id || cliente.Nombre}-${index}`}>
-                        <td className={`registro-rapido-cliente ${otros.length ? 'registro-rapido-compartido' : ''}`}>
-                          <button
-                            type="button"
-                            className="registro-rapido-nombre"
-                            onClick={() => abrirSeguimiento(cliente, semPend ? offsetSemana(semPend) : 0)}
-                            title="Abrir seguimiento completo"
-                          >
-                            {cliente.Nombre || '—'}
-                          </button>
-                          {semPend && (
+              {registroOffset !== 0 && (
+                <div className="seguimiento-cerrar-antes-banner" style={{ margin: '0 20px 12px' }}>
+                  📅 Estás editando la semana del <strong>{formatRangoSemana(semanaRegistro)}</strong>, no la actual. Todo lo que marques aquí se guarda en esa semana.
+                </div>
+              )}
+
+              <div className="registro-rapido-leyenda">
+                <span><span className="registro-rapido-chip registro-rapido-chip-hecho" style={{ pointerEvents: 'none' }}>✅ Hecho</span></span>
+                <span><span className="registro-rapido-chip" style={{ pointerEvents: 'none' }}>⬜ Pendiente</span></span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Clic en una sesión para marcarla / desmarcarla · ✕ para quitarla</span>
+              </div>
+
+              <div className="table-wrapper">
+                <table className="registro-rapido-tabla">
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      {DIAS_SEMANA.map((d) => <th key={d.id}>{d.label}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtrados.map((cliente, index) => {
+                      const registroSemana = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaRegistro)
+                      const dias = registroSemana?.dias || {}
+                      const otros = compartidoCon(cliente)
+                      const semPend = semanaPasadaPendiente(cliente)
+                      return (
+                        <tr key={`reg-${cliente.id || cliente.Nombre}-${index}`}>
+                          <td className={`registro-rapido-cliente ${otros.length ? 'registro-rapido-compartido' : ''}`}>
                             <button
                               type="button"
-                              className="semana-pasada-badge"
-                              title="Una semana pasada quedó sin cerrar — pulsa para abrirla y terminarla"
-                              onClick={() => abrirSeguimiento(cliente, offsetSemana(semPend))}
+                              className="registro-rapido-nombre"
+                              onClick={() => abrirSeguimiento(cliente, registroOffset)}
+                              title="Abrir seguimiento completo (resumen, cambios y cierre de semana)"
                             >
-                              ⚠️ Semana pasada
+                              {cliente.Nombre || '—'}
                             </button>
-                          )}
-                          {otros.length > 0 && (
-                            <div className="registro-compartido-badge" title={`Cliente compartido — coordina con ${otros.join(', ')} quién lo revisa`}>
-                              🤝 Compartido con {otros.join(', ')}
-                            </div>
-                          )}
-                        </td>
-                        {DIAS_SEMANA.map((d) => {
-                          const tareas = dias[d.id]?.tareas || []
-                          const cellKey = `${cliente.Nombre}|${d.id}`
-                          // Los clientes hacen 3 sesiones al día como mucho, así
-                          // que no dejamos añadir más de 3 por día (a petición
-                          // de Raúl): al llegar a 3 desaparece el "＋ sesión".
-                          const lleno = tareas.length >= 3
-                          return (
-                            <td key={d.id} className="registro-rapido-celda">
-                              <div className="registro-rapido-celda-inner">
-                                {tareas.map((t, i) => (
-                                  <button
-                                    key={i}
-                                    type="button"
-                                    className={`registro-rapido-chip ${t.revisado ? 'registro-rapido-chip-hecho' : ''}`}
-                                    onClick={() => toggleTareaRapida(cliente.Nombre, d.id, i)}
-                                    title={t.revisado ? 'Hecho — clic para desmarcar' : 'Clic para marcar hecho'}
-                                  >
-                                    {t.revisado ? '✅' : '⬜'} {t.texto}
-                                  </button>
-                                ))}
-                                {!lleno && addCell === cellKey && (
-                                  <form
-                                    className="registro-rapido-addform"
-                                    onSubmit={(e) => {
-                                      e.preventDefault()
-                                      addTareaRapida(cliente.Nombre, d.id, addTexto)
-                                      setAddTexto('')
-                                      setAddCell(null)
-                                    }}
-                                  >
-                                    <input
-                                      autoFocus
-                                      value={addTexto}
-                                      placeholder="Sesión…"
-                                      onChange={(e) => setAddTexto(e.target.value)}
-                                      onBlur={() => { if (!addTexto.trim()) setAddCell(null) }}
-                                    />
-                                  </form>
-                                )}
-                                {!lleno && addCell !== cellKey && (
-                                  <button
-                                    type="button"
-                                    className="registro-rapido-add"
-                                    onClick={() => { setAddCell(cellKey); setAddTexto('') }}
-                                  >
-                                    ＋ sesión
-                                  </button>
-                                )}
+                            {semPend && (
+                              <button
+                                type="button"
+                                className="semana-pasada-badge"
+                                // Aquí el badge NO abre el modal (que ya no deja tocar el
+                                // día a día): lleva la propia rejilla a esa semana para
+                                // poder terminarla, y luego se cierra desde el modal.
+                                title="Una semana pasada quedó sin cerrar — pulsa para traer esa semana a la rejilla y terminarla"
+                                onClick={() => { setRegistroOffset(offsetSemana(semPend)); cerrarAddCell() }}
+                              >
+                                ⚠️ Semana pasada
+                              </button>
+                            )}
+                            {otros.length > 0 && (
+                              <div className="registro-compartido-badge" title={`Cliente compartido — coordina con ${otros.join(', ')} quién lo revisa`}>
+                                🤝 Compartido con {otros.join(', ')}
                               </div>
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    )
-                  })}
-                  {filtrados.length === 0 && (
-                    <tr><td colSpan={DIAS_SEMANA.length + 1} className="lead-log-empty">
-                      {misClientes.length === 0 ? 'No hay clientes activos asignados.' : 'Sin resultados con ese filtro.'}
-                    </td></tr>
-                  )}
-                </tbody>
-              </table>
+                            )}
+                          </td>
+                          {DIAS_SEMANA.map((d) => {
+                            const tareas = dias[d.id]?.tareas || []
+                            const cellKey = `${cliente.Nombre}|${d.id}`
+                            // Los clientes hacen 3 sesiones al día como mucho, así
+                            // que no dejamos añadir más de 3 por día (a petición
+                            // de Raúl): al llegar a 3 desaparece el "＋ sesión".
+                            const lleno = tareas.length >= 3
+                            return (
+                              <td key={d.id} className="registro-rapido-celda">
+                                <div className="registro-rapido-celda-inner">
+                                  {tareas.map((t, i) => (
+                                    // Chip + ✕ como botones hermanos (no anidados: un
+                                    // <button> dentro de otro no es HTML válido).
+                                    <div key={i} className="registro-rapido-chip-row">
+                                      <button
+                                        type="button"
+                                        className={`registro-rapido-chip ${t.revisado ? 'registro-rapido-chip-hecho' : ''}`}
+                                        onClick={() => toggleTareaRapida(cliente.Nombre, d.id, i)}
+                                        title={t.revisado ? 'Hecho — clic para desmarcar' : 'Clic para marcar hecho'}
+                                      >
+                                        {t.revisado ? '✅' : '⬜'} {t.texto}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="registro-rapido-chip-del"
+                                        onClick={() => removeTareaRapida(cliente.Nombre, d.id, i)}
+                                        title="Quitar esta sesión"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ))}
+                                  {!lleno && addCell === cellKey && (
+                                    <form
+                                      className="registro-rapido-addform"
+                                      onSubmit={(e) => {
+                                        e.preventDefault()
+                                        addTareaRapida(cliente.Nombre, d.id, textoSesionNueva())
+                                        // El formulario se queda abierto para poder encadenar
+                                        // las 2-3 sesiones del día sin volver a pulsar "＋ sesión".
+                                        setAddTexto('')
+                                      }}
+                                    >
+                                      <select autoFocus value={addBloque} onChange={(e) => setAddBloque(e.target.value)}>
+                                        {BLOQUES_SESION.map((b) => <option key={b} value={b}>{b}</option>)}
+                                      </select>
+                                      {addBloque === 'Otra' && (
+                                        <input
+                                          type="text"
+                                          value={addTexto}
+                                          placeholder="Escribe la sesión…"
+                                          onChange={(e) => setAddTexto(e.target.value)}
+                                        />
+                                      )}
+                                      <div className="registro-rapido-addform-btns">
+                                        <button type="submit" className="registro-rapido-add-ok" title="Añadir sesión">＋</button>
+                                        <button type="button" className="registro-rapido-add-cancel" onClick={cerrarAddCell} title="Cerrar">✕</button>
+                                      </div>
+                                    </form>
+                                  )}
+                                  {!lleno && addCell !== cellKey && (
+                                    <button
+                                      type="button"
+                                      className="registro-rapido-add"
+                                      onClick={() => { setAddCell(cellKey); setAddBloque(BLOQUES_SESION[0]); setAddTexto('') }}
+                                    >
+                                      ＋ sesión
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
+                    {filtrados.length === 0 && (
+                      <tr><td colSpan={DIAS_SEMANA.length + 1} className="lead-log-empty">
+                        {misClientes.length === 0 ? 'No hay clientes activos asignados.' : 'Sin resultados con ese filtro.'}
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </main>
 

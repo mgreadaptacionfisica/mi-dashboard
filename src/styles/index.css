@@ -2236,6 +2236,26 @@ tbody td {
   margin: 0;
 }
 
+/* Rejilla de días del modal de Seguimiento: pasó a ser un RESUMEN de solo
+   lectura (el día a día se registra en "⚡ Registro rápido"). El chip ya no
+   lleva checkbox ni ✕, así que se marca con cursor por defecto para que no
+   parezca clicable. */
+.seguimiento-tarea-solo-lectura {
+  cursor: default;
+}
+
+.seguimiento-resumen-dias-nota {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-left: 4px solid #0284c7;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: #075985;
+  line-height: 1.5;
+}
+
 .seguimiento-resumen-list {
   max-height: 260px;
 }
@@ -2802,12 +2822,97 @@ textarea {
   color: var(--color-primary);
 }
 
+/* Navegación de semanas dentro de la tarjeta del Registro rápido: reutiliza
+   el estilo del modal, solo hay que meterla en el margen lateral de la card. */
+.registro-rapido-week-nav {
+  margin: 0 20px 12px;
+  flex-wrap: wrap;
+}
+
+/* Sesión ya registrada: el chip (marcar/desmarcar) y la ✕ (quitarla) van
+   como botones hermanos en una fila — un <button> dentro de otro no es HTML
+   válido. La ✕ solo se ve al pasar por encima de la fila para no ensuciar
+   la rejilla ni invitar a borrar sin querer. */
+.registro-rapido-chip-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.registro-rapido-chip-row .registro-rapido-chip {
+  flex: 1;
+  min-width: 0;
+}
+
+.registro-rapido-chip-del {
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  padding: 4px 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.registro-rapido-chip-row:hover .registro-rapido-chip-del,
+.registro-rapido-chip-del:focus {
+  opacity: 1;
+}
+
+.registro-rapido-chip-del:hover {
+  color: #dc2626;
+}
+
+.registro-rapido-addform {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.registro-rapido-addform select,
 .registro-rapido-addform input {
   width: 100%;
   border: 1px solid var(--color-primary);
   border-radius: 8px;
   padding: 3px 7px;
   font-size: 11px;
+}
+
+.registro-rapido-addform-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.registro-rapido-add-ok,
+.registro-rapido-add-cancel {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  background: none;
+}
+
+.registro-rapido-add-ok {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.registro-rapido-add-ok:hover {
+  background: rgba(0, 138, 65, 0.1);
+}
+
+.registro-rapido-add-cancel {
+  color: var(--color-text-secondary);
+}
+
+.registro-rapido-add-cancel:hover {
+  color: #dc2626;
+  border-color: #fecaca;
 }
 
 @media (max-width: 768px) {

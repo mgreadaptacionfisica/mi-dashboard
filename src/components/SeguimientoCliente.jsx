@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import {
-  BLOQUES_SESION,
   DIAS_SEMANA,
   mondayOf,
   toISO,
@@ -14,20 +13,12 @@ import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { upsertRevisionSemanalRemote } from '../lib/queries/revisionesSemanales'
 import { faseAutomatica, faseInfo, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10)
-}
-
 export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, miEmail, weekOffsetInicial = 0, onClose }) {
   // weekOffsetInicial: 0 = semana actual (por defecto), -1 = abre en la
   // semana anterior (cuando se entra desde el aviso "semana pasada sin
   // cerrar" para terminarla tal cual quedó).
   const [weekOffset, setWeekOffset] = useState(weekOffsetInicial)
-  const [tareaDraft, setTareaDraft] = useState({})
   const [cambioDraft, setCambioDraft] = useState('')
-  // Texto libre cuando se elige "Otra" en el desplegable de bloques, para
-  // poder escribir algo que no esté en la lista fija (A/1, B/2, Cardio...).
-  const [tareaOtroDraft, setTareaOtroDraft] = useState({})
 
   const mondayISO = useMemo(() => {
     const base = mondayOf(new Date())
@@ -58,30 +49,12 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
     upsertSeguimientoRemote(actualizado)
   }
 
-  const addTarea = (diaId) => {
-    const bloque = tareaDraft[diaId] || BLOQUES_SESION[0]
-    const texto = bloque === 'Otra' ? (tareaOtroDraft[diaId] || '').trim() || 'Otra' : bloque
-    const diaActual = diasActuales[diaId] || diaVacio()
-    actualizarSemana({
-      dias: { ...diasActuales, [diaId]: { tareas: [...diaActual.tareas, { texto, revisado: false, revisadoEn: null }] } },
-    })
-    if (bloque === 'Otra') setTareaOtroDraft({ ...tareaOtroDraft, [diaId]: '' })
-  }
-
-  const removeTarea = (diaId, index) => {
-    const diaActual = diasActuales[diaId] || diaVacio()
-    actualizarSemana({
-      dias: { ...diasActuales, [diaId]: { tareas: diaActual.tareas.filter((_, i) => i !== index) } },
-    })
-  }
-
-  const toggleTareaRevisado = (diaId, index) => {
-    const diaActual = diasActuales[diaId] || diaVacio()
-    const tareas = diaActual.tareas.map((t, i) =>
-      i === index ? { ...t, revisado: !t.revisado, revisadoEn: !t.revisado ? todayISO() : null } : t
-    )
-    actualizarSemana({ dias: { ...diasActuales, [diaId]: { tareas } } })
-  }
+  // El día a día (dias -> tareas) ya NO se edita desde aquí: a petición de
+  // Raúl, el único sitio donde se registra son las celdas del "Registro
+  // rápido" (Seguimiento y Valoración → pestaña ⚡ Registro rápido), que
+  // escriben este mismo dato. Aquí se muestra como resumen de lo hecho para
+  // poder repasarlo antes de anotar los cambios y cerrar la semana, que es
+  // lo único que sigue siendo editable en este modal.
 
   // Cambios/tareas de la semana con checkbox propio (independiente de las
   // tareas diarias de arriba) — a petición de Raúl, para poder tachar cada
@@ -184,6 +157,11 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
           </div>
         )}
 
+        <div className="seguimiento-resumen-dias-nota">
+          📖 <strong>Resumen del día a día</strong> — esto es solo lectura: las sesiones se añaden, se marcan y se
+          quitan desde <strong>⚡ Registro rápido</strong>. Aquí lo repasas antes de anotar los cambios y cerrar la semana.
+        </div>
+
         <div className="seguimiento-dias-grid">
           {DIAS_SEMANA.map((dia) => {
             const info = diasActuales[dia.id] || diaVacio()
@@ -198,31 +176,16 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
                   )}
                 </div>
                 <div className="seguimiento-tareas-list">
-                  {info.tareas.length === 0 && <span className="lead-log-empty">Sin tareas</span>}
+                  {info.tareas.length === 0 && <span className="lead-log-empty">Sin sesiones registradas</span>}
                   {info.tareas.map((tarea, i) => (
-                    <label key={i} className={`seguimiento-tarea-chip ${tarea.revisado ? 'seguimiento-tarea-revisada' : ''}`}>
-                      <input type="checkbox" checked={tarea.revisado} onChange={() => toggleTareaRevisado(dia.id, i)} />
-                      {tarea.texto}
-                      <button type="button" onClick={() => removeTarea(dia.id, i)}>✕</button>
-                    </label>
+                    <span
+                      key={i}
+                      className={`seguimiento-tarea-chip seguimiento-tarea-solo-lectura ${tarea.revisado ? 'seguimiento-tarea-revisada' : ''}`}
+                      title={tarea.revisado ? 'Hecha' : 'Pendiente de marcar en el Registro rápido'}
+                    >
+                      {tarea.revisado ? '✅' : '⬜'} {tarea.texto}
+                    </span>
                   ))}
-                </div>
-                <div className="seguimiento-add-tarea">
-                  <select
-                    value={tareaDraft[dia.id] || BLOQUES_SESION[0]}
-                    onChange={(e) => setTareaDraft({ ...tareaDraft, [dia.id]: e.target.value })}
-                  >
-                    {BLOQUES_SESION.map((b) => <option key={b} value={b}>{b}</option>)}
-                  </select>
-                  {(tareaDraft[dia.id] || BLOQUES_SESION[0]) === 'Otra' && (
-                    <input
-                      type="text"
-                      placeholder="Escribe la tarea..."
-                      value={tareaOtroDraft[dia.id] || ''}
-                      onChange={(e) => setTareaOtroDraft({ ...tareaOtroDraft, [dia.id]: e.target.value })}
-                    />
-                  )}
-                  <button type="button" className="secondary-action" onClick={() => addTarea(dia.id)}>＋</button>
                 </div>
               </div>
             )
