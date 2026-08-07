@@ -75,7 +75,7 @@ const ventasDataPromise = async () => {
 
 ## 5. Modelo de datos (Supabase / Postgres)
 
-Todo el esquema vive versionado como SQL plano en `supabase-sql/`, numerado en orden de aplicación (`01_...` en adelante; la última a fecha de este documento es `51_origen_seguimiento_ventas.sql`, así que la siguiente que se escriba sería la 52). **No se usa el sistema de migraciones de Supabase CLI** — son archivos `.sql` sueltos que se pegan a mano en el SQL Editor del dashboard de Supabase. Todos están escritos para ser idempotentes (`create table if not exists`, `drop policy if exists` + `create policy`, `add column if not exists`, `on conflict do nothing`), así que se pueden re-ejecutar sin duplicar nada — importante porque no hay ningún registro de "qué migración ya se aplicó" fuera de la memoria de quien las fue pegando.
+Todo el esquema vive versionado como SQL plano en `supabase-sql/`, numerado en orden de aplicación (`01_...` en adelante; la última a fecha de este documento es `52_diagnostico_diferencial.sql`, así que la siguiente que se escriba sería la 53). **No se usa el sistema de migraciones de Supabase CLI** — son archivos `.sql` sueltos que se pegan a mano en el SQL Editor del dashboard de Supabase. Todos están escritos para ser idempotentes (`create table if not exists`, `drop policy if exists` + `create policy`, `add column if not exists`, `on conflict do nothing`), así que se pueden re-ejecutar sin duplicar nada — importante porque no hay ningún registro de "qué migración ya se aplicó" fuera de la memoria de quien las fue pegando.
 
 Tablas principales:
 
@@ -88,7 +88,7 @@ Tablas principales:
 | `contactos_semanales` | Los 3 contactos por cliente y semana (inicio / mitad / fin), pestaña "Contacto semanal". |
 | `revisiones_semanales_cliente` | El "check final" de semana revisada y cerrada, por cliente y semana. Es lo que apaga el aviso ⏳ y el banner de "semana pasada sin cerrar". |
 | `objetivos_cliente_fase` | Objetivos por fase de cada cliente (`FasesObjetivos.jsx`); de ellos sale la fase automática. |
-| `valoraciones_clientes` | Historial de valoraciones (SPADI, TAMPA, % mejoría) por cliente. |
+| `valoraciones_clientes` | Historial de valoraciones (SPADI, TAMPA, % mejoría) por cliente, más el **diagnóstico diferencial de hombro** (`diagnostico_diferencial` jsonb, migración 52): el RCSRP se plantea como diagnóstico por descarte, así que se registra test a test qué se ha descartado. Contenido y algoritmo en `src/utils/diagnosticoDiferencial.js`, sacados de `public/rcsrp-5-valoracion-clinica.pdf`. |
 | `sops` | Procedimientos operativos estándar (Operaciones). |
 | `contenido_ideas` | Backlog de ideas de contenido: `Idea → Grabado → En edición → Editado → Programado → Publicado`, con `editores text[]`. |
 | `mensajes_equipo` | Muro de comunicación interna (con menciones `@persona`). |

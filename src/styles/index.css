@@ -3596,6 +3596,286 @@ textarea {
   flex-shrink: 0;
 }
 
+/* ---------- Diagnóstico diferencial de hombro (RCSRP por descarte) ----------
+   Bloque de la valoración donde se van descartando fuentes de síntomas
+   (cervical, hombro rígido, inestabilidad, AC, bíceps). Ver
+   src/utils/diagnosticoDiferencial.js. */
+
+.dd-leyenda {
+  font-size: 11.5px;
+  background: var(--color-bg-secondary, #f8fafc);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.dd-leyenda p {
+  margin: 0 0 8px;
+  color: var(--color-text-secondary);
+}
+
+.dd-leyenda-titulo {
+  display: block;
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.dd-leyenda-valores {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.dd-leyenda-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--color-text-secondary);
+}
+
+.dd-leyenda-punto {
+  flex-shrink: 0;
+}
+
+.dd-leyenda-atajo {
+  margin: 0 !important;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.dd-acciones-globales {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+/* Cada paso del algoritmo. El borde izquierdo distingue de un vistazo el
+   tipo: rojo = banderas rojas / sospecha de rotura (derivar), verde = pasos
+   de descarte normales, azul = test que APOYAN el diagnóstico de RCSRP. */
+.dd-paso {
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-primary);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.dd-paso-redflag,
+.dd-paso-alerta {
+  border-left-color: #dc2626;
+  background: #fef2f2;
+}
+
+.dd-paso-apoyo {
+  border-left-color: #2563eb;
+  background: #eff6ff;
+}
+
+.dd-paso-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.dd-paso-titulo {
+  font-weight: 700;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dd-paso-pregunta {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.dd-paso-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 1px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.dd-paso-badge-positivo {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.dd-paso-badge-limpio {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.dd-paso-acciones {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.dd-paso-acciones .secondary-action {
+  padding: 3px 9px;
+  font-size: 11.5px;
+}
+
+.dd-paso-progreso {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.dd-tests {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dd-test {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: #fff;
+}
+
+.dd-test-positivo {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.dd-test-negativo {
+  border-color: #a7f3d0;
+}
+
+.dd-test-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dd-test-label {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.dd-test-botones {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dd-btn {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.dd-btn:hover {
+  background: #f8fafc;
+}
+
+.dd-btn-activo.dd-btn-negativo {
+  background: #d1fae5;
+  border-color: var(--color-green, #10b981);
+  color: #065f46;
+  font-weight: 700;
+}
+
+.dd-btn-activo.dd-btn-positivo {
+  background: #fee2e2;
+  border-color: #dc2626;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.dd-test-ayuda {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.dd-paso-sipositivo {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.dd-paso-sipositivo-apoyo {
+  color: #1d4ed8;
+}
+
+/* Banner de conclusión del algoritmo. */
+.dd-conclusion {
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary, #f8fafc);
+}
+
+.dd-conclusion-rcsrp {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+
+.dd-conclusion-pendiente {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.dd-conclusion-red-flag {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.dd-conclusion-rotura {
+  font-weight: 700;
+}
+
+/* Resumen por paso en la pestaña de Evolución. */
+.dd-resumen-pasos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.dd-resumen-paso {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
 .fases-objetivos-modal {
   max-width: 980px;
 }

@@ -22,6 +22,15 @@ import {
   semaforoInfo,
   compararSemaforo,
 } from '../utils/valoracionHelpers'
+import {
+  DD_PASOS,
+  DD_VALORES,
+  ddMarcarTodoNegativo,
+  ddMarcarPasoNegativo,
+  ddLimpiar,
+  ddResumenPaso,
+  ddConclusion,
+} from '../utils/diagnosticoDiferencial'
 import { insertValoracionRemote, updateValoracionRemote, deleteValoracionRemote } from '../lib/queries/valoracionesClientes'
 
 function todayISO() {
@@ -41,6 +50,90 @@ function LeyendaSemaforo() {
           <span><strong>{op.label}</strong> — {op.descripcion}</span>
         </div>
       ))}
+    </div>
+  )
+}
+
+// Leyenda del diagnóstico diferencial: explica de dónde sale el bloque y,
+// sobre todo, cómo se rellena — que es al revés de lo que uno espera. Lo
+// normal es que TODO salga negativo (no hay nada que descartar) y por eso
+// existe el botón de marcarlo todo de golpe.
+function LeyendaDiagnosticoDiferencial() {
+  return (
+    <div className="dd-leyenda">
+      <span className="dd-leyenda-titulo">🔍 Cómo se rellena el diagnóstico diferencial</span>
+      <p>
+        El dolor relacionado con el manguito rotador (RCSRP) es un <strong>diagnóstico por descarte</strong>: los
+        test ortopédicos no identifican estructuras concretas, así que no se confirma con un test, se llega a él
+        descartando el resto de fuentes en este orden — <strong>cervical → hombro rígido → inestabilidad →
+        acromioclavicular → bíceps</strong>. Si los cinco quedan descartados, el cuadro encaja con RCSRP.
+      </p>
+      <div className="dd-leyenda-valores">
+        {DD_VALORES.map((op) => (
+          <div key={op.valor} className="dd-leyenda-item">
+            <span className={`dd-leyenda-punto dd-punto-${op.valor}`}>{op.emoji}</span>
+            <span><strong>{op.label}</strong> — {op.descripcion}</span>
+          </div>
+        ))}
+        <div className="dd-leyenda-item">
+          <span className="dd-leyenda-punto dd-punto-vacio">⬜</span>
+          <span><strong>Sin marcar</strong> — no lo has evaluado todavía. No es lo mismo que negativo: negativo significa que lo hiciste y salió limpio.</span>
+        </div>
+      </div>
+      <p className="dd-leyenda-atajo">
+        💡 Lo habitual es que no haya nada que destacar. Usa <strong>"Marcar todo como negativo"</strong> para
+        dejarlo todo descartado de una vez y luego marca a mano solo los pocos que salgan positivos. Cada paso
+        tiene también su propio botón, y volver a pulsar un valor ya marcado lo deja sin evaluar.
+      </p>
+    </div>
+  )
+}
+
+// Un test: nombre, los dos botones (negativo / positivo) y la ayuda de cómo
+// se hace o cuándo se considera positivo, que viene del PDF del protocolo.
+function CampoTestDD({ test, valor, onChange }) {
+  return (
+    <div className={`dd-test ${valor ? `dd-test-${valor}` : ''}`}>
+      <div className="dd-test-cabecera">
+        <span className="dd-test-label">{test.label}</span>
+        <div className="dd-test-botones">
+          {DD_VALORES.map((op) => (
+            <button
+              key={op.valor}
+              type="button"
+              className={`dd-btn dd-btn-${op.valor} ${valor === op.valor ? 'dd-btn-activo' : ''}`}
+              title={`${op.descripcion} (pulsa otra vez para dejarlo sin evaluar)`}
+              onClick={() => onChange(valor === op.valor ? undefined : op.valor)}
+            >
+              {op.emoji} {op.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {(test.ayuda || test.positivoSi) && (
+        <p className="dd-test-ayuda">
+          {test.ayuda && <span>{test.ayuda} </span>}
+          {test.positivoSi && <span><strong>Positivo si:</strong> {test.positivoSi}</span>}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// Banner con la conclusión del algoritmo (bandera roja / fuentes sin
+// descartar / compatible con RCSRP). Se reutiliza en el formulario, en la
+// evolución y en el historial.
+function ConclusionDD({ conclusion }) {
+  if (!conclusion || conclusion.estado === 'sin-datos') return null
+  return (
+    <div className={`dd-conclusion dd-conclusion-${conclusion.estado}`}>
+      <strong>{conclusion.titulo}</strong>
+      <span> {conclusion.detalle}</span>
+      {conclusion.rotura?.length > 0 && (
+        <span className="dd-conclusion-rotura">
+          {' '}⚠️ Además hay signos de sospecha de rotura ({conclusion.rotura.map((t) => t.label).join(', ')}) — valorar derivación.
+        </span>
+      )}
     </div>
   )
 }
@@ -305,6 +398,22 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     setFormData((prev) => ({ ...prev, [bloqueId]: { ...prev[bloqueId], [itemId]: valor } }))
   }
 
+  // Diagnóstico diferencial: un nivel más de anidamiento que el resto de
+  // bloques (paso → test → valor), por eso tiene su propio setter. Poner el
+  // valor a undefined vuelve a dejar el test "sin evaluar".
+  const setTestDD = (pasoId, testId, valor) => {
+    setFormData((prev) => {
+      const dd = prev.diagnosticoDiferencial || {}
+      const paso = { ...(dd[pasoId] || {}) }
+      if (valor === undefined) delete paso[testId]
+      else paso[testId] = valor
+      return { ...prev, diagnosticoDiferencial: { ...dd, [pasoId]: paso } }
+    })
+  }
+
+  const ddForm = formData.diagnosticoDiferencial || {}
+  const ddConclusionForm = ddConclusion(ddForm)
+
   const handleSubmit = (event) => {
     event.preventDefault()
     if (typeof setValoraciones !== 'function') return
@@ -360,6 +469,35 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
         {vista === 'evolucion' && (
           <div className="valoracion-evolucion">
             {historial.length === 0 && <p className="lead-log-empty">Todavía no hay valoraciones registradas para este cliente.</p>}
+
+            {/* Diagnóstico diferencial de la valoración MÁS RECIENTE que
+                tenga algo evaluado: es la foto de "qué es este hombro" y
+                conviene verla nada más abrir, antes que los números. */}
+            {(() => {
+              const conDD = historialDesc.find((v) => ddConclusion(v.diagnosticoDiferencial).estado !== 'sin-datos')
+              if (!conDD) return null
+              const conclusion = ddConclusion(conDD.diagnosticoDiferencial)
+              return (
+                <>
+                  <h4 className="team-activity-subtitle">Diagnóstico diferencial ({formatFecha(conDD.fecha)})</h4>
+                  <ConclusionDD conclusion={conclusion} />
+                  <div className="dd-resumen-pasos">
+                    {DD_PASOS.map((paso) => {
+                      const r = ddResumenPaso(conDD.diagnosticoDiferencial, paso)
+                      if (r.evaluados === 0) return null
+                      return (
+                        <div key={paso.id} className="dd-resumen-paso">
+                          <span>{paso.label}</span>
+                          <span className={r.positivos.length > 0 ? 'valoracion-simetria-baja' : 'valoracion-mejora-positiva'}>
+                            {r.positivos.length > 0 ? `🔴 ${r.positivos.map((t) => t.label).join(', ')}` : '✅ sin hallazgos'}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
 
             {evolucionCuestionarios.length > 0 && (
               <>
@@ -481,6 +619,24 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                           }
                           return <div key={it.id}>{it.label}: <strong>{val}{it.unidad || ''}</strong></div>
                         }))}
+                        {(() => {
+                          const c = ddConclusion(v.diagnosticoDiferencial)
+                          if (c.estado === 'sin-datos') return null
+                          return (
+                            <div style={{ marginTop: 8 }}>
+                              <ConclusionDD conclusion={c} />
+                              {DD_PASOS.map((paso) => {
+                                const r = ddResumenPaso(v.diagnosticoDiferencial, paso)
+                                if (r.positivos.length === 0) return null
+                                return (
+                                  <div key={paso.id}>
+                                    {paso.label}: <strong>🔴 {r.positivos.map((t) => t.label).join(', ')}</strong>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )
+                        })()}
                         {v.notasMovilidad && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🤸 Movilidad: {v.notasMovilidad}</p>}
                         {v.notasFuerza && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>💪 Fuerza: {v.notasFuerza}</p>}
                         {v.notasDolor && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🩹 Dolor: {v.notasDolor}</p>}
@@ -512,6 +668,87 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                 <span>Fecha</span>
                 <input type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
               </label>
+
+              {/* Diagnóstico diferencial: va el primero porque es lo que se
+                  hace antes de nada — decide si el cuadro es RCSRP o si hay
+                  que descartar/derivar antes de ponerse a medir fuerza. */}
+              <h4 className="team-activity-subtitle">Valoración clínica de hombro — diagnóstico diferencial</h4>
+              <LeyendaDiagnosticoDiferencial />
+
+              <div className="dd-acciones-globales">
+                <button
+                  type="button"
+                  className="primary-action"
+                  onClick={() => setFormData((prev) => ({ ...prev, diagnosticoDiferencial: ddMarcarTodoNegativo() }))}
+                >
+                  ✅ Marcar todo como negativo
+                </button>
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => setFormData((prev) => ({ ...prev, diagnosticoDiferencial: {} }))}
+                >
+                  ↺ Vaciar todo
+                </button>
+              </div>
+
+              <ConclusionDD conclusion={ddConclusionForm} />
+
+              {DD_PASOS.map((paso) => {
+                const resumen = ddResumenPaso(ddForm, paso)
+                return (
+                  <div key={paso.id} className={`dd-paso dd-paso-${paso.tipo}`}>
+                    <div className="dd-paso-cabecera">
+                      <div>
+                        <div className="dd-paso-titulo">
+                          {paso.orden ? `${paso.orden}. ` : ''}{paso.label}
+                          {resumen.positivos.length > 0 && (
+                            <span className="dd-paso-badge dd-paso-badge-positivo">{resumen.positivos.length} positivo{resumen.positivos.length === 1 ? '' : 's'}</span>
+                          )}
+                          {resumen.limpio && <span className="dd-paso-badge dd-paso-badge-limpio">descartado</span>}
+                        </div>
+                        <div className="dd-paso-pregunta">{paso.pregunta}</div>
+                      </div>
+                      <div className="dd-paso-acciones">
+                        <span className="dd-paso-progreso">{resumen.evaluados}/{resumen.total}</span>
+                        <button
+                          type="button"
+                          className="secondary-action"
+                          title="Marcar todos los test de este paso como negativos"
+                          onClick={() => setFormData((prev) => ({ ...prev, diagnosticoDiferencial: ddMarcarPasoNegativo(prev.diagnosticoDiferencial, paso.id) }))}
+                        >
+                          ✅ Todo negativo
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-action"
+                          title="Dejar este paso sin evaluar"
+                          onClick={() => setFormData((prev) => ({ ...prev, diagnosticoDiferencial: ddLimpiar(prev.diagnosticoDiferencial, paso.id) }))}
+                        >
+                          ↺
+                        </button>
+                      </div>
+                    </div>
+
+                    {paso.nota && <p className="valoracion-referencia" style={{ margin: '0 0 8px' }}>ℹ️ {paso.nota}</p>}
+
+                    <div className="dd-tests">
+                      {paso.tests.map((test) => (
+                        <CampoTestDD
+                          key={test.id}
+                          test={test}
+                          valor={ddForm[paso.id]?.[test.id]}
+                          onChange={(v) => setTestDD(paso.id, test.id, v)}
+                        />
+                      ))}
+                    </div>
+
+                    {resumen.positivos.length > 0 && (
+                      <p className={`dd-paso-sipositivo dd-paso-sipositivo-${paso.tipo}`}>➡️ {paso.siPositivo}</p>
+                    )}
+                  </div>
+                )
+              })}
 
               {BLOQUES.map((bloque, idx) => (
                 <div key={bloque.id}>

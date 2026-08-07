@@ -362,6 +362,10 @@ export function valoracionVacia() {
   const base = {
     spadi: {},
     tampa: {},
+    // Diagnóstico diferencial de hombro (RCSRP por descarte). Estructura
+    // { pasoId: { testId: 'positivo' | 'negativo' } }; la ausencia de clave
+    // significa "sin evaluar". Ver src/utils/diagnosticoDiferencial.js.
+    diagnosticoDiferencial: {},
     notasDolor: '',
     notasEvaluacionInicial: '',
     notasPreferenciasEntrenamiento: '',
