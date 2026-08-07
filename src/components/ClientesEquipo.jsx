@@ -11,7 +11,6 @@ import {
   PUNTOS_CONTACTO,
   contactoVacio,
   DIAS_SEMANA,
-  BLOQUES_SESION,
   mondayOf,
   toISO,
   semanaVacia,
@@ -81,16 +80,13 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   const [fasesCliente, setFasesCliente] = useState(null)
   const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', horaH: '10', horaM: '00', ampm: 'AM' })
   // Celda del "Registro rápido" que está mostrando ahora mismo el formulario
-  // para añadir una sesión nueva (clave "NombreCliente|diaId"), más el bloque
-  // elegido y el texto libre de "Otra" — para no montar un formulario por
-  // cada celda de toda la rejilla, solo por la que estás usando.
-  // El desplegable de bloques (antes solo estaba en el modal de Seguimiento)
-  // vive ahora aquí: el Registro rápido es el ÚNICO sitio donde se registra
-  // el día a día, así que necesita todo lo que tenía el modal (bloques fijos
-  // para que los nombres sean consistentes, y poder borrar una sesión mal
-  // puesta). En el modal la rejilla pasó a ser solo un resumen.
+  // para añadir una sesión nueva (clave "NombreCliente|diaId") y el borrador
+  // de texto — para no montar un formulario por cada celda de toda la
+  // rejilla, solo por la que estás usando.
+  // La sesión se escribe A MANO (a petición de Raúl): se probó con el
+  // desplegable de bloques fijos que había en el modal de Seguimiento, pero
+  // se queda corto porque hay cosas que añadir que no están en la lista.
   const [addCell, setAddCell] = useState(null)
-  const [addBloque, setAddBloque] = useState(BLOQUES_SESION[0])
   const [addTexto, setAddTexto] = useState('')
 
   // Admin: acceso a Seguimiento/Valoración de TODOS los clientes (no solo
@@ -289,13 +285,8 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     })
   }
 
-  // Texto final de la sesión a partir del desplegable: si es "Otra" se usa lo
-  // tecleado a mano (y si está vacío, se queda en "Otra"); si no, el bloque tal cual.
-  const textoSesionNueva = () => (addBloque === 'Otra' ? (addTexto.trim() || 'Otra') : addBloque)
-
   const cerrarAddCell = () => {
     setAddCell(null)
-    setAddBloque(BLOQUES_SESION[0])
     setAddTexto('')
   }
 
@@ -764,23 +755,22 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                                       className="registro-rapido-addform"
                                       onSubmit={(e) => {
                                         e.preventDefault()
-                                        addTareaRapida(cliente.Nombre, d.id, textoSesionNueva())
+                                        // Sin texto no se añade nada (evita sesiones vacías
+                                        // si se pulsa ＋ o Enter por error).
+                                        if (!addTexto.trim()) return
+                                        addTareaRapida(cliente.Nombre, d.id, addTexto.trim())
                                         // El formulario se queda abierto para poder encadenar
                                         // las 2-3 sesiones del día sin volver a pulsar "＋ sesión".
                                         setAddTexto('')
                                       }}
                                     >
-                                      <select autoFocus value={addBloque} onChange={(e) => setAddBloque(e.target.value)}>
-                                        {BLOQUES_SESION.map((b) => <option key={b} value={b}>{b}</option>)}
-                                      </select>
-                                      {addBloque === 'Otra' && (
-                                        <input
-                                          type="text"
-                                          value={addTexto}
-                                          placeholder="Escribe la sesión…"
-                                          onChange={(e) => setAddTexto(e.target.value)}
-                                        />
-                                      )}
+                                      <input
+                                        autoFocus
+                                        type="text"
+                                        value={addTexto}
+                                        placeholder="Escribe la sesión…"
+                                        onChange={(e) => setAddTexto(e.target.value)}
+                                      />
                                       <div className="registro-rapido-addform-btns">
                                         <button type="submit" className="registro-rapido-add-ok" title="Añadir sesión">＋</button>
                                         <button type="button" className="registro-rapido-add-cancel" onClick={cerrarAddCell} title="Cerrar">✕</button>
@@ -791,7 +781,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                                     <button
                                       type="button"
                                       className="registro-rapido-add"
-                                      onClick={() => { setAddCell(cellKey); setAddBloque(BLOQUES_SESION[0]); setAddTexto('') }}
+                                      onClick={() => { setAddCell(cellKey); setAddTexto('') }}
                                     >
                                       ＋ sesión
                                     </button>

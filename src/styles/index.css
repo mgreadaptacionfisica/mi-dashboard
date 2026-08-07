@@ -2871,7 +2871,6 @@ textarea {
   gap: 4px;
 }
 
-.registro-rapido-addform select,
 .registro-rapido-addform input {
   width: 100%;
   border: 1px solid var(--color-primary);
