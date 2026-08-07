@@ -1,5 +1,11 @@
 # Migración a Supabase — plan de trabajo
 
+> ⚠️ **Documento histórico.** Es el plan tal cual se escribió el 9 de julio de
+> 2026, cuando la migración estaba a medias: lo que aquí aparece como
+> "pendiente de ejecutar mañana" hace tiempo que está hecho. Se conserva porque
+> explica el porqué de decisiones del esquema, no como estado actual. Para saber
+> cómo está el proyecto hoy, mirar `DOCUMENTACION_TECNICA.md` y `CLAUDE.md`.
+
 _Preparado en la sesión automática del 9 julio 2026. Actualizado la noche del 9 julio 2026 tras conectar los dos primeros módulos._
 
 ## Estado actual (9 julio, noche)

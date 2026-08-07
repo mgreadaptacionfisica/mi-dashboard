@@ -2,6 +2,8 @@
 
 Panel interno de gestión para MG Group (readaptación física / entrenamiento online): pipeline de ventas, clientes, equipo, finanzas, contenido y comunicación interna. Documento pensado para alguien que se incorpore al desarrollo del proyecto.
 
+> Última revisión: 07/08/2026. Las secciones 4, 5, 6, 7 y 9 se repasaron al reestructurar Seguimiento y Valoración. La sección 8 describe incidentes del 11/07/2026 y se deja tal cual como histórico.
+
 ## 1. Stack
 
 - **Frontend:** React 18 + Vite 5, sin router (una sola vista con navegación por estado interno, ver `src/App.jsx`). Sin TypeScript.
@@ -55,18 +57,25 @@ const ventasDataPromise = async () => {
 - `SECCIONES_POR_ROL` en `src/lib/auth.js` decide qué secciones del Sidebar ve cada rol:
 
   ```js
-  admin:     ['dashboard', 'ventas', 'clientes', 'equipo', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales']
+  admin:     ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'mi-ficha', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales', 'enlaces']
   closer:    ['ventas', 'comunicacion', 'manuales']
-  tecnico:   ['clientes', 'comunicacion', 'manuales']
+  tecnico:   ['clientes-equipo', 'mi-ficha', 'operaciones', 'tareas', 'comunicacion', 'manuales']
   contenido: ['operaciones', 'comunicacion', 'manuales']
   ```
+
+  Dos matices que importan al tocar la parte del equipo técnico: `clientes`
+  (contabilidad, `ClientesAdmin.jsx`) y `clientes-equipo` (seguimiento clínico,
+  `ClientesEquipo.jsx`) son **secciones distintas**, y el técnico solo tiene la
+  segunda — no ve importes ni cobros. Y el técnico **no tiene `equipo`**: todo lo
+  que necesite hacer a diario tiene que estar dentro de `clientes-equipo` o
+  `mi-ficha`, porque no puede llegar a la sección Equipo.
 
 - **Importante — dos capas de control de acceso, no una:** qué secciones ve cada rol en el menú es solo control de UI (`SECCIONES_POR_ROL`). El control real de qué **filas** puede leer/escribir cada rol vive en las políticas RLS de Postgres (ver sección 5). Hasta hoy (11/07/2026) casi todas las políticas eran `using (true)` — es decir, sin ninguna restricción real más allá de "estás logueado o ni eso" — y se ha ido cerrando en las migraciones 22 y 23 (ver sección 8). **Sigue pendiente**: `clientes`/`ventas` ya filtran SELECT por rol vía `mi_nombre_equipo()`, pero `seguimientos`, `contactos_semanales` y `valoraciones_clientes` (tablas hijas de `clientes`) todavía no — un técnico podría en teoría leer el seguimiento de clientes que no son suyos.
 - Identificación de persona real dentro de la app: se cruza `session.user.email` contra `miembros_equipo.email` para resolver el nombre real (usado en `MuroEquipo.jsx`, `VideosParaEditar.jsx`, y a nivel de SQL en la función `public.mi_nombre_equipo()` de `22_row_level_rls.sql`).
 
 ## 5. Modelo de datos (Supabase / Postgres)
 
-Todo el esquema vive versionado como SQL plano en `supabase-sql/`, numerado en orden de aplicación (`01_...` a `25_...`). **No se usa el sistema de migraciones de Supabase CLI** — son archivos `.sql` sueltos que se pegan a mano en el SQL Editor del dashboard de Supabase. Todos están escritos para ser idempotentes (`create table if not exists`, `drop policy if exists` + `create policy`, `add column if not exists`, `on conflict do nothing`), así que se pueden re-ejecutar sin duplicar nada — importante porque no hay ningún registro de "qué migración ya se aplicó" fuera de la memoria de quien las fue pegando.
+Todo el esquema vive versionado como SQL plano en `supabase-sql/`, numerado en orden de aplicación (`01_...` en adelante; la última a fecha de este documento es `51_origen_seguimiento_ventas.sql`, así que la siguiente que se escriba sería la 52). **No se usa el sistema de migraciones de Supabase CLI** — son archivos `.sql` sueltos que se pegan a mano en el SQL Editor del dashboard de Supabase. Todos están escritos para ser idempotentes (`create table if not exists`, `drop policy if exists` + `create policy`, `add column if not exists`, `on conflict do nothing`), así que se pueden re-ejecutar sin duplicar nada — importante porque no hay ningún registro de "qué migración ya se aplicó" fuera de la memoria de quien las fue pegando.
 
 Tablas principales:
 
@@ -75,7 +84,10 @@ Tablas principales:
 | `clientes` | Los 64+ clientes reales del negocio: datos de contacto, servicio contratado, plazos de pago (`plazos` jsonb), técnico(s) asignado(s) (`trabajadores text[]`). |
 | `ventas` | Pipeline comercial (leads), desde que se agenda una llamada hasta que se gana/pierde. Etapas: `agendada → realizada → seguimiento → ganada/perdida`. |
 | `miembros_equipo` | Equipo interno: nombre, rol, área (ventas/técnico/contenido), comisión, y `carpeta_drive` (para editores de contenido). |
-| `seguimientos`, `contactos_semanales` | Seguimiento clínico de clientes por parte de los técnicos. |
+| `seguimientos` | Seguimiento clínico semanal por cliente: `dias -> tareas` (las sesiones del día a día, que se escriben desde la rejilla del Registro de sesiones), `cambios_pendientes` y `revisiones`. Una fila por cliente y semana. |
+| `contactos_semanales` | Los 3 contactos por cliente y semana (inicio / mitad / fin), pestaña "Contacto semanal". |
+| `revisiones_semanales_cliente` | El "check final" de semana revisada y cerrada, por cliente y semana. Es lo que apaga el aviso ⏳ y el banner de "semana pasada sin cerrar". |
+| `objetivos_cliente_fase` | Objetivos por fase de cada cliente (`FasesObjetivos.jsx`); de ellos sale la fase automática. |
 | `valoraciones_clientes` | Historial de valoraciones (SPADI, TAMPA, % mejoría) por cliente. |
 | `sops` | Procedimientos operativos estándar (Operaciones). |
 | `contenido_ideas` | Backlog de ideas de contenido: `Idea → Grabado → En edición → Editado → Programado → Publicado`, con `editores text[]`. |
@@ -84,22 +96,31 @@ Tablas principales:
 | `ingresos_empresa` / `gastos_empresa` | Finanzas de empresa. Se alimentan automáticamente desde Clientes (cobro de plazos) y Equipo (pago al equipo). **Ojo:** estas dos tablas se llamaban `ingresos_personales` y `gastos_profesionales` hasta `15_finanzas_empresa_personal.sql`, que las renombró — un `ALTER TABLE ... RENAME` no renombra las políticas RLS asociadas, así que sus políticas todavía llevan el nombre antiguo en el `pg_policies` (cosmético, no rompe nada, pero puede confundir si se inspecciona el esquema directamente). |
 | `ads_kpi`, `ads_notas_mensuales`, `anuncios` | KPIs e inversión en Meta/Instagram Ads. |
 | `recontactos` | Personas a recontactar (leads en seguimiento + altas manuales). |
-| `tareas_personales` | To-do personal de Raúl, admin-only, con aviso en el Dashboard si hay tareas vencidas. |
-| `manuales` | Enlaces a los PDFs de manual de uso del panel (uno por rol), visible para los 4 roles. |
+| `tareas_personales` | To-do personal de cada persona (admin y técnicos), filtrado por `propietario_email`. El aviso de vencidas en el Dashboard es solo el del admin. |
+| `manuales` | Archivo de documentos: título, descripción y enlace externo. Lo consultan los 4 roles; escritura admin-only por RLS de rol. |
+| `enlaces_interes` | Accesos directos internos. Escritura admin-only por RLS de rol. |
 | `servicios`, `renovaciones` | Catálogos. |
 | Storage bucket `informes-leads` | Privado. PDFs de informes de prellamada (ZeroChats, Calendly) adjuntos a un lead concreto de `ventas` (columna `informe_prellamada_path`). Se accede siempre con URL firmada de 1h, nunca enlace público. |
+
+**Trampa importante:** todo el historial clínico de un cliente se enlaza por **nombre** (`cliente_nombre`), no por id, en cinco tablas: `seguimientos`, `contactos_semanales`, `valoraciones_clientes`, `objetivos_cliente_fase` y `revisiones_semanales_cliente`. Renombrar un cliente sin arrastrar el cambio a todas deja su historial huérfano; para eso existe `src/lib/queries/renombrarCliente.js`, que llama `ClientesAdmin`. Ojo además con los `unique (cliente_nombre, semana)` de algunas de ellas.
 
 ## 6. Secciones de la app (por componente)
 
 - **Dashboard** (`Dashboard.jsx`): KPIs generales + dos banners de aviso (tareas vencidas, vídeos marcados como "Editado" pendientes de revisar). Único punto de la app que junta datos de varios módulos a la vez.
 - **Ventas** (`Ventas.jsx`): pipeline Kanban de leads, con sub-pestañas para Setting de Instagram, KPI de Ads y Recontactar. El lead nuevo pasa por checklist pre-llamada → resultado de la llamada → venta (crea un cliente nuevo automáticamente) o pérdida. Incluye subida de informes de prellamada en PDF (Storage).
-- **Clientes** (`Clientes.jsx`): ficha de cliente, seguimiento semanal, valoraciones clínicas, cobros pendientes.
-- **Equipo** (`Equipo.jsx`): fichas del equipo, pago automático al marcar cobro, carpeta de Drive por editor de contenido.
+- **Clientes** (`ClientesAdmin.jsx`): parte de gestión/contabilidad — altas y bajas, importes, plazos, cobros pendientes, renovaciones. Admin-only. Renombrar un cliente aquí dispara `renombrarCliente.js` (ver sección 5, el historial se enlaza por nombre).
+- **Seguimiento y Valoración** (`ClientesEquipo.jsx`): la parte clínica, separada a propósito de la anterior para que el técnico no vea datos económicos. Solo clientes ACTIVOS. Dos pestañas:
+  - **⚡ Registro de sesiones**: rejilla cliente × día de la semana. Es el **único** punto de escritura del día a día (`seguimientos.dias -> tareas`); tiene navegador de semanas propio para poder volver atrás a cerrar una semana que quedó abierta. El texto de cada sesión se escribe libre (existió un desplegable con `BLOQUES_SESION` y se retiró; la constante sigue exportada en `seguimientoHelpers.js` sin usarse). Desde cada fila se abren las tres herramientas del cliente: `SeguimientoCliente`, `ValoracionCliente` y `FasesObjetivos`.
+  - **🤝 Contacto semanal**: los 3 checks por cliente y semana (inicio / mitad / fin), reutilizando `ContactoSemanal.jsx` — el mismo componente que `Equipo.jsx` embebe en el detalle de cada técnico. Como el rol `tecnico` no tiene acceso a `equipo`, esta pestaña es su única vía para marcarlo.
+  - En el modal `SeguimientoCliente.jsx` los días son **solo lectura** (resumen de lo registrado en la rejilla) más la ficha de consulta del cliente; lo editable ahí son los cambios de la semana, las revisiones y el cierre de semana (`revisiones_semanales_cliente`).
+- **Mi Ficha** (`MiFicha.jsx`): datos del propio miembro del equipo y su resumen. La operativa diaria vive en Seguimiento y Valoración, no aquí.
+- **Equipo** (`Equipo.jsx`): fichas del equipo, pago automático al marcar cobro, carpeta de Drive por editor de contenido. Admin-only.
 - **Finanzas** (`Finanzas.jsx`): admin-only. Empresa (automático) + personal (manual), resumen mensual/anual.
 - **Operaciones** (`Operaciones.jsx`): SOPs, calendario de contenido, y la cola "Para editar" (vídeos en edición por editor asignado).
 - **Comunicación** (`MuroEquipo.jsx`): muro tipo feed con menciones, autor resuelto automáticamente por email de sesión (no editable a mano, por seguridad — ver incidente en sección 8).
-- **Mis tareas** (`MisTareas.jsx`): to-do personal admin-only.
-- **Manuales** (`Manuales.jsx`): PDFs de manual de uso, uno por rol, visibles para todos.
+- **Mis tareas** (`MisTareas.jsx`): to-do personal del admin y también de cada técnico. Tabla compartida, pero cada persona solo ve las suyas (se filtra por el email de sesión contra `propietario_email`). El aviso de tareas vencidas del Dashboard sigue siendo solo el del admin.
+- **Manuales** (`Manuales.jsx`): archivo de documentos (título + descripción + enlace externo). Lo consultan los 4 roles; solo el admin puede añadir, editar o borrar. El contenido de los manuales en sí **no vive en el repo**: son enlaces a documentos externos, así que actualizar un manual de uso se hace en el documento enlazado, no aquí.
+- **Enlaces de interés** (`EnlacesInteres.jsx`): accesos directos internos, admin-only en escritura (RLS por rol).
 - **Onboarding** (`Onboarding.jsx`): única vista pública (`/onboarding`, sin login) — checklist interactivo para nuevos clientes, guarda progreso en `localStorage` del navegador del cliente, no en Supabase.
 
 Componentes "huérfanos" que ya no se usan y se podrían borrar: `AdminLogin.jsx` (login viejo, sustituido por `PanelLogin.jsx`), `src/api/index.js` (si existe, residuo del backend propio nunca construido).
@@ -110,7 +131,7 @@ Componentes "huérfanos" que ya no se usan y se podrían borrar: `AdminLogin.jsx
 - Hasta el 11/07/2026, la inmensa mayoría de las políticas eran `using (true)` / `with check (true)`: como la anon key de Supabase viaja en el bundle JS público (no es secreta), esto equivalía a dejar la base de datos abierta a cualquiera en internet, sin necesidad de login. Se cerró en `23_cerrar_acceso_publico.sql`, exigiendo `auth.uid() is not null` en las operaciones de escritura/lectura de las tablas que lo tenían abierto.
 - `clientes` y `ventas` tienen además restricción por fila (`22_row_level_rls.sql`): un técnico solo ve los clientes donde aparece en `trabajadores`, un closer solo ve los leads donde `closer` es su nombre. El admin ve todo.
 - El bucket de Storage `informes-leads` es privado con las mismas políticas (`25_informes_leads.sql`).
-- **Pendiente real, no resuelto:** `seguimientos`, `contactos_semanales`, `valoraciones_clientes` no tienen todavía restricción por fila (solo por login). Habría que decidir cómo relacionar `cliente_id`/nombre con `trabajadores` antes de cerrarlas, igual que se hizo con `clientes`/`ventas`.
+- **Pendiente real, no resuelto:** las tablas hijas de `clientes` siguen sin restricción por fila (solo por login, `auth.uid() is not null`): `seguimientos`, `contactos_semanales`, `valoraciones_clientes`, y también las añadidas después — `revisiones_semanales_cliente`, `objetivos_cliente_fase`, `cierres_seguimiento_semanal`. Habría que decidir cómo relacionar el nombre del cliente con `trabajadores` antes de cerrarlas, igual que se hizo con `clientes`/`ventas`. Nota: todas se enlazan por `cliente_nombre`, no por id, lo que complica el join (ver sección 5).
 - Nunca se ha expuesto ni se expone la contraseña de la base de datos ni las claves `service_role`/`secret` en ningún archivo del repo.
 
 ## 8. Incidentes recientes y aprendizajes (útil antes de tocar nada)
@@ -125,7 +146,7 @@ Todo esto pasó en la sesión del 11/07/2026 y merece la pena conocerlo antes de
 
 ## 9. Pendientes conocidos (a fecha de este documento)
 
-- Cerrar RLS por fila en `seguimientos`, `contactos_semanales`, `valoraciones_clientes` (punto 7).
+- Cerrar RLS por fila en las tablas hijas de `clientes` — `seguimientos`, `contactos_semanales`, `valoraciones_clientes`, `revisiones_semanales_cliente`, `objetivos_cliente_fase`, `cierres_seguimiento_semanal` (punto 7).
 - Crear las cuentas reales de Supabase Auth del resto del equipo y asignarles rol — `17_roles_equipo.sql` sigue con emails de ejemplo.
 - No hay flujo de "olvidé mi contraseña" para el equipo — hoy Raúl crea la contraseña inicial a mano.
 - Sin diseño responsive/mobile dedicado (el panel está pensado para usarse desde portátil).

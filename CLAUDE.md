@@ -72,6 +72,22 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
   esquema lo usa la venta con reserva y hay que mantenerlo para poder "deshacer".
 - **Hotmart/seQura**: una venta financiada se registra como UN cobro (Hotmart
   adelanta el grueso y libera el resto), no como plazos mensuales.
+- **Seguimiento y Valoración** (`ClientesEquipo.jsx`, sección `clientes-equipo`)
+  tiene DOS pestañas y cada una es la dueña de su dato — no duplicar la edición
+  en otro sitio, que ya pasó y hubo que deshacerlo:
+  - **⚡ Registro de sesiones** (por defecto): rejilla cliente × día. Es el
+    **único** sitio donde se añaden, marcan y quitan sesiones (`dias -> tareas`).
+    Tiene su propio navegador de semanas (`registroOffset`) porque hay que poder
+    volver atrás a terminar una semana. La sesión se escribe **a mano**, texto
+    libre: hubo un desplegable con `BLOQUES_SESION` y se quitó porque se quedaba
+    corto (la constante sigue exportada en `seguimientoHelpers`, sin usar).
+  - **🤝 Contacto semanal**: reutiliza `ContactoSemanal.jsx`, el mismo componente
+    que Equipo embebe en el detalle de cada técnico. **Ojo**: el rol `tecnico`
+    NO tiene acceso a la sección Equipo, así que esta pestaña es su única forma
+    de marcar el contacto — no se puede quitar sin dejarlo sin ella.
+  - En el modal `SeguimientoCliente.jsx` la rejilla de días es **solo lectura**
+    (un resumen). Lo editable ahí es otra cosa: cambios de la semana, revisiones
+    y el cierre de semana.
 - **Supabase (plan free) se pausa** tras días sin uso: si todo aparece a 0, hay
   que reactivar el proyecto en supabase.com. No es un bug del código.
 
