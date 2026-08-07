@@ -2,14 +2,11 @@ import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
 import FasesObjetivos from './FasesObjetivos'
-import { faseAutomatica, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
-import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
+import ContactoSemanal from './ContactoSemanal'
 import {
   semanaActualISO,
   formatRangoSemana,
   resumenRevisionesSemana,
-  PUNTOS_CONTACTO,
-  contactoVacio,
   DIAS_SEMANA,
   mondayOf,
   toISO,
@@ -18,7 +15,6 @@ import {
   progresoSemana,
   ultimaRevisionCliente,
 } from '../utils/seguimientoHelpers'
-import { upsertContactoSemanalRemote } from '../lib/queries/contactosSemanales'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { seguimientoTecnico } from '../utils/equipoHelpers'
 
@@ -59,15 +55,19 @@ function formatHora12(horaHHMM) {
 // Solo se muestran clientes ACTIVOS aquí: no tiene sentido hacer
 // seguimiento/valoración de alguien que ya no es cliente. Los no activos
 // solo se gestionan desde ClientesAdmin (altas/bajas).
-function formatDate(value) {
-  if (!value) return '—'
-  const iso = parseFechaFlexible(value)
-  return iso ? formatFechaISO(iso) : value
-}
-
+//
+// La sección tiene DOS pestañas, las dos semanales y las dos operativas:
+// "⚡ Registro de sesiones" (el día a día, rejilla cliente × día) y
+// "🤝 Contacto semanal". Antes había además una tabla de clientes con
+// servicio, fase, email, fecha de inicio... — se quitó a petición de Raúl:
+// eran datos de CONSULTA que el técnico tenía delante todos los días sin
+// usarlos, y ahora viven en la cabecera del modal de Seguimiento, que es
+// donde se miran cuando hacen falta.
 export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, onRefrescar, refrescando, onNavigate }) {
   const [search, setSearch] = useState('')
-  const [vista, setVista] = useState('tabla')
+  // Se entra directamente al registro de sesiones: es lo que el técnico
+  // hace todos los días. El contacto semanal es la otra pestaña.
+  const [vista, setVista] = useState('registro')
   const [seguimientoCliente, setSeguimientoCliente] = useState(null)
   // Con qué semana se abre el modal de Seguimiento: 0 = actual, -1 = la
   // anterior (para terminar de cerrar una semana pasada que quedó abierta).
@@ -79,6 +79,10 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   const [valoracionCliente, setValoracionCliente] = useState(null)
   const [fasesCliente, setFasesCliente] = useState(null)
   const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', horaH: '10', horaM: '00', ampm: 'AM' })
+  // El formulario de "Registrar última revisión" empieza plegado: son 5
+  // campos que se usan una vez por cliente y semana, y tenerlos siempre
+  // abiertos encima de la rejilla es ruido para lo que se hace a diario.
+  const [revisionAbierta, setRevisionAbierta] = useState(false)
   // Celda del "Registro rápido" que está mostrando ahora mismo el formulario
   // para añadir una sesión nueva (clave "NombreCliente|diaId") y el borrador
   // de texto — para no montar un formulario por cada celda de toda la
@@ -204,25 +208,12 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   )
   const todoRevisado = resumen.total > 0 && resumen.revisados === resumen.total
 
-  // Contacto semanal (3 checks: inicio/mitad/fin) directamente en esta
-  // misma tabla — a petición de Raúl, para que el técnico no tenga que ir
-  // y venir entre Mi Ficha y Seguimiento y Valoración para su ronda
-  // semanal: aquí ya ve y marca todo lo de cada cliente de un vistazo.
-  const toggleContacto = (clienteNombre, puntoId, actual) => {
-    if (typeof setContactosSemanales !== 'function') return
-    const existente = contactosSemanales.find((c) => c.clienteNombre === clienteNombre && c.semana === semanaActual)
-    const base = existente ? { ...existente } : { clienteNombre, semana: semanaActual, ...contactoVacio() }
-    const actualizado = {
-      ...base,
-      [puntoId]: { ...contactoVacio()[puntoId], ...base[puntoId], hecho: !actual, fecha: !actual ? new Date().toISOString().slice(0, 10) : null },
-    }
-    setContactosSemanales((prev) => {
-      const existe = prev.some((c) => c.clienteNombre === clienteNombre && c.semana === semanaActual)
-      if (existe) return prev.map((c) => (c.clienteNombre === clienteNombre && c.semana === semanaActual ? actualizado : c))
-      return [...prev, actualizado]
-    })
-    upsertContactoSemanalRemote(actualizado)
-  }
+  // El contacto semanal (3 checks: inicio/mitad/fin) ya NO se marca con
+  // puntitos dentro de la tabla de clientes: tiene su propia pestaña, que
+  // reutiliza el componente ContactoSemanal que ya existía para Equipo.
+  // Importante: el rol "tecnico" no tiene acceso a la sección Equipo (ver
+  // SECCIONES_POR_ROL en lib/auth.js), así que esta pestaña es su ÚNICA
+  // forma de marcar el contacto — no se puede quitar sin dejarlo sin ella.
 
   // Semana que se está viendo/editando en el "Registro rápido": 0 = la
   // actual. Como el día a día solo se registra aquí (en el modal es un
@@ -378,11 +369,11 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
               </p>
             )}
             <div className="tabs-bar">
-              <button type="button" className={`tab-btn ${vista === 'tabla' ? 'tab-btn-active' : ''}`} onClick={() => setVista('tabla')}>
-                📋 Tabla de clientes
-              </button>
               <button type="button" className={`tab-btn ${vista === 'registro' ? 'tab-btn-active' : ''}`} onClick={() => setVista('registro')}>
-                ⚡ Registro rápido
+                ⚡ Registro de sesiones
+              </button>
+              <button type="button" className={`tab-btn ${vista === 'contacto' ? 'tab-btn-active' : ''}`} onClick={() => setVista('contacto')}>
+                🤝 Contacto semanal
               </button>
             </div>
 
@@ -402,27 +393,9 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           </>
         )}
 
-        {(esAdmin || miPersona) && vista === 'tabla' && (
-          <>
-            <div className="kpi-grid">
-              <div className="kpi-card">
-                <div className="kpi-card-header">
-                  <span className="kpi-card-label">{esAdmin ? 'Clientes activos (todos)' : 'Mis clientes activos'}</span>
-                  <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)' }}>✅</div>
-                </div>
-                <div className="kpi-card-value">{misClientes.length}</div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-card-header">
-                  <span className="kpi-card-label">Seguimiento revisado esta semana</span>
-                  <div className="kpi-icon" style={{ background: todoRevisado ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>
-                    {todoRevisado ? '✅' : '⏳'}
-                  </div>
-                </div>
-                <div className="kpi-card-value">{resumen.revisados}/{resumen.total}</div>
-              </div>
-            </div>
 
+        {(esAdmin || miPersona) && vista === 'registro' && (
+          <>
             {misClientes.length > 0 && (
               <div className={`seguimiento-cierre-banner${todoRevisado ? ' seguimiento-cierre-banner-cerrado' : ''}`}>
                 <div>
@@ -443,212 +416,81 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
             <div className="table-card">
               <div className="card-header">
                 <div>
-                  <div className="card-title">{esAdmin ? 'Clientes activos' : 'Tus clientes activos'}</div>
-                  <div className="card-subtitle">{filtrados.length} de {misClientes.length} mostrados</div>
-                </div>
-                <input
-                  className="filter-input"
-                  placeholder="Buscar por nombre, email o servicio..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ maxWidth: 260 }}
-                />
-              </div>
-
-              <div className="contacto-leyenda" style={{ margin: '0 20px 16px' }}>
-                {PUNTOS_CONTACTO.map((p) => (
-                  <div key={p.id} className="contacto-leyenda-item">
-                    <strong>{p.label} · {p.dia}</strong>
-                    <span>{p.hint}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="table-wrapper">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Nombre</th>
-                      <th>Servicio</th>
-                      {esAdmin && <th>Responsable</th>}
-                      <th>Fase</th>
-                      <th title="Inicio / mitad / fin de semana">Contacto semanal</th>
-                      <th>Inicio</th>
-                      <th>Contacto</th>
-                      <th>Última revisión</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtrados.map((cliente, index) => {
-                      const trabajadores = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
-                      const spadiTope = faseTopeSpadi(ultimoSpadiCliente(valoraciones, cliente.Nombre))
-                      const fase = faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre), spadiTope)
-                      const registroSemana = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === semanaActual)
-                      const progresoTareas = progresoSemana(registroSemana)
-                      const tareasPendientes = progresoTareas.total - progresoTareas.revisadas
-                      const cambiosSinHacer = (registroSemana?.cambiosPendientes || []).filter((c) => !c.hecho).length
-                      const semanaRevisadaCliente = revisionesSemanales.some((r) => r.clienteNombre === cliente.Nombre && r.semana === semanaActual && r.revisado)
-                      const semPend = semanaPasadaPendiente(cliente)
-                      return (
-                        <tr key={`${cliente.id || cliente.Nombre}-${index}`}>
-                          <td style={{ fontWeight: 600 }}>
-                            {cliente.Nombre || '—'}
-                            {!semanaRevisadaCliente && (
-                              <span className="semana-pendiente-badge" title="Semana sin revisar y cerrar todavía">⏳</span>
-                            )}
-                            {semPend && (
-                              <button
-                                type="button"
-                                className="semana-pasada-badge"
-                                title="Una semana pasada quedó sin cerrar — pulsa para abrirla y terminarla"
-                                onClick={() => abrirSeguimiento(cliente, offsetSemana(semPend))}
-                              >
-                                ⚠️ Semana pasada
-                              </button>
-                            )}
-                            {compartidoCon(cliente).length > 0 && (
-                              <div className="registro-compartido-badge" title={`Cliente compartido — coordina con ${compartidoCon(cliente).join(', ')} quién lo revisa`}>
-                                🤝 Compartido con {compartidoCon(cliente).join(', ')}
-                              </div>
-                            )}
-                          </td>
-                          <td>{cliente['Servicio contratado'] || '—'}</td>
-                          {esAdmin && <td>{trabajadores.length ? trabajadores.join(', ') : '—'}</td>}
-                          <td>
-                            <span className="status-pill status-activo">Fase {fase}</span>
-                          </td>
-                          <td>
-                            <div className="contacto-semanal-inline">
-                              {PUNTOS_CONTACTO.map((p) => {
-                                const registroContacto = contactosSemanales.find((c) => c.clienteNombre === cliente.Nombre && c.semana === semanaActual)
-                                const punto = registroContacto?.[p.id]
-                                const hecho = Boolean(punto?.hecho)
-                                return (
-                                  <button
-                                    key={p.id}
-                                    type="button"
-                                    className={`contacto-dot ${hecho ? 'contacto-dot-hecho' : ''}`}
-                                    title={`${p.label} (${p.dia})${hecho && punto?.fecha ? ` — contactado el ${punto.fecha}` : ''}`}
-                                    onClick={() => toggleContacto(cliente.Nombre, p.id, hecho)}
-                                  >
-                                    {hecho ? '●' : '○'}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          </td>
-                          <td>{formatDate(cliente['Fecha inicio'])}</td>
-                          <td style={{ color: 'var(--color-text-secondary)' }}>
-                            {cliente.Email || '—'}{cliente.Teléfono ? ` · ${cliente.Teléfono}` : ''}
-                            {cliente.Drive && (
-                              <> · <a href={cliente.Drive} target="_blank" rel="noopener noreferrer">Drive</a></>
-                            )}
-                          </td>
-                          <td style={{ color: 'var(--color-text-secondary)' }}>{ultimaRevisionCliente(seguimientos, cliente.Nombre) || 'nunca'}</td>
-                          <td>
-                            <button type="button" className="row-action-btn" onClick={() => abrirSeguimiento(cliente, semPend ? offsetSemana(semPend) : 0)}>
-                              📋 Seguimiento
-                              {tareasPendientes > 0 && (
-                                <span className="tareas-pendientes-badge" title={`${tareasPendientes} tarea${tareasPendientes === 1 ? '' : 's'} sin revisar esta semana`}>
-                                  {tareasPendientes}
-                                </span>
-                              )}
-                              {cambiosSinHacer > 0 && (
-                                <span className="cambios-pendientes-badge" title={`${cambiosSinHacer} cambio${cambiosSinHacer === 1 ? '' : 's'} sin marcar como hecho en "Cambios y revisado"`}>
-                                  {cambiosSinHacer}
-                                </span>
-                              )}
-                            </button>
-                            <button type="button" className="row-action-btn" onClick={() => setValoracionCliente(cliente)}>📈 Valoración</button>
-                            <button type="button" className="row-action-btn" onClick={() => setFasesCliente(cliente)}>🎯 Fases y objetivos</button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                    {filtrados.length === 0 && (
-                      <tr><td colSpan={esAdmin ? 9 : 8} className="lead-log-empty">
-                        {misClientes.length === 0 ? 'No hay clientes activos asignados.' : 'Sin resultados con ese filtro.'}
-                      </td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </>
-        )}
-
-        {(esAdmin || miPersona) && vista === 'registro' && (
-          <>
-            {misClientes.length > 0 && (
-              <div className="table-card" style={{ marginBottom: 20 }}>
-                <div className="card-header">
-                  <div>
-                    <div className="card-title">Registrar última revisión</div>
-                    <div className="card-subtitle">Deja constancia de cuándo revisaste a cada cliente (aparte de marcar sus sesiones abajo).</div>
-                  </div>
-                </div>
-                <form className="seguimiento-revision-form" onSubmit={registrarRevisionPropia}>
-                  <select value={revisionForm.clienteNombre} onChange={(e) => setRevisionForm({ ...revisionForm, clienteNombre: e.target.value })}>
-                    <option value="">Selecciona cliente</option>
-                    {misClientes.map((c) => <option key={c.Nombre} value={c.Nombre}>{c.Nombre}</option>)}
-                  </select>
-                  <select value={revisionForm.dia} onChange={(e) => setRevisionForm({ ...revisionForm, dia: e.target.value })}>
-                    {DIAS_SEMANA.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
-                  </select>
-                  <span className="seguimiento-hora-picker">
-                    <select value={revisionForm.horaH} onChange={(e) => setRevisionForm({ ...revisionForm, horaH: e.target.value })}>
-                      {HORAS_12.map((h) => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                    <span>:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="59"
-                      className="seguimiento-minuto-input"
-                      value={revisionForm.horaM}
-                      onChange={(e) => {
-                        const raw = e.target.value.slice(0, 2)
-                        const clamped = raw === '' ? '' : String(Math.min(59, Math.max(0, Number(raw))))
-                        setRevisionForm({ ...revisionForm, horaM: clamped })
-                      }}
-                      onBlur={(e) => setRevisionForm({ ...revisionForm, horaM: String(e.target.value || '0').padStart(2, '0') })}
-                    />
-                    <select value={revisionForm.ampm} onChange={(e) => setRevisionForm({ ...revisionForm, ampm: e.target.value })}>
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </span>
-                  <button type="submit" className="primary-action">Registrar</button>
-                </form>
-
-                {seguimientoResumen?.revisionesRecientes?.[0] && (() => {
-                  const r = seguimientoResumen.revisionesRecientes[0]
-                  return (
-                    <p className="valoracion-referencia" style={{ margin: '10px 20px 20px' }}>
-                      🕒 Tu último registro: revisaste a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {formatHora12(r.hora) || r.hora} ({r.fecha})
-                    </p>
-                  )
-                })()}
-              </div>
-            )}
-            <div className="table-card">
-              <div className="card-header">
-                <div>
-                  <div className="card-title">Registro rápido de sesiones</div>
+                  <div className="card-title">Registro de sesiones</div>
                   <div className="card-subtitle">
-                    Aquí se registra el día a día: añade, marca y quita sesiones. En el "📋 Seguimiento" de cada cliente esto se ve como resumen (no se edita). Clic en el nombre para abrirlo.
+                    Aquí se registra el día a día: añade, marca y quita sesiones. En el "📋 Seguimiento" de cada cliente esto se ve como resumen (no se edita).
                   </div>
                 </div>
-                <input
-                  className="filter-input"
-                  placeholder="Buscar cliente..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ maxWidth: 260 }}
-                />
+                <div className="registro-rapido-header-acciones">
+                  <input
+                    className="filter-input"
+                    placeholder="Buscar cliente..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ maxWidth: 220 }}
+                  />
+                  {misClientes.length > 0 && (
+                    <button
+                      type="button"
+                      className="secondary-action"
+                      onClick={() => setRevisionAbierta((v) => !v)}
+                      title="Dejar constancia de cuándo revisaste a un cliente (aparte de marcar sus sesiones)"
+                    >
+                      {revisionAbierta ? '✕ Cerrar' : '🕒 Registrar revisión'}
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {misClientes.length > 0 && revisionAbierta && (
+                <div className="registro-rapido-revision-panel">
+                  <p className="card-subtitle" style={{ margin: '0 0 8px' }}>
+                    Deja constancia de cuándo revisaste a cada cliente (día y hora), aparte de marcar sus sesiones.
+                  </p>
+                  <form className="seguimiento-revision-form" onSubmit={registrarRevisionPropia}>
+                    <select value={revisionForm.clienteNombre} onChange={(e) => setRevisionForm({ ...revisionForm, clienteNombre: e.target.value })}>
+                      <option value="">Selecciona cliente</option>
+                      {misClientes.map((c) => <option key={c.Nombre} value={c.Nombre}>{c.Nombre}</option>)}
+                    </select>
+                    <select value={revisionForm.dia} onChange={(e) => setRevisionForm({ ...revisionForm, dia: e.target.value })}>
+                      {DIAS_SEMANA.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+                    </select>
+                    <span className="seguimiento-hora-picker">
+                      <select value={revisionForm.horaH} onChange={(e) => setRevisionForm({ ...revisionForm, horaH: e.target.value })}>
+                        {HORAS_12.map((h) => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                      <span>:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        className="seguimiento-minuto-input"
+                        value={revisionForm.horaM}
+                        onChange={(e) => {
+                          const raw = e.target.value.slice(0, 2)
+                          const clamped = raw === '' ? '' : String(Math.min(59, Math.max(0, Number(raw))))
+                          setRevisionForm({ ...revisionForm, horaM: clamped })
+                        }}
+                        onBlur={(e) => setRevisionForm({ ...revisionForm, horaM: String(e.target.value || '0').padStart(2, '0') })}
+                      />
+                      <select value={revisionForm.ampm} onChange={(e) => setRevisionForm({ ...revisionForm, ampm: e.target.value })}>
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </span>
+                      <button type="submit" className="primary-action">Registrar</button>
+                  </form>
+
+                  {seguimientoResumen?.revisionesRecientes?.[0] && (() => {
+                    const r = seguimientoResumen.revisionesRecientes[0]
+                    return (
+                      <p className="valoracion-referencia" style={{ margin: '10px 0 0' }}>
+                        🕒 Tu último registro: revisaste a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {formatHora12(r.hora) || r.hora} ({r.fecha})
+                      </p>
+                    )
+                  })()}
+                </div>
+              )}
 
               <div className="seguimiento-week-nav registro-rapido-week-nav">
                 <button type="button" className="secondary-action" onClick={() => setRegistroOffset((w) => w - 1)}>← Semana anterior</button>
@@ -688,6 +530,18 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       const dias = registroSemana?.dias || {}
                       const otros = compartidoCon(cliente)
                       const semPend = semanaPasadaPendiente(cliente)
+                      // Contadores de los badges de los botones y del ⏳: van
+                      // siempre por la semana que se está VIENDO (semanaRegistro),
+                      // no por la actual, para que cuadren con lo que hay en la
+                      // rejilla cuando se navega a una semana pasada.
+                      const progresoTareas = progresoSemana(registroSemana)
+                      const tareasPendientes = progresoTareas.total - progresoTareas.revisadas
+                      const cambiosSinHacer = (registroSemana?.cambiosPendientes || []).filter((c) => !c.hecho).length
+                      const semanaCerrada = revisionesSemanales.some((r) => r.clienteNombre === cliente.Nombre && r.semana === semanaRegistro && r.revisado)
+                      // Solo para admin: de quién es el cliente. El técnico no lo
+                      // necesita (todos los que ve son suyos), pero al supervisar
+                      // "👥 Todos del equipo" es el dato que dice quién responde.
+                      const responsables = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
                       return (
                         <tr key={`reg-${cliente.id || cliente.Nombre}-${index}`}>
                           <td className={`registro-rapido-cliente ${otros.length ? 'registro-rapido-compartido' : ''}`}>
@@ -699,6 +553,9 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                             >
                               {cliente.Nombre || '—'}
                             </button>
+                            {!semanaCerrada && (
+                              <span className="semana-pendiente-badge" title="Semana sin revisar y cerrar todavía">⏳</span>
+                            )}
                             {semPend && (
                               <button
                                 type="button"
@@ -712,11 +569,35 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                                 ⚠️ Semana pasada
                               </button>
                             )}
+                            {esAdmin && responsables.length > 0 && (
+                              <div className="registro-rapido-responsable">{responsables.join(', ')}</div>
+                            )}
                             {otros.length > 0 && (
                               <div className="registro-compartido-badge" title={`Cliente compartido — coordina con ${otros.join(', ')} quién lo revisa`}>
                                 🤝 Compartido con {otros.join(', ')}
                               </div>
                             )}
+                            {/* Las tres herramientas del cliente, aquí mismo: antes
+                                estaban en la columna "Acciones" de la tabla que se
+                                quitó, y son el único motivo real para salir de esta
+                                rejilla. */}
+                            <div className="registro-rapido-acciones">
+                              <button type="button" className="row-action-btn" onClick={() => abrirSeguimiento(cliente, registroOffset)} title="Resumen de la semana, cambios y cierre">
+                                📋
+                                {tareasPendientes > 0 && (
+                                  <span className="tareas-pendientes-badge" title={`${tareasPendientes} sesión${tareasPendientes === 1 ? '' : 'es'} sin marcar esta semana`}>
+                                    {tareasPendientes}
+                                  </span>
+                                )}
+                                {cambiosSinHacer > 0 && (
+                                  <span className="cambios-pendientes-badge" title={`${cambiosSinHacer} cambio${cambiosSinHacer === 1 ? '' : 's'} sin marcar como hecho`}>
+                                    {cambiosSinHacer}
+                                  </span>
+                                )}
+                              </button>
+                              <button type="button" className="row-action-btn" onClick={() => setValoracionCliente(cliente)} title="Valoración">📈</button>
+                              <button type="button" className="row-action-btn" onClick={() => setFasesCliente(cliente)} title="Fases y objetivos">🎯</button>
+                            </div>
                           </td>
                           {DIAS_SEMANA.map((d) => {
                             const tareas = dias[d.id]?.tareas || []
@@ -803,6 +684,30 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
               </div>
             </div>
           </>
+        )}
+
+        {(esAdmin || miPersona) && vista === 'contacto' && (
+          <div className="table-card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">Contacto semanal</div>
+                <div className="card-subtitle">
+                  Tres contactos por cliente y semana. Marca cada uno cuando lo hayas hecho; puedes moverte a semanas anteriores para completarlas.
+                </div>
+              </div>
+            </div>
+            <div className="contacto-semanal-panel">
+              {misClientes.length === 0 ? (
+                <p className="lead-log-empty">No hay clientes activos asignados.</p>
+              ) : (
+                <ContactoSemanal
+                  clientes={misClientes}
+                  contactos={contactosSemanales}
+                  setContactos={setContactosSemanales}
+                />
+              )}
+            </div>
+          </div>
         )}
       </main>
 

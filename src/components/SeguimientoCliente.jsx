@@ -8,10 +8,23 @@ import {
   diaVacio,
   semanaVacia,
   progresoSemana,
+  ultimaRevisionCliente,
 } from '../utils/seguimientoHelpers'
+import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { upsertRevisionSemanalRemote } from '../lib/queries/revisionesSemanales'
 import { faseAutomatica, faseInfo, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
+
+// Datos "fríos" del cliente (servicio, fecha de inicio, contacto): antes
+// eran columnas de la tabla de clientes de Seguimiento y Valoración, que se
+// quitó porque el técnico las tenía delante a diario sin usarlas. Se miran
+// de vez en cuando, así que viven aquí, en la ficha que ya abre para
+// trabajar con ese cliente.
+function formatDate(value) {
+  if (!value) return '—'
+  const iso = parseFechaFlexible(value)
+  return iso ? formatFechaISO(iso) : value
+}
 
 export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, miEmail, weekOffsetInicial = 0, onClose }) {
   // weekOffsetInicial: 0 = semana actual (por defecto), -1 = abre en la
@@ -140,6 +153,30 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
         <div className="valoracion-fase-banner">
           📍 <strong>Fase actual: {faseActual}</strong> — {faseActualInfo?.criterio}
         </div>
+
+        {/* Ficha rápida del cliente: lo que antes eran columnas de la tabla
+            de clientes. Aquí no estorba y está donde se necesita. */}
+        <dl className="seguimiento-ficha-datos">
+          <div>
+            <dt>Servicio</dt>
+            <dd>{cliente['Servicio contratado'] || '—'}</dd>
+          </div>
+          <div>
+            <dt>Inicio</dt>
+            <dd>{formatDate(cliente['Fecha inicio'])}</dd>
+          </div>
+          <div>
+            <dt>Contacto</dt>
+            <dd>
+              {cliente.Email || '—'}
+              {cliente.Teléfono ? ` · ${cliente.Teléfono}` : ''}
+            </dd>
+          </div>
+          <div>
+            <dt>Última revisión</dt>
+            <dd>{ultimaRevisionCliente(seguimientos, cliente.Nombre) || 'nunca'}</dd>
+          </div>
+        </dl>
 
         <div className="seguimiento-week-nav">
           <button type="button" className="secondary-action" onClick={() => setWeekOffset((w) => w - 1)}>← Semana anterior</button>
