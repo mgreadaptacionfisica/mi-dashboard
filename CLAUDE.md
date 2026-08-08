@@ -95,6 +95,11 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
   - En el modal `SeguimientoCliente.jsx` la rejilla de días es **solo lectura**
     (un resumen). Lo editable ahí es otra cosa: cambios de la semana, revisiones
     y el cierre de semana.
+  - **Filtro por trabajador** (`filtroAdmin`, solo admin): chips arriba con
+    "Todo el equipo" + uno por trabajador (con su nº de activos) + "Sin asignar".
+    Filtra en `misClientesTodos`, así que afecta a TODA la sección (las dos
+    pestañas, banners y contadores). Al añadir algo nuevo aquí, derívalo de
+    `misClientes`/`misClientesTodos` y respetará el filtro solo.
 - **Supabase (plan free) se pausa** tras días sin uso: si todo aparece a 0, hay
   que reactivar el proyecto en supabase.com. No es un bug del código.
 

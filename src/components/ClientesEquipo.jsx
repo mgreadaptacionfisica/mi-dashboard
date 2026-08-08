@@ -23,6 +23,17 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
+// Profesionales asignados a un cliente. Hay fichas antiguas con el campo
+// "Trabajador" (uno solo) y las nuevas con "Trabajadores" (lista), así que
+// siempre se lee por aquí para no repetir el fallback en cada sitio.
+function trabajadoresDe(cliente) {
+  return cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
+}
+
+// Valor del filtro de admin para "clientes activos que no tienen a nadie
+// asignado" — no es un nombre de persona, por eso va como constante aparte.
+const SIN_ASIGNAR = '__sin_asignar__'
+
 // Hora en formato 12h con AM/PM seleccionable a mano (hora 1-12 + minuto
 // libre, sin tramos) — coincide con el formato que muestran apps externas
 // como Harbiz ("09:32am"), así se copia directo sin convertir a 24h.
@@ -122,23 +133,48 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     return p?.nombre || null
   }, [team, miEmail, esAdmin])
 
-  // Filtro del admin: "todos" (todo el equipo, como siempre) o "mios" (solo
-  // los clientes que Raúl tiene asignados). Para el técnico no aplica.
+  // Filtro del admin (a petición de Raúl): "todos" (todo el equipo, como
+  // siempre), el nombre de UN trabajador concreto para revisar de golpe solo
+  // sus clientes, o SIN_ASIGNAR para cazar activos que no tienen a nadie
+  // detrás. Para el técnico no aplica: él solo ve los suyos.
   const [filtroAdmin, setFiltroAdmin] = useState('todos')
 
+  // Los trabajadores entre los que puede filtrar el admin, con cuántos
+  // clientes ACTIVOS lleva cada uno (los que salen en la rejilla). Se cruzan
+  // dos fuentes: las fichas de Equipo (para que aparezca también quien tiene
+  // 0 clientes ahora mismo, que es un dato en sí) y los nombres que hay
+  // realmente asignados en clientes (por si alguien ya no está en Equipo pero
+  // sigue apareciendo en fichas antiguas).
+  const trabajadoresFiltro = useMemo(() => {
+    if (!esAdmin) return []
+    const activos = clientes.filter((c) => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
+    const conteo = new Map()
+    for (const p of team?.tecnico || []) {
+      if (p.nombre) conteo.set(p.nombre, 0)
+    }
+    for (const c of activos) {
+      for (const nombre of trabajadoresDe(c)) {
+        conteo.set(nombre, (conteo.get(nombre) || 0) + 1)
+      }
+    }
+    return [...conteo.entries()]
+      .map(([nombre, activos]) => ({ nombre, activos }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+  }, [clientes, team, esAdmin])
+
+  const sinAsignarCount = useMemo(() => {
+    if (!esAdmin) return 0
+    return clientes.filter((c) => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO' && trabajadoresDe(c).length === 0).length
+  }, [clientes, esAdmin])
+
   const misClientesTodos = useMemo(() => {
-    const base = esAdmin
-      ? ((filtroAdmin === 'mios' && miNombreAdmin)
-        ? clientes.filter((c) => (c.Trabajadores || (c.Trabajador ? [c.Trabajador] : [])).includes(miNombreAdmin))
-        : clientes)
-      : (miNombre
-        ? clientes.filter((c) => {
-          const trabajadores = c.Trabajadores || (c.Trabajador ? [c.Trabajador] : [])
-          return trabajadores.includes(miNombre)
-        })
-        : [])
-    return base
-  }, [clientes, miNombre, esAdmin, filtroAdmin, miNombreAdmin])
+    if (!esAdmin) {
+      return miNombre ? clientes.filter((c) => trabajadoresDe(c).includes(miNombre)) : []
+    }
+    if (filtroAdmin === 'todos') return clientes
+    if (filtroAdmin === SIN_ASIGNAR) return clientes.filter((c) => trabajadoresDe(c).length === 0)
+    return clientes.filter((c) => trabajadoresDe(c).includes(filtroAdmin))
+  }, [clientes, miNombre, esAdmin, filtroAdmin])
 
   // Solo activos: seguimiento/valoración no aplica a quien ya no es cliente,
   // ni a quien está EN PAUSA (todavía no ha empezado o está parado). Los de
@@ -162,12 +198,15 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   // Clientes compartidos con otro entrenador: a petición de Raúl, para
   // distinguir de un vistazo cuáles reviso yo sí o sí y cuáles comparto (y
   // con quién) para no pisarnos con el otro entrenador. "otros" son los
-  // profesionales asignados distintos a mí; si soy admin (sin ficha propia)
-  // muestro a todos los asignados cuando hay más de uno.
+  // profesionales asignados distintos a mí; si soy admin y estoy filtrando
+  // por un trabajador concreto, el "yo" pasa a ser ese trabajador (estoy
+  // mirando su lista, así que lo interesante es con quién la comparte él).
+  // Sin filtro y sin ficha propia se muestran todos los asignados.
+  const perspectiva = miNombre || ((esAdmin && filtroAdmin !== 'todos' && filtroAdmin !== SIN_ASIGNAR) ? filtroAdmin : null)
   const compartidoCon = (cliente) => {
-    const trabajadores = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
+    const trabajadores = trabajadoresDe(cliente)
     if (trabajadores.length < 2) return []
-    return miNombre ? trabajadores.filter((w) => w !== miNombre) : trabajadores
+    return perspectiva ? trabajadores.filter((w) => w !== perspectiva) : trabajadores
   }
 
   // "Semana pasada sin cerrar" (opción A/C a petición de Raúl): cuando pasa
@@ -337,6 +376,15 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   // "Mi última revisión" se filtra a la persona que ha iniciado sesión —
   // si un cliente se comparte con otro técnico, aquí solo se ve lo que
   // has registrado tú, no lo suyo (para no liarse entre compañeros).
+  // Texto de "aquí no hay nada": con el filtro por trabajador puesto, decir
+  // "no hay clientes asignados" a secas despista (los hay, pero no de esa
+  // persona), así que se nombra a quién se está mirando.
+  const mensajeSinClientes = (() => {
+    if (!esAdmin || filtroAdmin === 'todos') return 'No hay clientes activos asignados.'
+    if (filtroAdmin === SIN_ASIGNAR) return 'No hay clientes activos sin asignar. 👌'
+    return `${filtroAdmin} no tiene clientes activos asignados ahora mismo.`
+  })()
+
   const miIdentidadRevision = miPersona?.nombre || miEmail || 'Admin'
   const seguimientoResumen = useMemo(
     () => seguimientoTecnico(misClientes, seguimientos, { semanaActualISO, progresoSemana, ultimaRevisionCliente }, miIdentidadRevision),
@@ -348,7 +396,12 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
       <header className="topbar">
         <div>
           <div className="topbar-title">Seguimiento y Valoración</div>
-          <div className="topbar-subtitle">{esAdmin ? 'Clientes activos de todo el equipo' : 'Tus clientes activos'}</div>
+          <div className="topbar-subtitle">
+            {!esAdmin && 'Tus clientes activos'}
+            {esAdmin && filtroAdmin === 'todos' && 'Clientes activos de todo el equipo'}
+            {esAdmin && filtroAdmin === SIN_ASIGNAR && 'Clientes activos sin trabajador asignado'}
+            {esAdmin && filtroAdmin !== 'todos' && filtroAdmin !== SIN_ASIGNAR && `Clientes activos de ${filtroAdmin}`}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {typeof onNavigate === 'function' && (
@@ -377,20 +430,40 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
 
         {(esAdmin || miPersona) && (
           <>
+            {/* Filtro por trabajador (solo admin): al supervisar, lo rápido es
+                repasar entrenador por entrenador en vez de la lista entera del
+                equipo. Afecta a TODA la sección (rejilla de sesiones, avisos,
+                contacto semanal y contadores), no solo a la tabla. */}
             {esAdmin && (
-              <div className="period-selector" style={{ marginBottom: 12 }}>
-                <button type="button" className={`period-btn ${filtroAdmin === 'todos' ? 'active' : ''}`} onClick={() => setFiltroAdmin('todos')}>
-                  👥 Todos del equipo
-                </button>
-                <button type="button" className={`period-btn ${filtroAdmin === 'mios' ? 'active' : ''}`} onClick={() => setFiltroAdmin('mios')}>
-                  🙋 Solo los míos
-                </button>
+              <div className="seguimiento-filtro-trabajador">
+                <span className="seguimiento-filtro-label">Ver clientes de:</span>
+                <div className="seguimiento-filtro-chips">
+                  <button type="button" className={`period-btn ${filtroAdmin === 'todos' ? 'active' : ''}`} onClick={() => setFiltroAdmin('todos')}>
+                    👥 Todo el equipo
+                  </button>
+                  {trabajadoresFiltro.map((t) => (
+                    <button
+                      key={t.nombre}
+                      type="button"
+                      className={`period-btn ${filtroAdmin === t.nombre ? 'active' : ''}`}
+                      onClick={() => setFiltroAdmin(t.nombre)}
+                      title={`Revisar solo los clientes activos de ${t.nombre}`}
+                    >
+                      {t.nombre === miNombreAdmin ? '🙋' : '🧑'} {t.nombre} <span className="seguimiento-filtro-conteo">{t.activos}</span>
+                    </button>
+                  ))}
+                  {sinAsignarCount > 0 && (
+                    <button
+                      type="button"
+                      className={`period-btn ${filtroAdmin === SIN_ASIGNAR ? 'active' : ''}`}
+                      onClick={() => setFiltroAdmin(SIN_ASIGNAR)}
+                      title="Clientes activos que no tienen ningún profesional asignado"
+                    >
+                      ⚠️ Sin asignar <span className="seguimiento-filtro-conteo">{sinAsignarCount}</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
-            {esAdmin && filtroAdmin === 'mios' && !miNombreAdmin && (
-              <p className="lead-log-empty" style={{ marginBottom: 12 }}>
-                Para filtrar "solo los míos" necesito tu ficha en Equipo con este mismo email. Añádete al equipo (o revisa que el email coincida) y podrás ver aquí solo tus clientes.
-              </p>
             )}
             <div className="tabs-bar">
               <button type="button" className={`tab-btn ${vista === 'registro' ? 'tab-btn-active' : ''}`} onClick={() => setVista('registro')}>
@@ -580,7 +653,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                       // Solo para admin: de quién es el cliente. El técnico no lo
                       // necesita (todos los que ve son suyos), pero al supervisar
                       // "👥 Todos del equipo" es el dato que dice quién responde.
-                      const responsables = cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : [])
+                      const responsables = trabajadoresDe(cliente)
                       return (
                         <tr key={`reg-${cliente.id || cliente.Nombre}-${index}`}>
                           <td className={`registro-rapido-cliente ${otros.length ? 'registro-rapido-compartido' : ''}`}>
@@ -715,7 +788,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                     })}
                     {filtrados.length === 0 && (
                       <tr><td colSpan={DIAS_SEMANA.length + 1} className="lead-log-empty">
-                        {misClientes.length === 0 ? 'No hay clientes activos asignados.' : 'Sin resultados con ese filtro.'}
+                        {misClientes.length === 0 ? mensajeSinClientes : 'Sin resultados con ese filtro.'}
                       </td></tr>
                     )}
                   </tbody>
@@ -737,7 +810,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
             </div>
             <div className="contacto-semanal-panel">
               {misClientes.length === 0 ? (
-                <p className="lead-log-empty">No hay clientes activos asignados.</p>
+                <p className="lead-log-empty">{mensajeSinClientes}</p>
               ) : (
                 <ContactoSemanal
                   clientes={misClientes}
