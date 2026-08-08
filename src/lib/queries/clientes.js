@@ -12,6 +12,10 @@ function fromRow(row) {
     Drive: row.drive || '',
     Email: row.email || '',
     'Estado del cliente': row.estado || '',
+    // Datos del estado EN PAUSA (ver migración 53): cuándo hay que retomar al
+    // cliente y por qué está parado. Vacíos en cualquier otro estado.
+    'Fecha fin de pausa': row.pausa_hasta || '',
+    'Motivo de la pausa': row.pausa_motivo || '',
     'Fecha inicio': row.fecha_inicio || '',
     'Fecha fin': row.fecha_fin || '',
     'Fecha primer pago': row.fecha_primer_pago || '',
@@ -44,6 +48,8 @@ const CAMPO_A_COLUMNA = {
   Drive: 'drive',
   Email: 'email',
   'Estado del cliente': 'estado',
+  'Fecha fin de pausa': 'pausa_hasta',
+  'Motivo de la pausa': 'pausa_motivo',
   'Fecha inicio': 'fecha_inicio',
   'Fecha fin': 'fecha_fin',
   'Fecha primer pago': 'fecha_primer_pago',

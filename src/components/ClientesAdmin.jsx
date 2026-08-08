@@ -10,7 +10,22 @@ import { renombrarClienteEnHistorial } from '../lib/queries/renombrarCliente'
 import { generarPlazosPorNumero, generarPlazosDesdeFecha } from '../lib/plazos'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 
-const estadoOptions = ['Todos', 'ACTIVO', 'NO ACTIVO']
+// Tres estados posibles. "EN PAUSA" es para clientes que ya han comprado
+// pero todavía no han empezado (o que paran temporalmente y volverán): ni
+// están activos —no hay que hacerles seguimiento aún, así que no salen en
+// Seguimiento y Valoración— ni son bajas, así que conservan su técnico
+// asignado y una fecha para retomarlos.
+// El filtro de estado del listado. Por defecto se ven los ACTIVO y los
+// EN PAUSA juntos ('ACTIVO+PAUSA'): los pausados son clientes vivos que hay
+// que tener delante para no olvidarse de retomarlos; si quedaran escondidos
+// tras un filtro, la fecha de aviso no serviría de nada.
+const estadoOptions = [
+  { value: 'ACTIVO+PAUSA', label: 'ACTIVO + EN PAUSA' },
+  { value: 'ACTIVO', label: 'Solo ACTIVO' },
+  { value: 'EN PAUSA', label: 'Solo EN PAUSA' },
+  { value: 'NO ACTIVO', label: 'NO ACTIVO' },
+  { value: 'Todos', label: 'Todos' },
+]
 
 const initialForm = {
   nombre: '',
@@ -18,6 +33,8 @@ const initialForm = {
   servicioId: SERVICIOS[0]?.id ?? '',
   otroServicio: '',
   estado: 'ACTIVO',
+  pausaHasta: '',
+  pausaMotivo: '',
   formaPago: 'Stripe',
   drive: '',
   trabajadores: [],
@@ -67,6 +84,12 @@ function formatDate(value) {
   return iso ? formatFechaISO(iso) : value
 }
 
+// ¿A este cliente en pausa ya le tocaba volver? (fecha de aviso hoy o pasada)
+function pausaVencida(cliente) {
+  const iso = parseFechaFlexible(cliente['Fecha fin de pausa'])
+  return Boolean(iso) && iso <= todayISO()
+}
+
 // Ya no se pide "HIGH TICKET / LOW TICKET" a mano: la categoría se deduce
 // del propio programa contratado (Readáptate = alto valor, Previene = low ticket).
 function categoriaPrograma(nombreServicio) {
@@ -76,8 +99,14 @@ function categoriaPrograma(nombreServicio) {
   return 'Otro'
 }
 
+// El estado "EN PAUSA" se pinta a propósito más llamativo que los otros dos
+// (ámbar, con punto parpadeante): es un estado transitorio que hay que ver de
+// un vistazo en el listado para no olvidarse de retomar al cliente.
 function StatusPill({ estado }) {
   const normalized = (estado || '').toLowerCase()
+  if (normalized === 'en pausa') {
+    return <span className="status-pill status-pausa"><span className="status-pausa-dot" />⏸️ EN PAUSA</span>
+  }
   const className = normalized === 'activo' ? 'status-activo' : 'status-inactivo'
   return <span className={`status-pill ${className}`}>{estado || 'Sin estado'}</span>
 }
@@ -120,9 +149,10 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
 export default function ClientesAdmin({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, miEmail }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
-  // Por defecto solo se ven los clientes ACTIVO (menos ruido visual); desde
-  // el desplegable de estado se puede cambiar a "NO ACTIVO" o "Todos".
-  const [estado, setEstado] = useState('ACTIVO')
+  // Por defecto se ven los clientes en curso: ACTIVO y EN PAUSA (menos ruido
+  // visual que "Todos"); desde el desplegable se puede cambiar a "NO ACTIVO",
+  // a uno solo de los dos, o a "Todos".
+  const [estado, setEstado] = useState('ACTIVO+PAUSA')
   const [servicio, setServicio] = useState('Todos')
   const [categoria, setCategoria] = useState('Todos')
   const [trabajador, setTrabajador] = useState('Todos')
@@ -180,7 +210,9 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
           cliente.Trabajadores.join(' '),
         ].some(value => (value || '').toLowerCase().includes(term))
 
-        const matchesEstado = estado === 'Todos' || (cliente['Estado del cliente'] || '').toUpperCase() === estado
+        const estadoCliente = (cliente['Estado del cliente'] || '').toUpperCase()
+        const matchesEstado = estado === 'Todos'
+          || (estado === 'ACTIVO+PAUSA' ? (estadoCliente === 'ACTIVO' || estadoCliente === 'EN PAUSA') : estadoCliente === estado)
         const matchesServicio = servicio === 'Todos' || (cliente['Servicio contratado'] || '').toUpperCase() === servicio.toUpperCase()
         const matchesCategoria = categoria === 'Todos' || categoriaPrograma(cliente['Servicio contratado']) === categoria
         const matchesTrabajador = trabajador === 'Todos' ||
@@ -194,10 +226,18 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
   const stats = useMemo(() => {
     const activos = clientesConTrabajador.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO').length
     const noActivos = clientesConTrabajador.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'NO ACTIVO').length
+    const enPausa = clientesConTrabajador.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'EN PAUSA')
+    // Pausas "vencidas": ya ha llegado (o pasado) el día en el que tocaba
+    // retomar al cliente y sigue en pausa. Es el número que interesa vigilar.
+    const hoy = todayISO()
+    const pausasVencidas = enPausa.filter(c => {
+      const iso = parseFechaFlexible(c['Fecha fin de pausa'])
+      return iso && iso <= hoy
+    }).length
     const readaptate = clientesConTrabajador.filter(c => categoriaPrograma(c['Servicio contratado']) === 'Programa Readáptate').length
     const previene = clientesConTrabajador.filter(c => categoriaPrograma(c['Servicio contratado']) === 'Programa Previene').length
     const renuevan = clientesConTrabajador.filter(c => normalizaRenueva(c.Renueva) === 'Sí').length
-    return { activos, noActivos, readaptate, previene, renuevan }
+    return { activos, noActivos, enPausa: enPausa.length, pausasVencidas, readaptate, previene, renuevan }
   }, [clientesConTrabajador])
 
   const plazosPendientesCount = useMemo(
@@ -269,6 +309,11 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
       Email: formData.email,
       'Servicio contratado': nombreServicio,
       'Estado del cliente': formData.estado,
+      // Los datos de la pausa solo tienen sentido mientras el cliente está en
+      // pausa: al reactivarlo (o darlo de baja) se limpian, para que no quede
+      // una fecha vieja avisando en el Dashboard.
+      'Fecha fin de pausa': formData.estado === 'EN PAUSA' ? formData.pausaHasta : '',
+      'Motivo de la pausa': formData.estado === 'EN PAUSA' ? formData.pausaMotivo : '',
       'Forma de pago': formData.formaPago,
       Drive: formData.drive,
       Trabajadores: trabajadoresFinal,
@@ -338,6 +383,8 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
       servicioId: servicioEncontrado ? servicioEncontrado.id : 'otro',
       otroServicio: servicioEncontrado ? '' : servicioActual,
       estado: cliente['Estado del cliente'] || 'ACTIVO',
+      pausaHasta: parseFechaFlexible(cliente['Fecha fin de pausa']) || cliente['Fecha fin de pausa'] || '',
+      pausaMotivo: cliente['Motivo de la pausa'] || '',
       formaPago: cliente['Forma de pago'] || 'Stripe',
       drive: cliente.Drive || '',
       trabajadores: cliente.Trabajadores || (cliente.Trabajador ? [cliente.Trabajador] : []),
@@ -440,10 +487,23 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
             </div>
           </div>
 
+          <div className={`kpi-card ${stats.pausasVencidas > 0 ? 'kpi-card-pausa' : ''}`}>
+            <div className="kpi-card-header">
+              <span className="kpi-card-label">En pausa</span>
+              <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #ffedd5, #fed7aa)' }}>⏸️</div>
+            </div>
+            <div className="kpi-card-value">{stats.enPausa}</div>
+            <div className="kpi-card-footer">
+              {stats.pausasVencidas > 0
+                ? <><span className="badge-down">⏰ {stats.pausasVencidas}</span><span className="badge-text">con la fecha ya cumplida</span></>
+                : <span className="badge-text">aún no han empezado</span>}
+            </div>
+          </div>
+
           <div className="kpi-card">
             <div className="kpi-card-header">
               <span className="kpi-card-label">No activos</span>
-              <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fee2e2, #fecaca)' }}>⏸️</div>
+              <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fee2e2, #fecaca)' }}>❌</div>
             </div>
             <div className="kpi-card-value">{stats.noActivos}</div>
             <div className="kpi-card-footer">
@@ -530,7 +590,7 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
               onChange={e => setSearch(e.target.value)}
             />
             <select className="filter-select" value={estado} onChange={e => setEstado(e.target.value)}>
-              {estadoOptions.map(option => <option key={option} value={option}>{option}</option>)}
+              {estadoOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
             <select className="filter-select" value={servicio} onChange={e => setServicio(e.target.value)}>
               <option value="Todos">Todos los programas</option>
@@ -580,7 +640,35 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
                     <td style={{ fontWeight: 600 }}>{cliente.Nombre || '—'}</td>
                     <td>{categoriaPrograma(cliente['Servicio contratado'])}</td>
                     <td>{cliente['Servicio contratado'] || '—'}</td>
-                    <td><StatusPill estado={cliente['Estado del cliente']} /></td>
+                    <td>
+                      <StatusPill estado={cliente['Estado del cliente']} />
+                      {(cliente['Estado del cliente'] || '').toUpperCase() === 'EN PAUSA' && (
+                        <div className="cliente-pausa-info">
+                          {cliente['Fecha fin de pausa'] ? (
+                            <span className={pausaVencida(cliente) ? 'cliente-pausa-vencida' : ''}>
+                              {pausaVencida(cliente) ? '⏰ tocaba el' : '📅 retomar el'} {formatDate(cliente['Fecha fin de pausa'])}
+                            </span>
+                          ) : (
+                            <span>Sin fecha de aviso</span>
+                          )}
+                          {cliente['Motivo de la pausa'] && <div>{cliente['Motivo de la pausa']}</div>}
+                          {/* Atajo para reactivar sin abrir la ficha: es lo que hace
+                              que el cliente vuelva a Seguimiento y Valoración. */}
+                          <button
+                            type="button"
+                            className="row-action-btn"
+                            style={{ marginTop: 4 }}
+                            onClick={() => {
+                              const patch = { 'Estado del cliente': 'ACTIVO', 'Fecha fin de pausa': '', 'Motivo de la pausa': '' }
+                              setClientes(prev => prev.map((item, i) => i === cliente.originalIndex ? { ...item, ...patch } : item))
+                              if (cliente.id) updateClienteRemote(cliente.id, patch)
+                            }}
+                          >
+                            ▶ Activar
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td>
                       <MultiTrabajadorSelect
                         options={tecnicoNames}
@@ -735,11 +823,15 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
                   </p>
                 )
               )}
+              <label className="lead-detail-label">Estado del cliente</label>
               <select
                 value={formData.estado}
                 onChange={event => {
                   const nuevoEstado = event.target.value
-                  // Al pasar a NO ACTIVO se desasignan automáticamente los profesionales.
+                  // Al pasar a NO ACTIVO se desasignan automáticamente los
+                  // profesionales. En pausa NO: el cliente volverá y se queda
+                  // con el mismo técnico (solo deja de aparecer en Seguimiento
+                  // y Valoración mientras esté parado).
                   setFormData({
                     ...formData,
                     estado: nuevoEstado,
@@ -748,8 +840,29 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
                 }}
               >
                 <option value="ACTIVO">ACTIVO</option>
+                <option value="EN PAUSA">EN PAUSA (aún no empieza / parado temporalmente)</option>
                 <option value="NO ACTIVO">NO ACTIVO</option>
               </select>
+              {formData.estado === 'EN PAUSA' && (
+                <div className="lead-venta-form">
+                  <p className="plan-subtitle-inline">Datos de la pausa</p>
+                  <label className="lead-detail-label">¿Cuándo hay que retomarlo? (fecha de aviso)</label>
+                  <input
+                    type="date"
+                    value={/^\d{4}-\d{2}-\d{2}$/.test(formData.pausaHasta) ? formData.pausaHasta : ''}
+                    onChange={event => setFormData({ ...formData, pausaHasta: event.target.value })}
+                  />
+                  <input
+                    placeholder="Motivo de la pausa (opcional): aún no ha empezado, lesionado, de viaje..."
+                    value={formData.pausaMotivo}
+                    onChange={event => setFormData({ ...formData, pausaMotivo: event.target.value })}
+                  />
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                    Mientras esté en pausa no aparece en Seguimiento y Valoración (vuelve solo al ponerlo en ACTIVO).
+                    Ese día saltará el aviso en el Dashboard y en el Calendario de avisos.
+                  </p>
+                </div>
+              )}
               <select value={formData.formaPago} onChange={event => setFormData({ ...formData, formaPago: event.target.value })}>
                 <option value="Stripe">Stripe</option>
                 <option value="Bizum">Bizum</option>

@@ -43,7 +43,7 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 51; la siguiente sería la 52). Deben ser **idempotentes**
+  (la última es la 53; la siguiente sería la 54). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -63,6 +63,13 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
   `revisiones_semanales_cliente`. Al renombrar un cliente hay que arrastrar el
   cambio a todas (ya existe `src/lib/queries/renombrarCliente.js`, llamado desde
   ClientesAdmin). Ojo con `unique (cliente_nombre, semana)` en algunas.
+- **Estados de cliente**: `ACTIVO`, `EN PAUSA` y `NO ACTIVO` (migración 53).
+  `EN PAUSA` = ya ha comprado pero aún no empieza (o para temporalmente):
+  mantiene los profesionales asignados (NO ACTIVO sí los desasigna), guarda
+  `pausa_hasta` + `pausa_motivo` (claves JS `'Fecha fin de pausa'` /
+  `'Motivo de la pausa'`) y **no aparece en Seguimiento y Valoración** hasta
+  que vuelve a ACTIVO. Todo el código que filtra `=== 'ACTIVO'` ya lo excluye
+  solo; ojo al añadir filtros nuevos de estado.
 - **Modo demo** (`src/lib/demoGuard.js` + `src/utils/modoDemo.js`): interruptor
   admin que enmascara datos personales y **bloquea TODA escritura a Supabase**
   (interceptado en `src/lib/supabaseClient.js`). Útil para grabar/enseñar.

@@ -22,6 +22,7 @@ const TIPO_INFO = {
   finContrato: { emoji: '📄', label: 'Fin de contrato', clase: 'status-inactivo' },
   pagoRenovacion: { emoji: '💶', label: 'Cobro renovación', clase: 'status-activo' },
   recontacto: { emoji: '🔁', label: 'Recontactar', clase: 'status-programado' },
+  finPausa: { emoji: '⏸️', label: 'Retomar cliente', clase: 'status-pausa' },
 }
 
 function pad2(n) {
@@ -101,7 +102,21 @@ export default function CalendarioAvisos({ clientes = [], ventas = [], recontact
       }
     })
 
-    // 3) Recontactos pendientes (leads en seguimiento + altas manuales)
+    // 3) Clientes EN PAUSA: el día en el que toca retomarlos (avisarles y
+    //    pasarlos a ACTIVO para que vuelvan a Seguimiento y Valoración).
+    clientes.forEach((cliente) => {
+      if ((cliente['Estado del cliente'] || '').toUpperCase() !== 'EN PAUSA') return
+      const pausaISO = parseFechaFlexible(cliente['Fecha fin de pausa'])
+      if (!pausaISO) return
+      lista.push({
+        tipo: 'finPausa',
+        fecha: pausaISO,
+        titulo: `Retomar · ${cliente.Nombre}`,
+        detalle: cliente['Motivo de la pausa'] || 'En pausa',
+      })
+    })
+
+    // 4) Recontactos pendientes (leads en seguimiento + altas manuales)
     ventas.filter((lead) => lead.etapa === 'seguimiento').forEach((lead) => {
       const r = lead.recontacto
       if (r && !r.contactado && r.fechaContacto) {
@@ -156,6 +171,7 @@ export default function CalendarioAvisos({ clientes = [], ventas = [], recontact
     cobros: avisos.filter((a) => a.tipo === 'cobro').length,
     renovaciones: avisos.filter((a) => a.tipo === 'avisoRenovacion').length,
     recontactos: avisos.filter((a) => a.tipo === 'recontacto').length,
+    pausas: avisos.filter((a) => a.tipo === 'finPausa').length,
   }), [avisos])
 
   const celdas = useMemo(() => celdasDelMes(cursor.year, cursor.month), [cursor])
@@ -181,7 +197,7 @@ export default function CalendarioAvisos({ clientes = [], ventas = [], recontact
       <div className="card-header">
         <div>
           <div className="card-title">📅 Calendario de avisos</div>
-          <div className="card-subtitle">Cobros pendientes, renovaciones (aviso {DIAS_AVISO_RENOVACION} días antes) y recontactos</div>
+          <div className="card-subtitle">Cobros pendientes, renovaciones (aviso {DIAS_AVISO_RENOVACION} días antes), recontactos y clientes en pausa</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <select className="filter-select" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
@@ -189,6 +205,7 @@ export default function CalendarioAvisos({ clientes = [], ventas = [], recontact
             <option value="cobro">💳 Cobros</option>
             <option value="renovacion">🔔 Renovaciones</option>
             <option value="recontacto">🔁 Recontactos</option>
+            <option value="finPausa">⏸️ Clientes en pausa</option>
           </select>
           <button type="button" className="secondary-action" onClick={irMesAnterior}>←</button>
           <button type="button" className="secondary-action" onClick={irMesSiguiente}>→</button>
@@ -217,6 +234,15 @@ export default function CalendarioAvisos({ clientes = [], ventas = [], recontact
           </div>
           <div className="kpi-card-value">{stats.recontactos}</div>
         </div>
+        {stats.pausas > 0 && (
+          <div className="kpi-card">
+            <div className="kpi-card-header">
+              <span className="kpi-card-label">Clientes en pausa</span>
+              <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #ffedd5, #fed7aa)' }}>⏸️</div>
+            </div>
+            <div className="kpi-card-value">{stats.pausas}</div>
+          </div>
+        )}
       </div>
 
       {proximos.length > 0 && (

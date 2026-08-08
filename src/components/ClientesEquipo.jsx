@@ -15,6 +15,7 @@ import {
   progresoSemana,
   ultimaRevisionCliente,
 } from '../utils/seguimientoHelpers'
+import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { seguimientoTecnico } from '../utils/equipoHelpers'
 
@@ -54,7 +55,12 @@ function formatHora12(horaHHMM) {
 //
 // Solo se muestran clientes ACTIVOS aquí: no tiene sentido hacer
 // seguimiento/valoración de alguien que ya no es cliente. Los no activos
-// solo se gestionan desde ClientesAdmin (altas/bajas).
+// solo se gestionan desde ClientesAdmin (altas/bajas). Los que están
+// EN PAUSA (comprado pero aún sin empezar, o parados temporalmente) tampoco
+// entran en la rejilla —no hay nada que registrar todavía—, pero sí se
+// listan en un aviso arriba con la fecha en la que toca retomarlos: el
+// técnico no tiene acceso a Clientes, así que este es su único sitio para
+// enterarse. Vuelven a la rejilla solos cuando pasan a ACTIVO.
 //
 // La sección tiene DOS pestañas, las dos semanales y las dos operativas:
 // "⚡ Registro de sesiones" (el día a día, rejilla cliente × día) y
@@ -120,7 +126,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
   // los clientes que Raúl tiene asignados). Para el técnico no aplica.
   const [filtroAdmin, setFiltroAdmin] = useState('todos')
 
-  const misClientes = useMemo(() => {
+  const misClientesTodos = useMemo(() => {
     const base = esAdmin
       ? ((filtroAdmin === 'mios' && miNombreAdmin)
         ? clientes.filter((c) => (c.Trabajadores || (c.Trabajador ? [c.Trabajador] : [])).includes(miNombreAdmin))
@@ -131,9 +137,27 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
           return trabajadores.includes(miNombre)
         })
         : [])
-    // Solo activos: seguimiento/valoración no aplica a quien ya no es cliente.
-    return base.filter((c) => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
+    return base
   }, [clientes, miNombre, esAdmin, filtroAdmin, miNombreAdmin])
+
+  // Solo activos: seguimiento/valoración no aplica a quien ya no es cliente,
+  // ni a quien está EN PAUSA (todavía no ha empezado o está parado). Los de
+  // la pausa vuelven aquí solos en cuanto se les pone ACTIVO en Clientes.
+  const misClientes = useMemo(
+    () => misClientesTodos.filter((c) => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO'),
+    [misClientesTodos]
+  )
+
+  // Los que están en pausa no entran en la rejilla, pero sí se avisan arriba:
+  // así el técnico sabe que existen y qué día toca retomarlos, sin tener que
+  // entrar en Clientes (a la que ni siquiera tiene acceso).
+  const misClientesEnPausa = useMemo(
+    () => misClientesTodos
+      .filter((c) => (c['Estado del cliente'] || '').toUpperCase() === 'EN PAUSA')
+      .map((c) => ({ cliente: c, fecha: parseFechaFlexible(c['Fecha fin de pausa']) }))
+      .sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999')),
+    [misClientesTodos]
+  )
 
   // Clientes compartidos con otro entrenador: a petición de Raúl, para
   // distinguir de un vistazo cuáles reviso yo sí o sí y cuáles comparto (y
@@ -376,6 +400,21 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
                 🤝 Contacto semanal
               </button>
             </div>
+
+            {misClientesEnPausa.length > 0 && (
+              <div className="clientes-pausa-banner">
+                <strong>⏸️ {misClientesEnPausa.length} cliente{misClientesEnPausa.length === 1 ? '' : 's'} en pausa</strong>
+                <span> — no {misClientesEnPausa.length === 1 ? 'aparece' : 'aparecen'} en el registro hasta que {misClientesEnPausa.length === 1 ? 'pase' : 'pasen'} a ACTIVO: </span>
+                {misClientesEnPausa.map(({ cliente, fecha }, i) => (
+                  <span key={cliente.Nombre}>
+                    <strong>{cliente.Nombre}</strong>
+                    {fecha ? ` (retomar el ${formatFechaISO(fecha)})` : ' (sin fecha)'}
+                    {cliente['Motivo de la pausa'] ? ` · ${cliente['Motivo de la pausa']}` : ''}
+                    {i < misClientesEnPausa.length - 1 ? ', ' : '.'}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {clientesSemanaAnterior.length > 0 && (
               <div className="seguimiento-semana-pasada-banner">

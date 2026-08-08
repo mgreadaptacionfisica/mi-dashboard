@@ -1473,6 +1473,80 @@ tbody td {
 .status-activo    { background: #d1fae5; color: #065f46; }
 .status-pendiente { background: #fef3c7; color: #92400e; }
 .status-inactivo  { background: #fee2e2; color: #991b1b; }
+/* Estado "EN PAUSA" de clientes: más llamativo que el resto de píldoras a
+   propósito (ámbar + borde + punto que parpadea), porque es un estado
+   transitorio que hay que ver de un vistazo para no dejar al cliente parado. */
+.status-pausa {
+  background: #ffedd5;
+  color: #9a3412;
+  border: 1px solid #fb923c;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-pausa-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f97316;
+  animation: pausa-parpadeo 1.4s ease-in-out infinite;
+}
+
+@keyframes pausa-parpadeo {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* Quien prefiera (o necesite) no ver animaciones: el punto se queda fijo. */
+@media (prefers-reduced-motion: reduce) {
+  .status-pausa-dot { animation: none; }
+}
+
+.cliente-pausa-info {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.cliente-pausa-vencida {
+  color: #c2410c;
+  font-weight: 700;
+}
+
+/* La tarjeta KPI se resalta solo cuando hay pausas con la fecha ya cumplida. */
+.kpi-card-pausa {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.15);
+}
+
+.clientes-pausa-banner {
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  border: 1px solid #fb923c;
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+
+.clientes-pausa-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: #9a3412;
+  margin-bottom: 6px;
+}
+
+.clientes-pausa-item {
+  font-size: 13px;
+  color: #7c2d12;
+}
+
+.clientes-pausa-pie {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #9a3412;
+}
+
 .status-idea       { background: #e2e8f0; color: #334155; }
 .status-grabado    { background: #dbeafe; color: #1e40af; }
 .status-programado { background: #ede9fe; color: #5b21b6; }

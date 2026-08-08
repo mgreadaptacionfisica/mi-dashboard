@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import KPICard from './KPICard'
 import CalendarioAvisos from './CalendarioAvisos'
-import { parseFechaFlexible } from '../utils/fechasEsp'
+import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 
 // Dashboard con datos reales (clientes + ingresos de empresa), en vez del
 // snapshot congelado de src/api/index.js (exportado de Notion el 29/06/2026
@@ -72,13 +72,30 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
     [contenidoIdeas]
   )
 
+  // Clientes EN PAUSA a los que ya les toca volver (fecha de aviso cumplida):
+  // el aviso vive aquí porque es lo primero que se mira cada mañana, y una
+  // pausa sin retomar es un cliente que se queda parado sin que nadie lo vea.
+  const pausasAviso = useMemo(() => {
+    return clientes
+      .filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'EN PAUSA')
+      .map(c => ({
+        id: c.id || c.Nombre,
+        nombre: c.Nombre,
+        fecha: parseFechaFlexible(c['Fecha fin de pausa']),
+        motivo: c['Motivo de la pausa'] || '',
+      }))
+      .filter(p => p.fecha && p.fecha <= hoy)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+  }, [clientes, hoy])
+
   const stats = useMemo(() => {
     const activos = clientes.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'ACTIVO')
+    const enPausa = clientes.filter(c => (c['Estado del cliente'] || '').toUpperCase() === 'EN PAUSA').length
     const noActivos = clientes.length - activos.length
     const readaptate = activos.filter(c => categoriaPrograma(c['Servicio contratado']) === 'Programa Readáptate').length
     const previene = activos.filter(c => categoriaPrograma(c['Servicio contratado']) === 'Programa Previene').length
     const tasaRetencion = clientes.length > 0 ? Math.round((activos.length / clientes.length) * 1000) / 10 : 0
-    return { totalClientes: clientes.length, activos: activos.length, noActivos, readaptate, previene, tasaRetencion }
+    return { totalClientes: clientes.length, activos: activos.length, enPausa, noActivos, readaptate, previene, tasaRetencion }
   }, [clientes])
 
   const totalIngresosEmpresa = useMemo(
@@ -158,6 +175,27 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
           </div>
         )}
 
+        {pausasAviso.length > 0 && (
+          <div className="clientes-pausa-banner">
+            <div>
+              <div className="clientes-pausa-titulo">
+                ⏸️ {pausasAviso.length} cliente{pausasAviso.length === 1 ? '' : 's'} en pausa {pausasAviso.length === 1 ? 'al que ya toca' : 'a los que ya toca'} retomar
+              </div>
+              <div className="tareas-aviso-lista">
+                {pausasAviso.slice(0, 5).map((p) => (
+                  <span key={p.id} className="clientes-pausa-item">
+                    ⏰ {p.nombre} · {formatFechaISO(p.fecha)}{p.motivo ? ` · ${p.motivo}` : ''}
+                  </span>
+                ))}
+                {pausasAviso.length > 5 && <span className="clientes-pausa-item">+{pausasAviso.length - 5} más</span>}
+              </div>
+              <div className="clientes-pausa-pie">
+                Cuando empiecen, ponlos en ACTIVO desde Clientes y volverán a Seguimiento y Valoración.
+              </div>
+            </div>
+          </div>
+        )}
+
         {videosEditadosAviso.length > 0 && (
           <div className="contenido-aviso-banner">
             <div>
@@ -178,7 +216,7 @@ export default function Dashboard({ clientes = [], ventas = [], recontactos = []
           <KPICard
             label="Clientes Activos"
             value={stats.activos}
-            subtext={`de ${stats.totalClientes} totales`}
+            subtext={`de ${stats.totalClientes} totales${stats.enPausa > 0 ? ` · ${stats.enPausa} en pausa` : ''}`}
             type="number"
             icon="✅"
             iconBg="#d1fae5"
