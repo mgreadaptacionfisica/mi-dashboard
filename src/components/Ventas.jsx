@@ -4,6 +4,7 @@ import SettingInstagram from './SettingInstagram'
 import AdsKpi from './AdsKpi'
 import Recontactar from './Recontactar'
 import CalendarioVentas from './CalendarioVentas'
+import ResumenSemanalVentas from './ResumenSemanalVentas'
 import { insertLeadRemote, updateLeadRemote, deleteLeadRemote, uploadInformePrellamada, getInformePrellamadaUrl } from '../lib/queries/ventas'
 import { insertClienteRemote } from '../lib/queries/clientes'
 import { insertFinanzaRemote } from '../lib/queries/finanzas'
@@ -544,6 +545,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
             {activeTab === 'ads' && 'Inversión y resultados de Ads'}
             {activeTab === 'recontactar' && 'Personas a las que hay que volver a contactar'}
             {activeTab === 'calendario' && 'Llamadas agendadas, por mes o por semana'}
+            {activeTab === 'resumen' && 'Cómo ha ido la semana: llamadas, cierres y dinero'}
           </div>
         </div>
         <div className="topbar-right">
@@ -590,6 +592,13 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
           >
             🗓️ Calendario
           </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'resumen' ? 'tab-btn-active' : ''}`}
+            onClick={() => setActiveTab('resumen')}
+          >
+            📈 Resumen semanal
+          </button>
         </div>
 
         {activeTab === 'setting' && (
@@ -619,6 +628,13 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
 
         {activeTab === 'calendario' && (
           <CalendarioVentas
+            ventas={ventas}
+            onAbrirLead={(leadId) => { setActiveTab('pipeline'); setActiveLeadId(leadId) }}
+          />
+        )}
+
+        {activeTab === 'resumen' && (
+          <ResumenSemanalVentas
             ventas={ventas}
             onAbrirLead={(leadId) => { setActiveTab('pipeline'); setActiveLeadId(leadId) }}
           />

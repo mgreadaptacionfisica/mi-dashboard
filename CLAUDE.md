@@ -10,7 +10,7 @@ Panel de gestión interno de MG Group (negocio de readaptación física /
 entrenamiento / salud). Lo usa el equipo por roles: **admin** (Raúl), **closer**
 (ventas), **tecnico** (entrenadores/fisios) y **contenido** (editores).
 Secciones: Dashboard, Ventas (pipeline + setting IG + ads + recontactar +
-calendario), Clientes (contabilidad/cobros), Seguimiento y Valoración, Equipo,
+calendario + resumen semanal), Clientes (contabilidad/cobros), Seguimiento y Valoración, Equipo,
 Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
 (SOPs + contenido), Mis tareas, Manuales y Enlaces de interés (solo admin).
 
