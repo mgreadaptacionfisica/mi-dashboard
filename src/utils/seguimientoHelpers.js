@@ -41,8 +41,21 @@ export function semanaAnteriorISO(mondayISO) {
   return toISO(d)
 }
 
+// Texto "3 ago – 9 ago" de una semana, a partir de su clave.
+//
+// OJO con la clave: se genera con toISO() (toISOString), que pasa la hora a
+// UTC. Desde España, que va por delante de UTC, las 00:00 del lunes son las
+// 22:00 del domingo en UTC, así que la clave que se guarda cae en DOMINGO,
+// un día antes del lunes real. No es un problema de datos —todo el panel usa
+// la misma función para leer y para escribir, así que todos hablan de la
+// misma semana—, pero el texto sí tiene que enseñar la semana de verdad:
+// de lunes a domingo. Por eso, si la clave cae en domingo, se empieza a
+// contar desde el día siguiente. Cambiar la clave en sí obligaría a migrar
+// todo el histórico ya guardado (seguimientos, contactos, revisiones), y no
+// aporta nada mientras solo se consulte desde aquí.
 export function formatRangoSemana(mondayISO) {
   const inicio = new Date(`${mondayISO}T00:00:00`)
+  if (inicio.getDay() === 0) inicio.setDate(inicio.getDate() + 1)
   const fin = new Date(inicio)
   fin.setDate(fin.getDate() + 6)
   const fmt = (d) => `${d.getDate()} ${d.toLocaleString('es-ES', { month: 'short' })}`
