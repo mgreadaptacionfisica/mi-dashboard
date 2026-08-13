@@ -43,7 +43,7 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 53; la siguiente sería la 54). Deben ser **idempotentes**
+  (la última es la 54; la siguiente sería la 55). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben

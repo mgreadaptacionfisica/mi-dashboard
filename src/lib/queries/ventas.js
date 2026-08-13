@@ -23,6 +23,9 @@ function fromRow(row) {
     origenSeguimiento: row.origen_seguimiento || null,
     notasSeguimiento: row.notas_seguimiento || [],
     grabacionUrl: row.grabacion_url || '',
+    // Lista de intentos de llamada (ver 54_historial_llamadas_ventas.sql):
+    // solo crece, y es de donde salen los números del resumen semanal.
+    historialLlamadas: row.historial_llamadas || [],
     motivoPerdida: row.motivo_perdida,
     venta: row.venta,
     recontacto: row.recontacto,
@@ -51,6 +54,7 @@ const CAMPO_A_COLUMNA = {
   origenSeguimiento: 'origen_seguimiento',
   notasSeguimiento: 'notas_seguimiento',
   grabacionUrl: 'grabacion_url',
+  historialLlamadas: 'historial_llamadas',
   motivoPerdida: 'motivo_perdida',
   venta: 'venta',
   recontacto: 'recontacto',

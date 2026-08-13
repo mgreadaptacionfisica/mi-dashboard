@@ -190,7 +190,28 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
   // para no encadenar varios "atrás" seguidos de forma confusa.
   const volverEtapaAnterior = () => {
     if (!activeLead?.etapaAnterior) return
-    updateLead(activeLead.id, { etapa: activeLead.etapaAnterior, etapaAnterior: null })
+    const patch = { etapa: activeLead.etapaAnterior, etapaAnterior: null }
+
+    // Caso concreto: se marcó "llamada realizada" por error. Además de volver
+    // a "agendada" hay que borrar el intento que se apuntó en el historial;
+    // si no, esa llamada seguiría contando como realizada en el resumen
+    // semanal para siempre. Se comprueba que el último registro sea
+    // exactamente ese (misma fecha que la llamada de ahora y resultado
+    // "realizada") para no tocar el historial al deshacer otras cosas —
+    // volver de "ganada" a "realizada", por ejemplo, no debe borrar nada.
+    const historial = activeLead.historialLlamadas || []
+    const ultimo = historial[historial.length - 1]
+    const deshaceLlamadaRealizada = activeLead.etapa === 'realizada'
+      && activeLead.etapaAnterior === 'agendada'
+      && activeLead.resultadoLlamada === 'realizada'
+    if (deshaceLlamadaRealizada) {
+      patch.resultadoLlamada = null
+      if (ultimo && ultimo.fecha === activeLead.fechaAgenda && ultimo.resultado === 'realizada') {
+        patch.historialLlamadas = historial.slice(0, -1)
+      }
+    }
+
+    updateLead(activeLead.id, patch)
     resetDetailUI()
   }
 
@@ -227,9 +248,30 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
     })
   }
 
+  // Apunta un intento de llamada en el historial del lead (ver la migración
+  // 54_historial_llamadas_ventas.sql): para cuándo estaba puesta y en qué
+  // quedó. Se guarda en el momento de marcar el resultado, ANTES de que un
+  // reagendado sobrescriba `fechaAgenda` — que es justo lo que antes se
+  // perdía y hacía que los no shows de una semana se borraran solos. El
+  // resultado "en vivo" sigue en resultadoLlamada; esto es el histórico.
+  const registrarIntento = (lead, resultado) => ([
+    ...(lead.historialLlamadas || []),
+    {
+      fecha: lead.fechaAgenda || '',
+      hora: lead.horaAgenda || '',
+      resultado,
+      registradoEn: new Date().toISOString(),
+    },
+  ])
+
   const marcarLlamadaRealizada = () => {
     if (!activeLead) return
-    updateLead(activeLead.id, { etapa: 'realizada', etapaAnterior: activeLead.etapa, resultadoLlamada: 'realizada' })
+    updateLead(activeLead.id, {
+      etapa: 'realizada',
+      etapaAnterior: activeLead.etapa,
+      resultadoLlamada: 'realizada',
+      historialLlamadas: registrarIntento(activeLead, 'realizada'),
+    })
   }
 
   // "Modificada / reagendada" quiere decir que ya se ha hablado de una
@@ -240,7 +282,10 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
   // se pregunta primero qué hacer (ver showElegirSeguimiento).
   const confirmarNoRealizada = () => {
     if (!activeLead) return
-    updateLead(activeLead.id, { resultadoLlamada: resultadoDraft })
+    updateLead(activeLead.id, {
+      resultadoLlamada: resultadoDraft,
+      historialLlamadas: registrarIntento(activeLead, resultadoDraft),
+    })
     setShowResultadoNoRealizada(false)
     if (resultadoDraft === 'modificada') {
       setShowReagendar(true)

@@ -48,29 +48,70 @@ function formatRango(desde, hasta) {
 
 const euros = (n) => `${Math.round(n).toLocaleString('es-ES')} €`
 
-// Una llamada cuenta como realizada si se marcó así. Los leads antiguos (de
-// antes de que existiera `resultadoLlamada`) no lo tienen, así que se deduce
-// de la etapa: si ya pasó de "agendada", la llamada se dio.
-function esRealizada(lead) {
-  if (lead.resultadoLlamada) return lead.resultadoLlamada === 'realizada'
-  return ['realizada', 'seguimiento', 'ganada', 'perdida'].includes(lead.etapa)
+// Resultado de la llamada de un lead que todavía no tiene historial (leads
+// anteriores a la migración 54). Si no hay `resultadoLlamada` se deduce de la
+// etapa: si ya pasó de "agendada", la llamada se dio.
+function resultadoSinHistorial(lead) {
+  if (lead.resultadoLlamada) return lead.resultadoLlamada
+  return ['realizada', 'seguimiento', 'ganada', 'perdida'].includes(lead.etapa) ? 'realizada' : null
+}
+
+// Intentos de llamada de un lead dentro de la semana. La fuente buena es
+// `historialLlamadas`: guarda cada intento con la fecha que tenía puesta en
+// ese momento, así que un no show sigue contando en su semana aunque después
+// se reagendara (antes esa llamada se movía de semana y el no show se
+// evaporaba). Un lead reagendado dentro de la misma semana cuenta como dos
+// intentos, que es lo que de verdad pasó.
+function intentosEnSemana(lead, enSemana) {
+  const historial = lead.historialLlamadas || []
+  const intentos = historial
+    .filter((e) => enSemana(e.fecha))
+    .map((e) => ({ lead, fecha: e.fecha, resultado: e.resultado }))
+
+  // Además, la llamada que el lead tiene puesta ahora mismo — pero solo si no
+  // está ya en el historial, para no contarla dos veces. Sin historial (leads
+  // de antes de la 54) se recurre a su resultado suelto.
+  const yaRegistrada = historial.some((e) => e.fecha === lead.fechaAgenda)
+  if (!yaRegistrada && enSemana(lead.fechaAgenda)) {
+    intentos.push({
+      lead,
+      fecha: lead.fechaAgenda,
+      resultado: historial.length === 0 ? resultadoSinHistorial(lead) : null,
+    })
+  }
+  return intentos
 }
 
 // Exportada para poder comprobarla de forma aislada (no la usa nadie más).
 export function calcularResumen(ventas, desde, hasta) {
   const enSemana = (fecha) => Boolean(fecha) && fecha >= desde && fecha <= hasta
 
-  const llamadas = ventas.filter((l) => enSemana(l.fechaAgenda))
-  const realizadas = llamadas.filter(esRealizada)
-  const noShows = llamadas.filter((l) => l.resultadoLlamada === 'no_show')
-  const canceladas = llamadas.filter((l) => l.resultadoLlamada === 'cancelada')
-  // "Por hacer": la llamada sigue agendada y todavía no tiene resultado. En la
+  const intentos = ventas.flatMap((l) => intentosEnSemana(l, enSemana))
+  const realizadas = intentos.filter((i) => i.resultado === 'realizada')
+  const noShows = intentos.filter((i) => i.resultado === 'no_show')
+  const canceladas = intentos.filter((i) => i.resultado === 'cancelada')
+  const reagendadas = intentos.filter((i) => i.resultado === 'modificada')
+  // "Por hacer": la llamada está puesta y todavía no tiene resultado. En la
   // semana en curso son las que quedan por delante; en una semana pasada, las
   // que se quedaron sin marcar.
-  const pendientes = llamadas.filter((l) => l.etapa === 'agendada' && !l.resultadoLlamada)
-  const ganadas = llamadas.filter((l) => l.etapa === 'ganada')
-  const perdidas = llamadas.filter((l) => l.etapa === 'perdida')
-  const enSeguimiento = llamadas.filter((l) => l.etapa === 'seguimiento')
+  const pendientes = intentos.filter((i) => !i.resultado)
+
+  // Ganadas / perdidas / en seguimiento son estados del LEAD, no de cada
+  // intento, así que se cuentan sobre los leads distintos (si no, un lead con
+  // dos intentos esa semana contaría dos veces).
+  const unicos = (lista) => [...new Map(lista.map((i) => [i.lead.id, i.lead])).values()]
+
+  // "Compraron" se cuenta solo entre los que tuvieron una llamada que SÍ se
+  // dio esa semana. Si no, un lead al que se le dio plantón el martes y que
+  // acabó comprando dos semanas después aparecería como compra en la semana
+  // del plantón, donde en realidad no se habló con él. Así, además, el
+  // numerador y el denominador de la tasa de cierre salen del mismo sitio.
+  const ganadas = unicos(realizadas).filter((l) => l.etapa === 'ganada')
+  // Perdidas y seguimiento sí van sobre cualquier intento: un no show que no
+  // quiso reagendar se pierde en esa semana, aunque la llamada no se diera.
+  const leadsSemana = unicos(intentos)
+  const perdidas = leadsSemana.filter((l) => l.etapa === 'perdida')
+  const enSeguimiento = leadsSemana.filter((l) => l.etapa === 'seguimiento')
 
   // El dinero va por fecha de cierre, no por la de la llamada.
   const cierres = ventas.filter((l) => l.etapa === 'ganada' && enSemana(l.venta?.fechaCierre))
@@ -83,10 +124,11 @@ export function calcularResumen(ventas, desde, hasta) {
   const cierre = realizadas.length > 0 ? Math.round((ganadas.length / realizadas.length) * 100) : null
 
   return {
-    llamadas: llamadas.length,
+    llamadas: intentos.length,
     realizadas: realizadas.length,
     noShows: noShows.length,
     canceladas: canceladas.length,
+    reagendadas: reagendadas.length,
     pendientes: pendientes.length,
     ganadas: ganadas.length,
     perdidas: perdidas.length,
@@ -97,7 +139,7 @@ export function calcularResumen(ventas, desde, hasta) {
     cierres,
     facturado,
     ticketMedio: cierres.length > 0 ? facturado / cierres.length : 0,
-    llamadasLista: llamadas,
+    intentos,
   }
 }
 
@@ -140,13 +182,18 @@ export default function ResumenSemanalVentas({ ventas = [], onAbrirLead }) {
       if (!mapa[nombre]) mapa[nombre] = { closer: nombre, llamadas: 0, realizadas: 0, noShows: 0, canceladas: 0, ganadas: 0, facturado: 0 }
       return mapa[nombre]
     }
-    resumen.llamadasLista.forEach((l) => {
-      const f = fila(l.closer || 'Sin closer')
+    resumen.intentos.forEach((i) => {
+      const f = fila(i.lead.closer || 'Sin closer')
       f.llamadas += 1
-      if (esRealizada(l)) f.realizadas += 1
-      if (l.resultadoLlamada === 'no_show') f.noShows += 1
-      if (l.resultadoLlamada === 'cancelada') f.canceladas += 1
-      if (l.etapa === 'ganada') f.ganadas += 1
+      if (i.resultado === 'realizada') f.realizadas += 1
+      if (i.resultado === 'no_show') f.noShows += 1
+      if (i.resultado === 'cancelada') f.canceladas += 1
+    })
+    // Las compras van por lead, no por intento: un lead reagendado dos veces
+    // en la misma semana solo compró una vez.
+    const leadsUnicos = [...new Map(resumen.intentos.map((i) => [i.lead.id, i.lead])).values()]
+    leadsUnicos.forEach((l) => {
+      if (l.etapa === 'ganada') fila(l.closer || 'Sin closer').ganadas += 1
     })
     resumen.cierres.forEach((l) => {
       fila(l.closer || 'Sin closer').facturado += Number(l.venta?.importe) || 0
@@ -199,6 +246,14 @@ export default function ResumenSemanalVentas({ ventas = [], onAbrirLead }) {
           </div>
           <div className="kpi-card-value">{resumen.canceladas}</div>
           <Delta actual={resumen.canceladas} anterior={resumenAnterior.canceladas} menosEsMejor />
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-card-header">
+            <span className="kpi-card-label">Reagendadas</span>
+            <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)' }}>🔄</div>
+          </div>
+          <div className="kpi-card-value">{resumen.reagendadas}</div>
+          <Delta actual={resumen.reagendadas} anterior={resumenAnterior.reagendadas} menosEsMejor />
         </div>
         <div className="kpi-card">
           <div className="kpi-card-header">
@@ -362,10 +417,10 @@ export default function ResumenSemanalVentas({ ventas = [], onAbrirLead }) {
       </div>
 
       <p className="valoracion-referencia" style={{ marginTop: 14 }}>
-        ℹ️ Las llamadas se cuentan por el día para el que están agendadas y el dinero por la fecha en la que se cerró la
-        venta, así que un lead que cerró semanas después de su llamada suma en la semana en la que firmó. Ojo con una
-        cosa: al reagendar una llamada se mueve su fecha, así que esa llamada pasa a contar en su semana nueva y deja de
-        aparecer en la original.
+        ℹ️ Cada llamada cuenta en la semana del día para el que estaba puesta, y se queda ahí aunque después se
+        reagende: si alguien no se presentó el martes y se le pasó a la semana siguiente, ese no show sigue contando
+        aquí y la nueva llamada cuenta en su semana. El dinero, en cambio, va por la fecha en la que se cerró la venta,
+        así que un lead que firmó semanas después de su llamada suma en la semana en la que pagó.
       </p>
     </>
   )
