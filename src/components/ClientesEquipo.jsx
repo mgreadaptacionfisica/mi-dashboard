@@ -3,6 +3,7 @@ import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
 import FasesObjetivos from './FasesObjetivos'
 import ContactoSemanal from './ContactoSemanal'
+import PendientesSeguimiento from './PendientesSeguimiento'
 import {
   semanaActualISO,
   formatRangoSemana,
@@ -14,6 +15,7 @@ import {
   diaVacio,
   progresoSemana,
   ultimaRevisionCliente,
+  pendientesDeCliente,
 } from '../utils/seguimientoHelpers'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
@@ -385,6 +387,49 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
     return `${filtroAdmin} no tiene clientes activos asignados ahora mismo.`
   })()
 
+  // Pestaña "🚨 Pendientes" (solo admin, a petición de Raúl): el repaso de un
+  // vistazo de todo lo que le falta al equipo por hacer. Se calcula aquí y no
+  // dentro del componente para poder pintar también el contador de la propia
+  // pestaña sin repetir el trabajo. Sale de misClientes, así que respeta el
+  // filtro por trabajador igual que el resto de la sección.
+  const pendientes = useMemo(() => {
+    if (!esAdmin) return []
+    return misClientes
+      .map((c) => ({
+        ...pendientesDeCliente(c, { seguimientos, revisionesSemanales, contactos: contactosSemanales, semanaActual }),
+        responsables: trabajadoresDe(c),
+      }))
+      .filter((p) => p.items.length > 0)
+      // Primero lo atrasado y, dentro, quien más cosas acumula: es el orden en
+      // el que conviene ponerse a revisar.
+      .sort((a, b) => {
+        if (a.atrasado !== b.atrasado) return a.atrasado ? -1 : 1
+        if (a.items.length !== b.items.length) return b.items.length - a.items.length
+        return (a.cliente.Nombre || '').localeCompare(b.cliente.Nombre || '')
+      })
+  }, [esAdmin, misClientes, seguimientos, revisionesSemanales, contactosSemanales, semanaActual])
+
+  // El badge de la pestaña solo cuenta lo ATRASADO (semanas ya terminadas):
+  // si contara también lo de la semana en curso marcaría a casi todo el mundo
+  // cada lunes y dejaría de significar nada.
+  const pendientesAtrasados = pendientes.filter((p) => p.atrasado).length
+
+  // Desde el panel de pendientes se salta al sitio exacto donde se arregla
+  // cada cosa, ya colocado en la semana correspondiente.
+  const irARegistroSemana = (semana) => {
+    if (semana) setRegistroOffset(offsetSemana(semana))
+    cerrarAddCell()
+    setVista('registro')
+  }
+  const abrirSeguimientoEnSemana = (cliente, semana) => {
+    abrirSeguimiento(cliente, semana ? offsetSemana(semana) : 0)
+  }
+  // El contacto semanal no se puede abrir en una semana concreta: la tabla
+  // lleva su propio navegador interno y siempre entra por la actual, así que
+  // desde un contacto atrasado se llega a la pestaña y se retrocede con
+  // "← Semana anterior" (lo dice el propio aviso del chip).
+  const irAContactoSemanal = () => setVista('contacto')
+
   const miIdentidadRevision = miPersona?.nombre || miEmail || 'Admin'
   const seguimientoResumen = useMemo(
     () => seguimientoTecnico(misClientes, seguimientos, { semanaActualISO, progresoSemana, ultimaRevisionCliente }, miIdentidadRevision),
@@ -472,6 +517,15 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
               <button type="button" className={`tab-btn ${vista === 'contacto' ? 'tab-btn-active' : ''}`} onClick={() => setVista('contacto')}>
                 🤝 Contacto semanal
               </button>
+              {/* Solo admin: es una pestaña de supervisión (qué le falta al
+                  equipo por hacer), no una herramienta de trabajo diario. El
+                  técnico ya tiene sus avisos en la propia rejilla. */}
+              {esAdmin && (
+                <button type="button" className={`tab-btn ${vista === 'pendientes' ? 'tab-btn-active' : ''}`} onClick={() => setVista('pendientes')}>
+                  🚨 Pendientes
+                  {pendientesAtrasados > 0 && <span className="tab-btn-badge">{pendientesAtrasados}</span>}
+                </button>
+              )}
             </div>
 
             {misClientesEnPausa.length > 0 && (
@@ -489,7 +543,9 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
               </div>
             )}
 
-            {clientesSemanaAnterior.length > 0 && (
+            {/* En la pestaña de Pendientes este aviso sobra: allí está lo
+                mismo con más detalle y cliente por cliente. */}
+            {clientesSemanaAnterior.length > 0 && vista !== 'pendientes' && (
               <div className="seguimiento-semana-pasada-banner">
                 <strong>⚠️ Quedan tareas pendientes de la semana anterior y por cerrar la semana en {clientesSemanaAnterior.length} cliente{clientesSemanaAnterior.length === 1 ? '' : 's'}.</strong>
                 <span> Recomendamos hacerlo antes de empezar esta semana. Ábrelos y termínalos tal cual quedaron: </span>
@@ -796,6 +852,16 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
               </div>
             </div>
           </>
+        )}
+
+        {esAdmin && vista === 'pendientes' && (
+          <PendientesSeguimiento
+            pendientes={pendientes}
+            totalClientes={misClientes.length}
+            onAbrirSeguimiento={abrirSeguimientoEnSemana}
+            onIrRegistro={irARegistroSemana}
+            onIrContacto={irAContactoSemanal}
+          />
         )}
 
         {(esAdmin || miPersona) && vista === 'contacto' && (

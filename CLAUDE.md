@@ -80,8 +80,9 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
 - **Hotmart/seQura**: una venta financiada se registra como UN cobro (Hotmart
   adelanta el grueso y libera el resto), no como plazos mensuales.
 - **Seguimiento y Valoración** (`ClientesEquipo.jsx`, sección `clientes-equipo`)
-  tiene DOS pestañas y cada una es la dueña de su dato — no duplicar la edición
-  en otro sitio, que ya pasó y hubo que deshacerlo:
+  tiene DOS pestañas de trabajo (más una tercera de solo lectura para admin) y
+  cada una es la dueña de su dato — no duplicar la edición en otro sitio, que
+  ya pasó y hubo que deshacerlo:
   - **⚡ Registro de sesiones** (por defecto): rejilla cliente × día. Es el
     **único** sitio donde se añaden, marcan y quitan sesiones (`dias -> tareas`).
     Tiene su propio navegador de semanas (`registroOffset`) porque hay que poder
@@ -92,6 +93,14 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
     que Equipo embebe en el detalle de cada técnico. **Ojo**: el rol `tecnico`
     NO tiene acceso a la sección Equipo, así que esta pestaña es su única forma
     de marcar el contacto — no se puede quitar sin dejarlo sin ella.
+  - **🚨 Pendientes** (`PendientesSeguimiento.jsx`, solo admin): repaso de todo
+    lo que falta por hacer (sesiones sin marcar, cambios sin hacer, semanas sin
+    cerrar, contacto incompleto). **No escribe nada**: es un índice: cada
+    pendiente es un botón que lleva a la pestaña/semana donde se arregla. La
+    lógica está en `pendientesDeCliente()` (`seguimientoHelpers.js`) y se
+    calcula en `ClientesEquipo` para reaprovecharla en el badge de la pestaña.
+    Nivel `atrasado` (semanas ya terminadas, hasta 6 atrás) vs `semana` (la
+    actual, informativo); solo lo atrasado cuenta para el badge rojo.
   - En el modal `SeguimientoCliente.jsx` la rejilla de días es **solo lectura**
     (un resumen). Lo editable ahí es otra cosa: cambios de la semana, revisiones
     y el cierre de semana.

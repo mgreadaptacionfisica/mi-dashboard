@@ -4217,3 +4217,157 @@ textarea {
 .seguimiento-check-final .valoracion-referencia {
   margin: 6px 0 0;
 }
+
+/* ---------- Pendientes (pestaña de admin en Seguimiento y Valoración) ----------
+   Panel de supervisión: de un vistazo, todo lo que le falta al equipo por
+   hacer con los clientes. Ver PendientesSeguimiento.jsx. */
+
+/* Contador rojo dentro del botón de la pestaña (solo lo atrasado). */
+.tab-btn-badge {
+  display: inline-block;
+  margin-left: 6px;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.pendientes-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 20px 4px;
+}
+
+.pendientes-kpi {
+  flex: 1 1 130px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+/* Solo se pinta en rojo el KPI de lo atrasado, y solo si hay algo: es el
+   único número que exige actuar hoy. */
+.pendientes-kpi-alerta {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.pendientes-kpi-valor {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.pendientes-kpi-total {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.pendientes-kpi-label {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.pendientes-controles {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 20px;
+}
+
+.pendientes-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pendientes-leyenda {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.pendientes-tabla td {
+  vertical-align: top;
+}
+
+.pendientes-nombre {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.pendientes-nombre:hover {
+  text-decoration: underline;
+}
+
+.pendientes-responsable {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.pendientes-sin-asignar {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.pendientes-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Cada pendiente es un botón que lleva al sitio donde se arregla. Rojo lo
+   atrasado (semana ya terminada), ámbar lo de la semana en curso. */
+.pendientes-chip {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.pendientes-chip:hover {
+  filter: brightness(0.97);
+}
+
+.pendientes-chip-atrasado {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.pendientes-chip-semana {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+@media (max-width: 720px) {
+  .pendientes-kpi {
+    flex: 1 1 45%;
+  }
+}

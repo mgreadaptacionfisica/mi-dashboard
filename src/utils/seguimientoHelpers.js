@@ -2,6 +2,8 @@
 // usadas tanto desde Clientes.jsx (ficha del cliente) como desde
 // Equipo.jsx (resumen por profesional).
 
+import { parseFechaFlexible } from './fechasEsp'
+
 export const BLOQUES_SESION = ['DIA', 'A/1', 'B/2', 'C/3', 'D/4', 'E/5', 'F/6', 'Cardio', 'Entrenamiento', 'Evaluación', 'Semanal', 'Mensual', 'Otra']
 
 export const DIAS_SEMANA = [
@@ -123,6 +125,131 @@ export function progresoContacto(registro) {
   if (!registro) return { total: 3, hechos: 0, porcentaje: 0 }
   const hechos = PUNTOS_CONTACTO.filter((p) => registro[p.id]?.hecho).length
   return { total: 3, hechos, porcentaje: Math.round((hechos / 3) * 100) }
+}
+
+// ————————————————————————————————————————————————————————————————
+// Panel "Pendientes" (pestaña de admin en Seguimiento y Valoración)
+// ————————————————————————————————————————————————————————————————
+// Reúne en una sola lista TODO lo que queda por hacer de cada cliente
+// (sesiones sin marcar, cambios sin hacer, semanas sin cerrar y contacto
+// semanal incompleto), para verlo de un vistazo sin entrar cliente por
+// cliente. A petición de Raúl: control de admin, no una herramienta más.
+//
+// Cada pendiente lleva un nivel, y la diferencia importa:
+//   - 'atrasado': viene de semanas que YA han terminado. Es lo que de verdad
+//     se ha escapado y hay que recuperar → es lo que cuenta el badge rojo.
+//   - 'semana': es de la semana en curso; todavía hay tiempo de hacerlo, así
+//     que informa pero no alarma.
+// La semana EN CURSO no genera aviso de "sin cerrar": es lo normal hasta el
+// domingo y ya se ve en el banner de la rejilla y en el ⏳ de cada cliente.
+export const SEMANAS_PENDIENTES_ATRAS = 6
+
+// Claves de las N semanas anteriores a una dada, de la más antigua a la más
+// reciente. La fecha se formatea en horario LOCAL a propósito: toISO()
+// (toISOString) desplazaría un día más y saldrían claves de semana que no
+// cuadran con las que ya hay guardadas en la base de datos.
+export function semanasPreviasISO(semanaISO, n = SEMANAS_PENDIENTES_ATRAS) {
+  const dosDigitos = (x) => String(x).padStart(2, '0')
+  const semanas = []
+  for (let i = n; i >= 1; i -= 1) {
+    const d = new Date(`${semanaISO}T00:00:00`)
+    d.setDate(d.getDate() - 7 * i)
+    semanas.push(`${d.getFullYear()}-${dosDigitos(d.getMonth() + 1)}-${dosDigitos(d.getDate())}`)
+  }
+  return semanas
+}
+
+// Todo lo pendiente de UN cliente. Devuelve { cliente, items, atrasado }.
+// Cada item es { tipo, nivel, semana, cantidad, texto }, y el tipo es lo que
+// decide a dónde te lleva al pulsarlo en el panel.
+export function pendientesDeCliente(cliente, { seguimientos = [], revisionesSemanales = [], contactos = [], semanaActual, semanasAtras = SEMANAS_PENDIENTES_ATRAS }) {
+  const nombre = cliente.Nombre
+  const items = []
+
+  // A un cliente que acaba de empezar no se le reclama nada de antes de su
+  // alta: si no, todo cliente nuevo aparecería con semanas "sin cerrar" que
+  // nunca llegaron a existir. Sin fecha de inicio no se filtra nada.
+  const inicio = parseFechaFlexible(cliente['Fecha inicio'])
+  const yaEraCliente = (semana) => !inicio || inicio <= semana
+
+  const segDe = (semana) => seguimientos.find((s) => s.clienteNombre === nombre && s.semana === semana)
+  const contactoDe = (semana) => contactos.find((c) => c.clienteNombre === nombre && c.semana === semana)
+  const cerrada = (semana) => revisionesSemanales.some((r) => r.clienteNombre === nombre && r.semana === semana && r.revisado)
+  const plural = (n, singular, pluralTxt) => `${n} ${n === 1 ? singular : pluralTxt}`
+
+  // 1) Semanas ya terminadas que quedaron abiertas (lo grave).
+  const previas = semanasPreviasISO(semanaActual, semanasAtras)
+  for (const semana of previas) {
+    if (!yaEraCliente(semana)) continue
+    const seg = segDe(semana)
+    const progreso = progresoSemana(seg)
+    const cambios = seg?.cambiosPendientes || []
+    // Solo se reclama una semana pasada si tuvo algo de actividad: una semana
+    // completamente vacía suele ser una semana en la que ese cliente no
+    // entrenaba (vacaciones, parón...), no un olvido del entrenador.
+    const tuvoActividad = progreso.total > 0 || cambios.length > 0
+    if (!tuvoActividad || cerrada(semana)) continue
+
+    const rango = formatRangoSemana(semana)
+    items.push({ tipo: 'semana', nivel: 'atrasado', semana, cantidad: 1, texto: `Semana del ${rango} sin cerrar` })
+
+    const sinMarcar = progreso.total - progreso.revisadas
+    if (sinMarcar > 0) {
+      items.push({ tipo: 'sesiones', nivel: 'atrasado', semana, cantidad: sinMarcar, texto: `${plural(sinMarcar, 'sesión', 'sesiones')} sin marcar · ${rango}` })
+    }
+    const cambiosSinHacer = cambios.filter((c) => !c.hecho).length
+    if (cambiosSinHacer > 0) {
+      items.push({ tipo: 'cambios', nivel: 'atrasado', semana, cantidad: cambiosSinHacer, texto: `${plural(cambiosSinHacer, 'cambio', 'cambios')} sin hacer · ${rango}` })
+    }
+  }
+
+  // 2) Contacto semanal de la semana pasada: se mira SOLO la inmediatamente
+  // anterior. Más atrás no se recupera un contacto y solo sería ruido.
+  const semanaAnterior = previas[previas.length - 1]
+  if (semanaAnterior && yaEraCliente(semanaAnterior)) {
+    const progreso = progresoContacto(contactoDe(semanaAnterior))
+    if (progreso.hechos < progreso.total) {
+      items.push({ tipo: 'contacto', nivel: 'atrasado', semana: semanaAnterior, cantidad: progreso.total - progreso.hechos, texto: `Contacto de la semana pasada ${progreso.hechos}/${progreso.total}` })
+    }
+  }
+
+  // 3) La semana en curso: informa de lo que aún se puede hacer a tiempo.
+  const segActual = segDe(semanaActual)
+  const progresoActual = progresoSemana(segActual)
+  if (progresoActual.total === 0) {
+    items.push({ tipo: 'sin-registro', nivel: 'semana', semana: semanaActual, cantidad: 1, texto: 'Sin ninguna sesión registrada esta semana' })
+  } else {
+    const sinMarcar = progresoActual.total - progresoActual.revisadas
+    if (sinMarcar > 0) {
+      items.push({ tipo: 'sesiones', nivel: 'semana', semana: semanaActual, cantidad: sinMarcar, texto: `${plural(sinMarcar, 'sesión', 'sesiones')} sin marcar esta semana` })
+    }
+  }
+  const cambiosActual = (segActual?.cambiosPendientes || []).filter((c) => !c.hecho).length
+  if (cambiosActual > 0) {
+    items.push({ tipo: 'cambios', nivel: 'semana', semana: semanaActual, cantidad: cambiosActual, texto: `${plural(cambiosActual, 'cambio', 'cambios')} sin hacer esta semana` })
+  }
+  const contactoActual = progresoContacto(contactoDe(semanaActual))
+  if (contactoActual.hechos < contactoActual.total) {
+    items.push({ tipo: 'contacto', nivel: 'semana', semana: semanaActual, cantidad: contactoActual.total - contactoActual.hechos, texto: `Contacto de esta semana ${contactoActual.hechos}/${contactoActual.total}` })
+  }
+
+  return { cliente, items, atrasado: items.some((i) => i.nivel === 'atrasado') }
+}
+
+// Totales del panel: lo de arriba del todo, para saber el tamaño del problema
+// antes de mirar cliente por cliente.
+export function resumenPendientes(pendientes = []) {
+  const total = { clientes: pendientes.length, clientesAtrasados: 0, semanasSinCerrar: 0, sesiones: 0, cambios: 0, contactos: 0 }
+  for (const p of pendientes) {
+    if (p.atrasado) total.clientesAtrasados += 1
+    for (const item of p.items) {
+      if (item.tipo === 'semana') total.semanasSinCerrar += 1
+      if (item.tipo === 'sesiones') total.sesiones += item.cantidad
+      if (item.tipo === 'cambios') total.cambios += item.cantidad
+      if (item.tipo === 'contacto') total.contactos += item.cantidad
+    }
+  }
+  return total
 }
 
 // Última vez que se marcó como revisada cualquier tarea de un cliente,
