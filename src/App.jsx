@@ -28,6 +28,7 @@ const MuroEquipo = lazy(() => import('./components/MuroEquipo'))
 const MisTareas = lazy(() => import('./components/MisTareas'))
 const Manuales = lazy(() => import('./components/Manuales'))
 const EnlacesInteres = lazy(() => import('./components/EnlacesInteres'))
+const Proyectos = lazy(() => import('./components/Proyectos'))
 // Clientes: último módulo migrado a Supabase. Los 64 clientes reales se
 // recuperaron del estado en memoria del panel (nunca hubo persistencia
 // real antes) y se migraron con supabase-sql/04_clientes.sql + 04b.
@@ -219,6 +220,22 @@ const enlacesInteresDataPromise = async () => {
   return { default: remoto || [] }
 }
 
+// Proyectos + sus pasos: sección admin-only (ver SECCIONES_POR_ROL). Dos
+// tablas separadas porque los pasos se marcan de uno en uno; el % de avance
+// no se guarda, se calcula en Proyectos.jsx a partir de los pasos.
+const proyectosDataPromise = async () => {
+  const { fetchProyectos } = await import('./lib/queries/proyectos')
+  const remoto = await fetchProyectos()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/proyectos')
+}
+const proyectoPasosDataPromise = async () => {
+  const { fetchProyectoPasos } = await import('./lib/queries/proyectoPasos')
+  const remoto = await fetchProyectoPasos()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/proyectoPasos')
+}
+
 function PlaceholderView({ name }) {
   return (
     <>
@@ -294,6 +311,8 @@ function InternalApp({ session, rol, onLogout }) {
   const [tareasPersonales, setTareasPersonales] = useState([])
   const [manuales, setManuales] = useState([])
   const [enlacesInteres, setEnlacesInteres] = useState([])
+  const [proyectos, setProyectos] = useState([])
+  const [proyectoPasos, setProyectoPasos] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   // Modo demo / presentación (solo admin): enmascara los datos personales en
@@ -333,7 +352,8 @@ function InternalApp({ session, rol, onLogout }) {
       tareasPersonalesDataPromise(), manualesDataPromise(), objetivosFaseDataPromise(),
       reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(), objetivosClienteFaseDataPromise(),
       revisionesSemanalesDataPromise(), enlacesInteresDataPromise(),
-    ]).then(async ([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of, rr, tp, ocf, rs, ei]) => {
+      proyectosDataPromise(), proyectoPasosDataPromise(),
+    ]).then(async ([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of, rr, tp, ocf, rs, ei, pr, pp]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -352,6 +372,8 @@ function InternalApp({ session, rol, onLogout }) {
       setTareasPersonales(ta.default)
       setManuales(ma.default)
       setEnlacesInteres(ei.default)
+      setProyectos(pr.default)
+      setProyectoPasos(pp.default)
       setObjetivosFase(of.default)
       setReglasRecurrentes(rr.default)
       setTarifasPasarela(tp.default)
@@ -478,6 +500,7 @@ function InternalApp({ session, rol, onLogout }) {
       case 'tareas':       return <MisTareas tareas={tareasPersonales} setTareas={setTareasPersonales} miEmail={session?.user?.email} />
       case 'manuales':     return <Manuales manuales={manuales} setManuales={setManuales} rol={rol} />
       case 'enlaces':      return <EnlacesInteres enlaces={enlacesInteres} setEnlaces={setEnlacesInteres} />
+      case 'proyectos':    return <Proyectos proyectos={proyectos} setProyectos={setProyectos} pasos={proyectoPasos} setPasos={setProyectoPasos} />
       default:             return null
     }
   }

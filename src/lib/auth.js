@@ -24,8 +24,12 @@ import { supabase } from './supabaseClient'
 // Raúl (dashboards de clientes, etc.) para copiar y enviar rápido — no
 // tiene sentido para el resto de roles, así que va solo en este array
 // (y la RLS de supabase-sql/50_enlaces_interes.sql lo refuerza en el servidor).
+// 'proyectos' (Proyectos.jsx) va también solo para admin, por lo mismo:
+// es la herramienta con la que Raúl organiza sus proyectos (del negocio y
+// personales) en pasos. Aquí la RLS sí es permisiva (ver
+// supabase-sql/55_proyectos.sql), así que el filtro real es este array.
 export const SECCIONES_POR_ROL = {
-  admin: ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'mi-ficha', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales', 'enlaces'],
+  admin: ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'mi-ficha', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'proyectos', 'manuales', 'enlaces'],
   closer: ['ventas', 'comunicacion', 'manuales'],
   tecnico: ['clientes-equipo', 'mi-ficha', 'operaciones', 'tareas', 'comunicacion', 'manuales'],
   contenido: ['operaciones', 'comunicacion', 'manuales'],

@@ -13,6 +13,7 @@ const TODOS_LOS_ITEMS = [
   { id: 'onboarding', icon: '✨', label: 'Onboarding' },
   { id: 'operaciones', icon: '⚙️', label: 'Operaciones' },
   { id: 'tareas', icon: '🗒️', label: 'Mis tareas' },
+  { id: 'proyectos', icon: '🗂️', label: 'Proyectos' },
   { id: 'manuales', icon: '📚', label: 'Manuales' },
   { id: 'enlaces', icon: '🔗', label: 'Enlaces de interés' },
 ]

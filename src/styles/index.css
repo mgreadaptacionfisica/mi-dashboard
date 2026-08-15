@@ -4403,3 +4403,238 @@ textarea {
   border-color: rgba(0, 138, 65, 0.35);
   background: linear-gradient(135deg, rgba(0, 138, 65, 0.07), #fff);
 }
+
+/* ---------- Proyectos (sección admin-only) ----------
+   Reutiliza .kpi-grid/.kpi-card, .table-card y .status-pill del resto del
+   panel; esto es solo lo propio: el semáforo de prioridad, la barra de
+   avance y la lista de pasos de cada proyecto. */
+.proyectos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+.proyecto-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 14px 16px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.proyecto-card:hover {
+  box-shadow: var(--shadow);
+}
+
+/* Abierta = se están viendo/editando sus pasos: se marca con el verde de
+   marca para no perder de vista cuál es la que está desplegada. */
+.proyecto-card-abierta {
+  border-color: rgba(0, 138, 65, 0.35);
+  box-shadow: var(--shadow);
+}
+
+.proyecto-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* El título es un <button> (no un div) para que abrir el proyecto funcione
+   con teclado, pero tiene que verse como texto normal. */
+.proyecto-card-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font-size: 14px;
+}
+
+.proyecto-card-acciones {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Semáforo de prioridad: un punto de color, el mismo lenguaje en la tarjeta
+   del proyecto y en cada paso. */
+.proyecto-semaforo {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.proyecto-semaforo-alta  { background: var(--color-red); box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.16); }
+.proyecto-semaforo-media { background: var(--color-orange); box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16); }
+.proyecto-semaforo-baja  { background: var(--color-primary); box-shadow: 0 0 0 3px rgba(0, 138, 65, 0.16); }
+
+.proyecto-ambito {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.proyecto-descripcion {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+}
+
+.proyecto-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.proyecto-fecha-vencida {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.proyecto-progreso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.proyecto-progreso-barra {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: #eef2f7;
+  overflow: hidden;
+}
+
+/* El relleno usa el verde de marca; la transición hace que al marcar un
+   paso se vea moverse la barra, que es el feedback de que se guardó. */
+.proyecto-progreso-relleno {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
+  transition: width 0.3s ease;
+}
+
+.proyecto-progreso-pct {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-primary);
+  min-width: 38px;
+  text-align: right;
+}
+
+.proyecto-pasos {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.proyecto-paso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.proyecto-paso:hover {
+  background: #f8fafc;
+}
+
+.proyecto-paso-hecho .proyecto-paso-check span {
+  text-decoration: line-through;
+  color: var(--color-text-secondary);
+}
+
+.proyecto-paso-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.proyecto-paso-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.proyecto-paso-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.proyecto-paso-fecha {
+  white-space: nowrap;
+}
+
+.proyecto-paso-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.proyecto-paso-form input[type="text"],
+.proyecto-paso-form input:not([type]) {
+  flex: 1 1 220px;
+}
+
+.proyecto-paso-form input,
+.proyecto-paso-form select {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+/* Etiqueta encima del input de fecha en el modal: sin ella un <input
+   type="date"> vacío no dice qué fecha se está pidiendo. */
+.proyecto-form-label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 720px) {
+  .proyecto-card-acciones {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .proyecto-paso-form input,
+  .proyecto-paso-form select,
+  .proyecto-paso-form button {
+    flex: 1 1 100%;
+  }
+}
