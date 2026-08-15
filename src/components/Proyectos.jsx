@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { insertProyectoRemote, updateProyectoRemote, deleteProyectoRemote } from '../lib/queries/proyectos'
 import { insertProyectoPasoRemote, updateProyectoPasoRemote, deleteProyectoPasoRemote } from '../lib/queries/proyectoPasos'
 
@@ -66,7 +66,20 @@ export default function Proyectos({ proyectos = [], setProyectos, pasos = [], se
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState(initialForm)
   const [nuevoPaso, setNuevoPaso] = useState(initialPaso)
+  const formPasoRef = useRef(null)
   const hoy = todayISO()
+
+  // Al abrir un proyecto, el formulario de "añadir paso" se lleva al centro
+  // de la pantalla. Es por el <input type="date">: el calendario nativo se
+  // abre hacia abajo, y si el formulario se queda pegado al borde inferior
+  // de la ventana el calendario se salía y no se podía usar. Centrado
+  // siempre queda hueco debajo (el padding extra de .proyectos-lista cuando
+  // hay una tarjeta abierta es lo que permite hacer ese scroll aunque el
+  // proyecto sea el último de la lista).
+  useEffect(() => {
+    if (!abiertoId || !formPasoRef.current) return
+    formPasoRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [abiertoId])
 
   // Pasos agrupados por proyecto una sola vez, para no recorrer la lista
   // entera dentro del map de tarjetas (son pocos datos, pero así el avance
@@ -339,7 +352,7 @@ export default function Proyectos({ proyectos = [], setProyectos, pasos = [], se
                         </div>
                       ))}
 
-                      <form className="proyecto-paso-form" onSubmit={(e) => agregarPaso(e, proyecto.id)}>
+                      <form ref={formPasoRef} className="proyecto-paso-form" onSubmit={(e) => agregarPaso(e, proyecto.id)}>
                         <input
                           placeholder="Añadir un paso…"
                           value={nuevoPaso.texto}

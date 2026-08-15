@@ -4415,6 +4415,19 @@ textarea {
   padding: 0 20px 20px;
 }
 
+/* Hueco extra al final de la página SOLO cuando hay un proyecto desplegado.
+   El formulario de "añadir paso" lleva un <input type="date"> y el
+   calendario nativo se abre hacia abajo: si el proyecto abierto era el
+   último de la lista, el formulario quedaba pegado al final de la página y
+   el calendario se salía de la ventana sin poder hacer scroll. Con este
+   colchón sí hay recorrido, y Proyectos.jsx centra el formulario en
+   pantalla al abrir el proyecto. Va en .page-content y no en la lista para
+   que el hueco quede fuera de la tarjeta blanca (si no, se ve un pegote de
+   tarjeta vacía). Se quita solo al cerrar el proyecto. */
+.page-content:has(.proyecto-card-abierta) {
+  padding-bottom: 340px;
+}
+
 .proyecto-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
