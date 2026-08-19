@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Catálogo de objetivos por fase (ver supabase-sql/31_valoracion_v2.sql):
 // mismo patrón CRUD que sops.js. Cualquier persona logueada puede leer (los
@@ -37,7 +38,7 @@ export async function fetchObjetivosFase() {
 export async function insertObjetivoFaseRemote(objetivo) {
   if (!supabase) return
   const { error } = await supabase.from('objetivos_fase').insert(toRow(objetivo))
-  if (error) console.error('[objetivosFase] insert error:', error.message)
+  if (error) avisaErrorGuardado('[objetivosFase] insert error:', error)
 }
 
 export async function updateObjetivoFaseRemote(id, patch) {
@@ -45,11 +46,11 @@ export async function updateObjetivoFaseRemote(id, patch) {
   const row = toRow({ id, ...patch })
   delete row.id
   const { error } = await supabase.from('objetivos_fase').update(row).eq('id', id)
-  if (error) console.error('[objetivosFase] update error:', error.message)
+  if (error) avisaErrorGuardado('[objetivosFase] update error:', error)
 }
 
 export async function deleteObjetivoFaseRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('objetivos_fase').delete().eq('id', id)
-  if (error) console.error('[objetivosFase] delete error:', error.message)
+  if (error) avisaErrorGuardado('[objetivosFase] delete error:', error)
 }

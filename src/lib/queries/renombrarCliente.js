@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Renombrado en cascada del historial de un cliente. El panel enlaza el
 // historial de cada cliente por su NOMBRE (cliente_nombre) en vez de por un
@@ -28,6 +29,6 @@ export async function renombrarClienteEnHistorial(nombreViejo, nombreNuevo) {
     // chocara —porque ya existiera una fila con el nombre nuevo esa misma
     // semana— el update de esa tabla fallaría aquí y habría que fusionar a
     // mano como se hizo con Hilde; se registra el error para detectarlo.
-    if (error) console.error(`[renombrarCliente] ${tabla}:`, error.message)
+    if (error) avisaErrorGuardado(`[renombrarCliente] ${tabla}:`, error)
   }
 }

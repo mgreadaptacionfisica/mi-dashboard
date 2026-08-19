@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 function fromRow(row) {
   return {
@@ -64,7 +65,7 @@ export async function fetchRecontactos() {
 export async function insertRecontactoRemote(recontacto) {
   if (!supabase) return
   const { error } = await supabase.from('recontactos').insert(toRow(recontacto))
-  if (error) console.error('[recontactos] insert error:', error.message)
+  if (error) avisaErrorGuardado('[recontactos] insert error:', error)
 }
 
 export async function updateRecontactoRemote(id, patch) {
@@ -72,11 +73,11 @@ export async function updateRecontactoRemote(id, patch) {
   const row = toColumns(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('recontactos').update(row).eq('id', id)
-  if (error) console.error('[recontactos] update error:', error.message)
+  if (error) avisaErrorGuardado('[recontactos] update error:', error)
 }
 
 export async function deleteRecontactoRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('recontactos').delete().eq('id', id)
-  if (error) console.error('[recontactos] delete error:', error.message)
+  if (error) avisaErrorGuardado('[recontactos] delete error:', error)
 }

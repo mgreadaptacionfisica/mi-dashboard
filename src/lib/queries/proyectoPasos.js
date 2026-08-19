@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Pasos de cada proyecto (ver supabase-sql/55_proyectos.sql). Tabla aparte
 // de `proyectos` porque se marcan/desmarcan de uno en uno y así cada toque
@@ -43,7 +44,7 @@ export async function fetchProyectoPasos() {
 export async function insertProyectoPasoRemote(entrada) {
   if (!supabase) return
   const { error } = await supabase.from('proyecto_pasos').insert(toRow(entrada))
-  if (error) console.error('[proyectoPasos] insert error:', error.message)
+  if (error) avisaErrorGuardado('[proyectoPasos] insert error:', error)
 }
 
 export async function updateProyectoPasoRemote(id, patch) {
@@ -51,11 +52,11 @@ export async function updateProyectoPasoRemote(id, patch) {
   const row = toRow(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('proyecto_pasos').update(row).eq('id', id)
-  if (error) console.error('[proyectoPasos] update error:', error.message)
+  if (error) avisaErrorGuardado('[proyectoPasos] update error:', error)
 }
 
 export async function deleteProyectoPasoRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('proyecto_pasos').delete().eq('id', id)
-  if (error) console.error('[proyectoPasos] delete error:', error.message)
+  if (error) avisaErrorGuardado('[proyectoPasos] delete error:', error)
 }

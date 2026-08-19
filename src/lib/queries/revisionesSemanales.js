@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Check final del seguimiento semanal, POR CLIENTE (ver
 // supabase-sql/45_revisiones_semanales_cliente.sql). Se identifica por
@@ -44,5 +45,5 @@ export async function upsertRevisionSemanalRemote(revision) {
   const { error } = await supabase
     .from('revisiones_semanales_cliente')
     .upsert(toRow(revision), { onConflict: 'cliente_nombre,semana' })
-  if (error) console.error('[revisionesSemanales] upsert error:', error.message)
+  if (error) avisaErrorGuardado('[revisionesSemanales] upsert error:', error)
 }

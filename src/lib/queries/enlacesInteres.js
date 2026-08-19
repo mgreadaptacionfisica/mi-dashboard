@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Enlaces de interés: zona privada del admin (ver supabase-sql/50_enlaces_interes.sql)
 // para guardar enlaces que se usan a menudo (ej. el dashboard de un cliente)
@@ -35,7 +36,7 @@ export async function fetchEnlacesInteres() {
 export async function insertEnlaceInteresRemote(entrada) {
   if (!supabase) return
   const { error } = await supabase.from('enlaces_interes').insert(toRow(entrada))
-  if (error) console.error('[enlaces_interes] insert error:', error.message)
+  if (error) avisaErrorGuardado('[enlaces_interes] insert error:', error)
 }
 
 export async function updateEnlaceInteresRemote(id, patch) {
@@ -43,11 +44,11 @@ export async function updateEnlaceInteresRemote(id, patch) {
   const row = toRow(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('enlaces_interes').update(row).eq('id', id)
-  if (error) console.error('[enlaces_interes] update error:', error.message)
+  if (error) avisaErrorGuardado('[enlaces_interes] update error:', error)
 }
 
 export async function deleteEnlaceInteresRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('enlaces_interes').delete().eq('id', id)
-  if (error) console.error('[enlaces_interes] delete error:', error.message)
+  if (error) avisaErrorGuardado('[enlaces_interes] delete error:', error)
 }

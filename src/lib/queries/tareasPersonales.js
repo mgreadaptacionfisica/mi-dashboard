@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // "Mis tareas": lista de tareas personales, con fecha opcional y checkbox
 // de hecha/pendiente. Al principio era solo de Raúl (admin); ahora también
@@ -40,7 +41,7 @@ export async function fetchTareasPersonales() {
 export async function insertTareaRemote(entrada) {
   if (!supabase) return
   const { error } = await supabase.from('tareas_personales').insert(toRow(entrada))
-  if (error) console.error('[tareasPersonales] insert error:', error.message)
+  if (error) avisaErrorGuardado('[tareasPersonales] insert error:', error)
 }
 
 export async function updateTareaRemote(id, patch) {
@@ -48,11 +49,11 @@ export async function updateTareaRemote(id, patch) {
   const row = toRow(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('tareas_personales').update(row).eq('id', id)
-  if (error) console.error('[tareasPersonales] update error:', error.message)
+  if (error) avisaErrorGuardado('[tareasPersonales] update error:', error)
 }
 
 export async function deleteTareaRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('tareas_personales').delete().eq('id', id)
-  if (error) console.error('[tareasPersonales] delete error:', error.message)
+  if (error) avisaErrorGuardado('[tareasPersonales] delete error:', error)
 }

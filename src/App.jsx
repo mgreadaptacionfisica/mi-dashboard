@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import Onboarding from './components/Onboarding'
 import PanelLogin from './components/PanelLogin'
+import AvisoErrores from './components/AvisoErrores'
 import { getSession, onAuthChange, signOut, getRole, seccionesDelRol } from './lib/auth'
 import { activarDemo } from './lib/demoGuard'
 import { enmascararTodo } from './utils/modoDemo'
@@ -525,6 +526,9 @@ function InternalApp({ session, rol, onLogout }) {
         )}
         {renderView()}
       </div>
+      {/* Avisos de "esto no se ha guardado": van fuera de main-content para
+          que floten sobre cualquier sección (ver lib/avisosGuardado.js). */}
+      <AvisoErrores />
     </div>
   )
 }

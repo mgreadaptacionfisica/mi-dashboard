@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // "Proyectos": organización de proyectos del admin (ver
 // supabase-sql/55_proyectos.sql). Cada proyecto es la cabecera; los pasos
@@ -45,7 +46,7 @@ export async function fetchProyectos() {
 export async function insertProyectoRemote(entrada) {
   if (!supabase) return
   const { error } = await supabase.from('proyectos').insert(toRow(entrada))
-  if (error) console.error('[proyectos] insert error:', error.message)
+  if (error) avisaErrorGuardado('[proyectos] insert error:', error)
 }
 
 export async function updateProyectoRemote(id, patch) {
@@ -53,7 +54,7 @@ export async function updateProyectoRemote(id, patch) {
   const row = toRow(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('proyectos').update(row).eq('id', id)
-  if (error) console.error('[proyectos] update error:', error.message)
+  if (error) avisaErrorGuardado('[proyectos] update error:', error)
 }
 
 // Los pasos se van con el proyecto por el `on delete cascade` de la
@@ -62,5 +63,5 @@ export async function updateProyectoRemote(id, patch) {
 export async function deleteProyectoRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('proyectos').delete().eq('id', id)
-  if (error) console.error('[proyectos] delete error:', error.message)
+  if (error) avisaErrorGuardado('[proyectos] delete error:', error)
 }

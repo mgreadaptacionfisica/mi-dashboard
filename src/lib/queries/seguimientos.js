@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 function fromRow(row) {
   return {
@@ -41,5 +42,5 @@ export async function upsertSeguimientoRemote(registro) {
   const { error } = await supabase
     .from('seguimientos')
     .upsert(toRow(registro), { onConflict: 'cliente_nombre,semana' })
-  if (error) console.error('[seguimientos] upsert error:', error.message)
+  if (error) avisaErrorGuardado('[seguimientos] upsert error:', error)
 }

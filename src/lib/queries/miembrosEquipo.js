@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 function fromRow(row) {
   return {
@@ -46,7 +47,7 @@ export async function fetchMiembrosEquipo() {
 export async function insertMiembroRemote(persona, area) {
   if (!supabase) return
   const { error } = await supabase.from('miembros_equipo').insert(toRow(persona, area))
-  if (error) console.error('[miembrosEquipo] insert error:', error.message)
+  if (error) avisaErrorGuardado('[miembrosEquipo] insert error:', error)
 }
 
 export async function updateMiembroRemote(id, patch, area) {
@@ -54,17 +55,17 @@ export async function updateMiembroRemote(id, patch, area) {
   const row = toRow({ id, ...patch }, area)
   delete row.id
   const { error } = await supabase.from('miembros_equipo').update(row).eq('id', id)
-  if (error) console.error('[miembrosEquipo] update error:', error.message)
+  if (error) avisaErrorGuardado('[miembrosEquipo] update error:', error)
 }
 
 export async function deleteMiembroRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('miembros_equipo').delete().eq('id', id)
-  if (error) console.error('[miembrosEquipo] delete error:', error.message)
+  if (error) avisaErrorGuardado('[miembrosEquipo] delete error:', error)
 }
 
 export async function deleteAllMiembrosRemote() {
   if (!supabase) return
   const { error } = await supabase.from('miembros_equipo').delete().neq('id', '')
-  if (error) console.error('[miembrosEquipo] deleteAll error:', error.message)
+  if (error) avisaErrorGuardado('[miembrosEquipo] deleteAll error:', error)
 }

@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 const PUNTO_VACIO = { hecho: false, fecha: null, comentario: '' }
 
@@ -39,5 +40,5 @@ export async function upsertContactoSemanalRemote(registro) {
   const { error } = await supabase
     .from('contactos_semanales')
     .upsert(toRow(registro), { onConflict: 'cliente_nombre,semana' })
-  if (error) console.error('[contactosSemanales] upsert error:', error.message)
+  if (error) avisaErrorGuardado('[contactosSemanales] upsert error:', error)
 }

@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // CRUD de tarifas_pasarela — ver supabase-sql/39_tarifas_pasarela.sql y
 // utils/comisionesHelpers.js.
@@ -41,7 +42,7 @@ export async function fetchTarifasPasarela() {
 export async function insertTarifaPasarelaRemote(entrada) {
   if (!supabase) return
   const { error } = await supabase.from('tarifas_pasarela').insert(toRow(entrada))
-  if (error) console.error('[tarifasPasarela] insert error:', error.message)
+  if (error) avisaErrorGuardado('[tarifasPasarela] insert error:', error)
 }
 
 export async function updateTarifaPasarelaRemote(id, patch) {
@@ -49,11 +50,11 @@ export async function updateTarifaPasarelaRemote(id, patch) {
   const row = toRow(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('tarifas_pasarela').update(row).eq('id', id)
-  if (error) console.error('[tarifasPasarela] update error:', error.message)
+  if (error) avisaErrorGuardado('[tarifasPasarela] update error:', error)
 }
 
 export async function deleteTarifaPasarelaRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('tarifas_pasarela').delete().eq('id', id)
-  if (error) console.error('[tarifasPasarela] delete error:', error.message)
+  if (error) avisaErrorGuardado('[tarifasPasarela] delete error:', error)
 }

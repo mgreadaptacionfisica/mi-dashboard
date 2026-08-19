@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Las 4 tablas de Finanzas comparten forma base (id, fecha, concepto,
 // importe, notas). Las dos "de empresa" añaden un origen para distinguir
@@ -69,7 +70,7 @@ export async function fetchFinanzas(tabla) {
 export async function insertFinanzaRemote(tabla, entrada) {
   if (!supabase) return
   const { error } = await supabase.from(tabla).insert(toRow(tabla, entrada))
-  if (error) console.error(`[finanzas] insert ${tabla} error:`, error.message)
+  if (error) avisaErrorGuardado(`[finanzas] insert ${tabla} error:`, error)
 }
 
 export async function updateFinanzaRemote(tabla, id, patch) {
@@ -77,11 +78,11 @@ export async function updateFinanzaRemote(tabla, id, patch) {
   const row = toRow(tabla, patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from(tabla).update(row).eq('id', id)
-  if (error) console.error(`[finanzas] update ${tabla} error:`, error.message)
+  if (error) avisaErrorGuardado(`[finanzas] update ${tabla} error:`, error)
 }
 
 export async function deleteFinanzaRemote(tabla, id) {
   if (!supabase || !id) return
   const { error } = await supabase.from(tabla).delete().eq('id', id)
-  if (error) console.error(`[finanzas] delete ${tabla} error:`, error.message)
+  if (error) avisaErrorGuardado(`[finanzas] delete ${tabla} error:`, error)
 }

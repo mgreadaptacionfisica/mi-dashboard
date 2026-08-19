@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // ---------- ads_kpi (identificado por mes + semana) ----------
 
@@ -49,7 +50,7 @@ export async function fetchAdsKpi() {
 export async function upsertAdsKpiRemote(registro) {
   if (!supabase) return
   const { error } = await supabase.from('ads_kpi').upsert(toRowKpi(registro), { onConflict: 'mes,semana' })
-  if (error) console.error('[ads] upsert ads_kpi error:', error.message)
+  if (error) avisaErrorGuardado('[ads] upsert ads_kpi error:', error)
 }
 
 // ---------- ads_notas_mensuales (identificado por mes) ----------
@@ -67,7 +68,7 @@ export async function fetchAdsNotas() {
 export async function upsertAdsNotaRemote(mes, notas) {
   if (!supabase) return
   const { error } = await supabase.from('ads_notas_mensuales').upsert({ mes, notas }, { onConflict: 'mes' })
-  if (error) console.error('[ads] upsert ads_notas error:', error.message)
+  if (error) avisaErrorGuardado('[ads] upsert ads_notas error:', error)
 }
 
 // ---------- anuncios (id propio, generado en el front) ----------
@@ -95,17 +96,17 @@ export async function fetchAnuncios() {
 export async function insertAnuncioRemote(anuncio) {
   if (!supabase) return
   const { error } = await supabase.from('anuncios').insert(anuncio)
-  if (error) console.error('[ads] insert anuncio error:', error.message)
+  if (error) avisaErrorGuardado('[ads] insert anuncio error:', error)
 }
 
 export async function updateAnuncioRemote(id, patch) {
   if (!supabase || !id) return
   const { error } = await supabase.from('anuncios').update(patch).eq('id', id)
-  if (error) console.error('[ads] update anuncio error:', error.message)
+  if (error) avisaErrorGuardado('[ads] update anuncio error:', error)
 }
 
 export async function deleteAnuncioRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('anuncios').delete().eq('id', id)
-  if (error) console.error('[ads] delete anuncio error:', error.message)
+  if (error) avisaErrorGuardado('[ads] delete anuncio error:', error)
 }

@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Puente entre las filas de Supabase (snake_case) y la forma que ya usa
 // el resto del panel (camelCase, igual que src/data/sops.js) para no tener
@@ -40,7 +41,7 @@ export async function fetchSops() {
 export async function insertSopRemote(sop) {
   if (!supabase) return
   const { error } = await supabase.from('sops').insert(toRow(sop))
-  if (error) console.error('[sops] insertSopRemote error:', error.message)
+  if (error) avisaErrorGuardado('[sops] insertSopRemote error:', error)
 }
 
 export async function updateSopRemote(id, patch) {
@@ -48,11 +49,11 @@ export async function updateSopRemote(id, patch) {
   const row = toRow({ id, ...patch })
   delete row.id
   const { error } = await supabase.from('sops').update(row).eq('id', id)
-  if (error) console.error('[sops] updateSopRemote error:', error.message)
+  if (error) avisaErrorGuardado('[sops] updateSopRemote error:', error)
 }
 
 export async function deleteSopRemote(id) {
   if (!supabase) return
   const { error } = await supabase.from('sops').delete().eq('id', id)
-  if (error) console.error('[sops] deleteSopRemote error:', error.message)
+  if (error) avisaErrorGuardado('[sops] deleteSopRemote error:', error)
 }

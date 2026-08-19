@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 function fromRow(row) {
   return {
@@ -35,11 +36,11 @@ export async function fetchMensajesEquipo() {
 export async function insertMensajeRemote(msg) {
   if (!supabase) return
   const { error } = await supabase.from('mensajes_equipo').insert(toRow(msg))
-  if (error) console.error('[mensajesEquipo] insert error:', error.message)
+  if (error) avisaErrorGuardado('[mensajesEquipo] insert error:', error)
 }
 
 export async function deleteMensajeRemote(id) {
   if (!supabase) return
   const { error } = await supabase.from('mensajes_equipo').delete().eq('id', id)
-  if (error) console.error('[mensajesEquipo] delete error:', error.message)
+  if (error) avisaErrorGuardado('[mensajesEquipo] delete error:', error)
 }

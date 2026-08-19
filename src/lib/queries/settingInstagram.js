@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 function fromRow(row) {
   return {
@@ -51,11 +52,11 @@ export async function upsertSettingRemote(registro, fechaAnterior) {
   const { error } = await supabase
     .from('setting_instagram')
     .upsert(toRow(registro), { onConflict: 'fecha' })
-  if (error) console.error('[settingInstagram] upsert error:', error.message)
+  if (error) avisaErrorGuardado('[settingInstagram] upsert error:', error)
 }
 
 export async function deleteSettingRemote(fecha) {
   if (!supabase || !fecha) return
   const { error } = await supabase.from('setting_instagram').delete().eq('fecha', fecha)
-  if (error) console.error('[settingInstagram] delete error:', error.message)
+  if (error) avisaErrorGuardado('[settingInstagram] delete error:', error)
 }

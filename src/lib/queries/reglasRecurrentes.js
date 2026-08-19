@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // CRUD de reglas_recurrentes (ver supabase-sql/37_reglas_recurrentes.sql y
 // utils/recurrenciaHelpers.js para la lógica de generación de periodos).
@@ -45,7 +46,7 @@ export async function fetchReglasRecurrentes() {
 export async function insertReglaRecurrenteRemote(entrada) {
   if (!supabase) return
   const { error } = await supabase.from('reglas_recurrentes').insert(toRow(entrada))
-  if (error) console.error('[reglasRecurrentes] insert error:', error.message)
+  if (error) avisaErrorGuardado('[reglasRecurrentes] insert error:', error)
 }
 
 export async function updateReglaRecurrenteRemote(id, patch) {
@@ -53,11 +54,11 @@ export async function updateReglaRecurrenteRemote(id, patch) {
   const row = toRow(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('reglas_recurrentes').update(row).eq('id', id)
-  if (error) console.error('[reglasRecurrentes] update error:', error.message)
+  if (error) avisaErrorGuardado('[reglasRecurrentes] update error:', error)
 }
 
 export async function deleteReglaRecurrenteRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('reglas_recurrentes').delete().eq('id', id)
-  if (error) console.error('[reglasRecurrentes] delete error:', error.message)
+  if (error) avisaErrorGuardado('[reglasRecurrentes] delete error:', error)
 }

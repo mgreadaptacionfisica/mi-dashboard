@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Archivo de manuales/documentos de la agencia (ver supabase-sql/20_manuales.sql):
 // cualquier rol logueado puede leerlos, solo admin puede añadir/editar/borrar.
@@ -33,7 +34,7 @@ export async function fetchManuales() {
 export async function insertManualRemote(entrada) {
   if (!supabase) return
   const { error } = await supabase.from('manuales').insert(toRow(entrada))
-  if (error) console.error('[manuales] insert error:', error.message)
+  if (error) avisaErrorGuardado('[manuales] insert error:', error)
 }
 
 export async function updateManualRemote(id, patch) {
@@ -41,11 +42,11 @@ export async function updateManualRemote(id, patch) {
   const row = toRow(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('manuales').update(row).eq('id', id)
-  if (error) console.error('[manuales] update error:', error.message)
+  if (error) avisaErrorGuardado('[manuales] update error:', error)
 }
 
 export async function deleteManualRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('manuales').delete().eq('id', id)
-  if (error) console.error('[manuales] delete error:', error.message)
+  if (error) avisaErrorGuardado('[manuales] delete error:', error)
 }

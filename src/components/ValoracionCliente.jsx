@@ -234,6 +234,12 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [expandido, setExpandido] = useState(null)
+  // Estado del guardado: la valoración es el único formulario del panel que
+  // ESPERA a Supabase antes de darse por guardado (ver insertValoracionRemote).
+  // Se hizo así después de perder 12 días de valoraciones por un error que
+  // solo salía por consola — aquí el fallo se ve y el formulario no se cierra.
+  const [guardando, setGuardando] = useState(false)
+  const [errorGuardado, setErrorGuardado] = useState(null)
   const [formData, setFormData] = useState({ fecha: todayISO(), ...valoracionVacia() })
 
   const historial = valoraciones
@@ -355,6 +361,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
       return
     }
     setEditingId(null)
+    setErrorGuardado(null)
     // Las preferencias de entrenamiento (días, material, gustos) casi nunca
     // cambian de una valoración a otra, así que se arrastran automáticamente
     // de la última — el técnico solo las edita si algo ha cambiado.
@@ -385,6 +392,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     base.objetivosCumplidos = valoracion.objetivosCumplidos || []
     setEditingId(valoracion.id)
     setFormData(base)
+    setErrorGuardado(null)
     setShowForm(true)
   }
 
@@ -414,18 +422,34 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
   const ddForm = formData.diagnosticoDiferencial || {}
   const ddConclusionForm = ddConclusion(ddForm)
 
-  const handleSubmit = (event) => {
+  // Primero se guarda en Supabase y SOLO si va bien se actualiza la pantalla
+  // y se cierra el formulario. Al revés (pintar y guardar a la vez, que es lo
+  // que hacía antes) el técnico veía su valoración aunque la base de datos la
+  // hubiera rechazado, y no se enteraba hasta recargar.
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    if (typeof setValoraciones !== 'function') return
+    if (typeof setValoraciones !== 'function' || guardando) return
+    setGuardando(true)
+    setErrorGuardado(null)
+    let error = null
+    let patch = null
+    let nueva = null
     if (editingId) {
-      const patch = { ...formData, clienteNombre: cliente.Nombre }
-      setValoraciones((prev) => prev.map((v) => (v.id === editingId ? { ...v, ...patch } : v)))
-      updateValoracionRemote(editingId, patch)
+      patch = { ...formData, clienteNombre: cliente.Nombre }
+      error = await updateValoracionRemote(editingId, patch)
     } else {
-      const nueva = { id: `val-${Date.now()}`, clienteNombre: cliente.Nombre, ...formData }
-      setValoraciones((prev) => [...prev, nueva])
-      insertValoracionRemote(nueva)
+      nueva = { id: `val-${Date.now()}`, clienteNombre: cliente.Nombre, ...formData }
+      error = await insertValoracionRemote(nueva)
     }
+    setGuardando(false)
+    if (error) {
+      // El formulario se queda abierto con todo lo escrito: así no se pierde
+      // el trabajo y se puede reintentar cuando el problema esté resuelto.
+      setErrorGuardado(error.message || 'La base de datos ha rechazado la valoración.')
+      return
+    }
+    if (patch) setValoraciones((prev) => prev.map((v) => (v.id === editingId ? { ...v, ...patch } : v)))
+    else setValoraciones((prev) => [...prev, nueva])
     setShowForm(false)
     setEditingId(null)
   }
@@ -869,9 +893,22 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                 />
               </label>
 
+              {errorGuardado && (
+                <div className="valoracion-error-guardado" role="alert">
+                  <strong>⚠️ No se ha podido guardar</strong>
+                  <p>
+                    La valoración <strong>no está guardada</strong> y se perderá si cierras esta ventana.
+                    Vuelve a intentarlo; si sigue fallando, avisa a Raúl con este mensaje:
+                  </p>
+                  <code>{errorGuardado}</code>
+                </div>
+              )}
+
               <div className="modal-actions">
                 <button type="button" className="secondary-action" onClick={() => setShowForm(false)}>Cancelar</button>
-                <button type="submit" className="primary-action">Guardar valoración</button>
+                <button type="submit" className="primary-action" disabled={guardando}>
+                  {guardando ? 'Guardando…' : 'Guardar valoración'}
+                </button>
               </div>
             </form>
           </div>

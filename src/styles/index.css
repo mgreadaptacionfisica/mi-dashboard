@@ -4651,3 +4651,92 @@ textarea {
     flex: 1 1 100%;
   }
 }
+
+/* ==========================================================================
+   Avisos de guardado fallido (components/AvisoErrores.jsx + lib/avisosGuardado.js)
+   Flotan abajo a la derecha sobre cualquier sección. En rojo y sin
+   autocierre a propósito: significan pérdida de datos, no un detalle.
+   ========================================================================== */
+.avisos-guardado {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(400px, calc(100vw - 40px));
+}
+
+.aviso-guardado {
+  position: relative;
+  background: #fff;
+  border: 2px solid var(--color-danger);
+  border-left-width: 6px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  padding: 14px 34px 14px 16px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.aviso-guardado strong { color: var(--color-danger); }
+
+.aviso-guardado p {
+  margin: 6px 0 8px;
+  line-height: 1.45;
+}
+
+.aviso-guardado code {
+  display: block;
+  background: #fef2f2;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #991b1b;
+  word-break: break-word;
+}
+
+.aviso-guardado-cerrar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  padding: 4px;
+}
+
+.aviso-guardado-cerrar:hover { color: var(--color-text-primary); }
+
+/* El mismo aviso, pero dentro del formulario de valoración: ahí el guardado
+   sí espera respuesta, así que el formulario se queda abierto (ver
+   ValoracionCliente.jsx) y el error se explica junto a los botones. */
+.valoracion-error-guardado {
+  background: #fef2f2;
+  border: 1px solid var(--color-danger);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+
+.valoracion-error-guardado strong { color: var(--color-danger); }
+
+.valoracion-error-guardado p {
+  margin: 6px 0 8px;
+  line-height: 1.45;
+}
+
+.valoracion-error-guardado code {
+  display: block;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #991b1b;
+  word-break: break-word;
+}

@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Nota: la columna "dinamometria" sigue existiendo en la tabla (datos
 // históricos de cuando se usaba), pero ya no se lee ni se escribe desde
@@ -72,22 +73,29 @@ export async function fetchValoraciones() {
   return data.map(fromRow)
 }
 
+// insert/update devuelven el error (o null si fue bien) porque
+// ValoracionCliente los espera: si Supabase rechaza la valoración, el modal
+// se queda abierto con los datos puestos en vez de cerrarse como si se
+// hubiera guardado. El resto de tablas siguen siendo "dispara y olvida" y se
+// conforman con el aviso flotante.
 export async function insertValoracionRemote(valoracion) {
-  if (!supabase) return
+  if (!supabase) return null
   const { error } = await supabase.from('valoraciones_clientes').insert(toRow(valoracion))
-  if (error) console.error('[valoracionesClientes] insert error:', error.message)
+  if (error) return avisaErrorGuardado('[valoracionesClientes] insert error:', error)
+  return null
 }
 
 export async function updateValoracionRemote(id, patch) {
-  if (!supabase || !id) return
+  if (!supabase || !id) return null
   const row = toRow({ id, ...patch })
   delete row.id
   const { error } = await supabase.from('valoraciones_clientes').update(row).eq('id', id)
-  if (error) console.error('[valoracionesClientes] update error:', error.message)
+  if (error) return avisaErrorGuardado('[valoracionesClientes] update error:', error)
+  return null
 }
 
 export async function deleteValoracionRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('valoraciones_clientes').delete().eq('id', id)
-  if (error) console.error('[valoracionesClientes] delete error:', error.message)
+  if (error) avisaErrorGuardado('[valoracionesClientes] delete error:', error)
 }

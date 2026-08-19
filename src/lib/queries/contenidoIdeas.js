@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 function fromRow(row) {
   return {
@@ -50,7 +51,7 @@ export async function insertIdeaRemote(idea) {
   if (!supabase) return
   const row = { id: idea.id, ...toColumns(idea) }
   const { error } = await supabase.from('contenido_ideas').insert(row)
-  if (error) console.error('[contenidoIdeas] insert error:', error.message)
+  if (error) avisaErrorGuardado('[contenidoIdeas] insert error:', error)
 }
 
 export async function updateIdeaRemote(id, patch) {
@@ -58,11 +59,11 @@ export async function updateIdeaRemote(id, patch) {
   const row = toColumns(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('contenido_ideas').update(row).eq('id', id)
-  if (error) console.error('[contenidoIdeas] update error:', error.message)
+  if (error) avisaErrorGuardado('[contenidoIdeas] update error:', error)
 }
 
 export async function deleteIdeaRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('contenido_ideas').delete().eq('id', id)
-  if (error) console.error('[contenidoIdeas] delete error:', error.message)
+  if (error) avisaErrorGuardado('[contenidoIdeas] delete error:', error)
 }

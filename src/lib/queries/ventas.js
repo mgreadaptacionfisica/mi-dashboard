@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 function fromRow(row) {
   return {
@@ -91,7 +92,7 @@ export async function insertLeadRemote(lead) {
   if (!supabase) return
   const row = { id: lead.id, ...toColumns(lead) }
   const { error } = await supabase.from('ventas').insert(row)
-  if (error) console.error('[ventas] insert error:', error.message)
+  if (error) avisaErrorGuardado('[ventas] insert error:', error)
 }
 
 // patch va en camelCase (igual que se usa internamente en Ventas.jsx),
@@ -101,13 +102,13 @@ export async function updateLeadRemote(id, patch) {
   const row = toColumns(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('ventas').update(row).eq('id', id)
-  if (error) console.error('[ventas] update error:', error.message)
+  if (error) avisaErrorGuardado('[ventas] update error:', error)
 }
 
 export async function deleteLeadRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('ventas').delete().eq('id', id)
-  if (error) console.error('[ventas] delete error:', error.message)
+  if (error) avisaErrorGuardado('[ventas] delete error:', error)
 }
 
 // Informe prellamada (PDF de ZeroChats, Calendly...) adjunto a un lead.
@@ -120,7 +121,7 @@ export async function uploadInformePrellamada(leadId, file) {
   const path = `${leadId}/informe-${Date.now()}.${extension}`
   const { error } = await supabase.storage.from('informes-leads').upload(path, file, { upsert: true })
   if (error) {
-    console.error('[ventas] upload informe error:', error.message)
+    avisaErrorGuardado('[ventas] subir informe prellamada error:', error)
     return null
   }
   return path

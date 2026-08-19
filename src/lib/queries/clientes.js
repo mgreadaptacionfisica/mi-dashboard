@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { avisaErrorGuardado } from '../avisosGuardado'
 
 // A diferencia del resto de módulos, los objetos "cliente" que usa el panel
 // no están en camelCase: usan las claves tal cual vienen del CSV original
@@ -102,7 +103,7 @@ export async function insertClienteRemote(cliente) {
   if (!supabase || !cliente.id) return
   const row = { id: cliente.id, ...toColumns(cliente) }
   const { error } = await supabase.from('clientes').insert(row)
-  if (error) console.error('[clientes] insert error:', error.message)
+  if (error) avisaErrorGuardado('[clientes] insert error:', error)
 }
 
 // patch usa las mismas claves que el objeto cliente en memoria (Nombre,
@@ -112,11 +113,11 @@ export async function updateClienteRemote(id, patch) {
   const row = toColumns(patch)
   if (Object.keys(row).length === 0) return
   const { error } = await supabase.from('clientes').update(row).eq('id', id)
-  if (error) console.error('[clientes] update error:', error.message)
+  if (error) avisaErrorGuardado('[clientes] update error:', error)
 }
 
 export async function deleteClienteRemote(id) {
   if (!supabase || !id) return
   const { error } = await supabase.from('clientes').delete().eq('id', id)
-  if (error) console.error('[clientes] delete error:', error.message)
+  if (error) avisaErrorGuardado('[clientes] delete error:', error)
 }
