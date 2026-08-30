@@ -6,6 +6,7 @@ import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionClient
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { insertFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
 import { actividadTecnico, seguimientoTecnico, contactoTecnico, mesActualISO, mesLabel } from '../utils/equipoHelpers'
+import { calcularComisionMes, tieneTramos, resumenTramos } from '../utils/comisionesCloser'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -49,7 +50,12 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, on
         )}
         {esCloser(persona) && (
           <>
-            <p><strong>Comisión:</strong> {persona.comision != null ? `${persona.comision}%` : 'Sin definir'}</p>
+            <p>
+              <strong>Comisión:</strong>{' '}
+              {tieneTramos(persona)
+                ? `por tramos — ${resumenTramos(persona)}`
+                : (persona.comision != null ? `${persona.comision}%` : 'Sin definir')}
+            </p>
             <p><strong>Fijo mensual:</strong> {persona.fijo ? `${persona.fijo}€` : 'Sin definir'}</p>
           </>
         )}
@@ -64,6 +70,17 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, on
             <span>Facturado este mes</span>
             <strong>{comisionInfo.facturadoMes.toLocaleString('es-ES')}€</strong>
           </div>
+          {/* Con tramos se enseña de dónde sale la comisión (cuántas ventas
+              van a cada %), que si no parece un número sacado de la manga. */}
+          {comisionInfo.porTramo.map((t) => (
+            <div className="team-commission-row team-commission-tramo" key={t.desde}>
+              <span>
+                Ventas {t.hasta ? `${t.desde}-${t.hasta}` : `${t.desde}+`} · {t.porcentaje}%
+                {' '}({t.ventas} · {t.facturado.toLocaleString('es-ES')}€)
+              </span>
+              <strong>{t.comision.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</strong>
+            </div>
+          ))}
           <div className="team-commission-row">
             <span>Comisión</span>
             <strong>{comisionInfo.comisionMes.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</strong>
@@ -72,6 +89,12 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, on
             <span>Fijo mensual</span>
             <strong>{comisionInfo.fijo.toLocaleString('es-ES')}€</strong>
           </div>
+          {tieneTramos(persona) && (
+            <div className="team-commission-row team-commission-tramo">
+              <span>La siguiente venta ya va al</span>
+              <strong>{comisionInfo.porcentajeActual}%</strong>
+            </div>
+          )}
           <div className="team-commission-row team-commission-highlight">
             <span>Total a pagar este mes</span>
             <strong>{comisionInfo.totalMes.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</strong>
@@ -128,6 +151,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
     telefono: '',
     area: 'tecnico',
     comision: '',
+    tramos: [],
     fijo: '',
     carpetaDrive: '',
   })
@@ -185,10 +209,19 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
         lead.etapa === 'ganada' &&
         lead.venta?.fechaCierre?.startsWith(mesActual)
       )
-      const facturadoMes = ventasDelMes.reduce((sum, lead) => sum + (Number(lead.venta?.importe) || 0), 0)
-      const comisionMes = facturadoMes * ((Number(persona.comision) || 0) / 100)
+      // El cálculo vive en comisionesCloser: % plano o por tramos según lo
+      // que tenga configurado el closer en su ficha.
+      const calculo = calcularComisionMes(ventasDelMes, persona)
       const fijo = Number(persona.fijo) || 0
-      acc[persona.nombre] = { ventasMes: ventasDelMes.length, facturadoMes, comisionMes, fijo, totalMes: comisionMes + fijo }
+      acc[persona.nombre] = {
+        ventasMes: ventasDelMes.length,
+        facturadoMes: calculo.facturado,
+        comisionMes: calculo.comision,
+        porTramo: calculo.porTramo,
+        porcentajeActual: calculo.porcentajeActual,
+        fijo,
+        totalMes: calculo.comision + fijo,
+      }
       return acc
     }, {})
   }, [team, ventas])
@@ -213,15 +246,18 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
       leads.forEach((lead) => {
         const mesAgenda = (lead.fechaAgenda || lead.creadoEn || '').slice(0, 7)
         if (mesAgenda) {
-          meses[mesAgenda] = meses[mesAgenda] || { leads: 0, llamadas: 0, ventas: 0, facturado: 0 }
+          meses[mesAgenda] = meses[mesAgenda] || { leads: 0, llamadas: 0, ventas: 0, facturado: 0, ganadas: [] }
           meses[mesAgenda].leads += 1
           if (lead.resultadoLlamada === 'realizada') meses[mesAgenda].llamadas += 1
         }
         if (lead.etapa === 'ganada' && lead.venta?.fechaCierre) {
           const mesCierre = lead.venta.fechaCierre.slice(0, 7)
-          meses[mesCierre] = meses[mesCierre] || { leads: 0, llamadas: 0, ventas: 0, facturado: 0 }
+          meses[mesCierre] = meses[mesCierre] || { leads: 0, llamadas: 0, ventas: 0, facturado: 0, ganadas: [] }
           meses[mesCierre].ventas += 1
           meses[mesCierre].facturado += Number(lead.venta.importe) || 0
+          // Se guardan los leads ganados del mes porque con tramos no basta
+          // con el total facturado: hay que numerar las ventas una a una.
+          meses[mesCierre].ganadas.push(lead)
         }
       })
 
@@ -229,7 +265,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
         .sort((a, b) => b.localeCompare(a))
         .map((mes) => {
           const datos = meses[mes]
-          const comision = datos.facturado * ((Number(persona.comision) || 0) / 100)
+          const comision = calcularComisionMes(datos.ganadas, persona).comision
           const fijo = Number(persona.fijo) || 0
           return { mes, ...datos, comision, fijo, total: comision + fijo }
         })
@@ -338,6 +374,32 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
     }
   }
 
+  // Tramos de comisión (solo closers). El primer tramo siempre arranca en la
+  // venta 1; los siguientes los pone Raúl (ej.: desde la 10, al 12%).
+  const addTramo = () => {
+    setFormData((prev) => {
+      const primero = prev.tramos.length === 0
+      return {
+        ...prev,
+        tramos: [...prev.tramos, {
+          desde: primero ? '1' : '',
+          porcentaje: primero ? (prev.comision || '') : '',
+        }],
+      }
+    })
+  }
+
+  const updateTramo = (index, campo, valor) => {
+    setFormData((prev) => ({
+      ...prev,
+      tramos: prev.tramos.map((t, i) => (i === index ? { ...t, [campo]: valor } : t)),
+    }))
+  }
+
+  const removeTramo = (index) => {
+    setFormData((prev) => ({ ...prev, tramos: prev.tramos.filter((_, i) => i !== index) }))
+  }
+
   const handleSubmit = (event) => {
     event.preventDefault()
     const base = {
@@ -347,6 +409,13 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
       telefono: formData.telefono || '+34 600 000 000',
       ...(formData.area === 'ventas' ? {
         comision: formData.comision === '' ? undefined : Number(formData.comision),
+        // Tramos: se tiran las filas a medio rellenar y se ordenan por el nº
+        // de venta en el que empiezan, para que el orden de la ficha no dependa
+        // de en qué orden los haya escrito Raúl.
+        tramosComision: formData.tramos
+          .filter((t) => t.desde !== '' && t.porcentaje !== '')
+          .map((t) => ({ desde: Number(t.desde), porcentaje: Number(t.porcentaje) }))
+          .sort((a, b) => a.desde - b.desde),
         fijo: formData.fijo === '' ? undefined : Number(formData.fijo),
       } : {}),
       ...(formData.area === 'contenido' ? { carpetaDrive: formData.carpetaDrive || '' } : {}),
@@ -371,13 +440,13 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
       insertMiembroRemote(miembroActualizado, formData.area)
     }
 
-    setFormData({ nombre: '', rol: '', email: '', telefono: '', area: 'tecnico', comision: '', fijo: '', carpetaDrive: '' })
+    setFormData({ nombre: '', rol: '', email: '', telefono: '', area: 'tecnico', comision: '', tramos: [], fijo: '', carpetaDrive: '' })
     setEditingMember(null)
     setShowModal(false)
   }
 
   const openNewMemberModal = (area = 'tecnico') => {
-    setFormData({ nombre: '', rol: '', email: '', telefono: '', area, comision: '', fijo: '', carpetaDrive: '' })
+    setFormData({ nombre: '', rol: '', email: '', telefono: '', area, comision: '', tramos: [], fijo: '', carpetaDrive: '' })
     setEditingMember(null)
     setShowModal(true)
   }
@@ -391,6 +460,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
       telefono: persona.telefono,
       area,
       comision: persona.comision != null ? String(persona.comision) : '',
+      tramos: (persona.tramosComision || []).map((t) => ({ desde: String(t.desde ?? ''), porcentaje: String(t.porcentaje ?? '') })),
       fijo: persona.fijo != null ? String(persona.fijo) : '',
       carpetaDrive: persona.carpetaDrive || '',
     })
@@ -543,6 +613,39 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     value={formData.comision}
                     onChange={event => setFormData({ ...formData, comision: event.target.value })}
                   />
+                  <div className="tramos-box">
+                    <div className="tramos-header">
+                      <span className="tramos-title">Comisión por tramos (opcional)</span>
+                      <button type="button" className="secondary-action tramos-add" onClick={addTramo}>＋ Añadir tramo</button>
+                    </div>
+                    <p className="tramos-help">
+                      Sube el % según las ventas que lleve <strong>ese mes</strong>. Se paga por tramos:
+                      si el segundo empieza en la venta 10, las 9 primeras se cobran al % del primero
+                      y solo de la 10ª en adelante se cobra al del segundo. Si no pones ninguno, se usa
+                      el porcentaje de arriba para todas las ventas.
+                    </p>
+                    {formData.tramos.map((t, i) => (
+                      <div className="tramos-row" key={i}>
+                        <span className="tramos-label">Desde la venta nº</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={t.desde}
+                          onChange={event => updateTramo(i, 'desde', event.target.value)}
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          placeholder="%"
+                          value={t.porcentaje}
+                          onChange={event => updateTramo(i, 'porcentaje', event.target.value)}
+                        />
+                        <span className="tramos-label">%</span>
+                        <button type="button" className="tramos-del" title="Quitar tramo" onClick={() => removeTramo(i)}>🗑️</button>
+                      </div>
+                    ))}
+                  </div>
                   <input
                     type="number"
                     min="0"

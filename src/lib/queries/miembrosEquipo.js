@@ -9,6 +9,9 @@ function fromRow(row) {
     email: row.email || '',
     telefono: row.telefono || '',
     comision: row.comision,
+    // Tramos de comisión del closer (jsonb en Supabase). Puede venir null:
+    // quien no los use sigue con el % plano de `comision`.
+    tramosComision: Array.isArray(row.tramos_comision) ? row.tramos_comision : [],
     fijo: row.fijo,
     carpetaDrive: row.carpeta_drive || '',
   }
@@ -23,6 +26,7 @@ function toRow(persona, area) {
     telefono: persona.telefono || '',
     area,
     comision: persona.comision ?? null,
+    tramos_comision: (persona.tramosComision || []).length > 0 ? persona.tramosComision : null,
     fijo: persona.fijo ?? null,
     carpeta_drive: persona.carpetaDrive || '',
   }
