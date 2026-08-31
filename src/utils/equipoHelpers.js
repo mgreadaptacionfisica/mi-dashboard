@@ -47,6 +47,20 @@ export function mesActualISO() {
   return new Date().toISOString().slice(0, 7)
 }
 
+// Mes anterior a uno dado (2026-01 -> 2025-12).
+export function mesAnteriorISO(mesKey) {
+  const [y, m] = (mesKey || mesActualISO()).split('-').map(Number)
+  const d = new Date(y, m - 2, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+// Al equipo se le paga A MES VENCIDO: lo trabajado en agosto se abona a
+// principios de septiembre. Por eso el pago "en curso" no es el mes de hoy,
+// sino el anterior — el único que ya está cerrado y se puede liquidar.
+export function mesAPagarISO() {
+  return mesAnteriorISO(mesActualISO())
+}
+
 export function mesLabel(mesKey) {
   const [y, m] = (mesKey || '').split('-')
   const nombre = NOMBRES_MES[Number(m) - 1]

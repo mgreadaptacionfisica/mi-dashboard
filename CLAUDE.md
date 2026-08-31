@@ -77,6 +77,14 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
   ingreso en `ingresos_empresa` con id determinista `fin-plazo-{clienteId}-{n}` +
   la comisión de pasarela como gasto (ver `utils/comisionesHelpers.js`). El mismo
   esquema lo usa la venta con reserva y hay que mantenerlo para poder "deshacer".
+- **Pagos al equipo a MES VENCIDO**: lo trabajado en agosto se abona a
+  principios de septiembre. El botón "Marcar como pagado" (Equipo → ficha de
+  closer/técnico) liquida siempre el **mes anterior** (`mesAPagarISO()` en
+  `utils/equipoHelpers.js`) y coge el importe del **historial de ese mes**, no
+  del acumulado del mes en curso (son dos cifras distintas y se enseñan las
+  dos). En el gasto de `gastos_empresa`, `mes` = mes trabajado y `fecha` = día
+  real del pago; no coinciden a propósito, para que Finanzas impute el gasto al
+  mes en que sale el dinero. Mi Ficha enseña lo mismo en solo lectura.
 - **Hotmart/seQura**: una venta financiada se registra como UN cobro (Hotmart
   adelanta el grueso y libera el resto), no como plazos mensuales.
 - **Seguimiento y Valoración** (`ClientesEquipo.jsx`, sección `clientes-equipo`)

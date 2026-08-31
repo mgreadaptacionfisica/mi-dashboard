@@ -5,6 +5,7 @@ import {
   seguimientoTecnico,
   contactoTecnico,
   mesActualISO,
+  mesAPagarISO,
   mesLabel,
 } from '../utils/equipoHelpers'
 import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, resumenRevisionesSemana } from '../utils/seguimientoHelpers'
@@ -59,8 +60,14 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], contac
     )
   }, [actividad, revisionesSemanales, semanaActual])
 
-  const mesKey = mesActualISO()
-  const pagoRegistrado = miPersona && gastosEmpresa.find((g) => g.origen === 'equipo' && g.personaNombre === miPersona.nombre && g.mes === mesKey)
+  // El pago es a mes vencido: lo trabajado en agosto se cobra a principios de
+  // septiembre. Por eso aquí se enseña el mes ya cerrado (con su importe sacado
+  // del historial de ESE mes) y aparte lo que lleva acumulado el mes en curso.
+  const mesKey = mesAPagarISO()
+  const importeAPagar = actividad?.historial.find((h) => h.mes === mesKey)?.total || 0
+  const pagoBuscado = (mes) =>
+    miPersona && gastosEmpresa.find((g) => g.origen === 'equipo' && g.personaNombre === miPersona.nombre && g.mes === mes)
+  const pagoRegistrado = pagoBuscado(mesKey)
 
   return (
     <>
@@ -161,8 +168,12 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], contac
 
                 <div className="team-payment-box" style={{ marginTop: 20 }}>
                   <div>
-                    <p className="team-payment-label">Pago de {mesLabel(mesKey)}</p>
-                    <p className="team-payment-amount">{actividad.totalMes.toLocaleString('es-ES')}€</p>
+                    <p className="team-payment-label">Pago de {mesLabel(mesKey)} · a mes vencido</p>
+                    <p className="team-payment-amount">{importeAPagar.toLocaleString('es-ES')}€</p>
+                    <p className="team-activity-hint" style={{ margin: 0 }}>
+                      Se cobra en {mesLabel(mesActualISO())}. Lo que llevas este mes ({actividad.totalMes.toLocaleString('es-ES')}€)
+                      se paga el mes que viene.
+                    </p>
                   </div>
                   {pagoRegistrado ? (
                     <span className="status-pill status-activo">✅ Pagado el {pagoRegistrado.fecha}</span>
@@ -182,7 +193,9 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], contac
                     {actividad.historial.length === 0 && <p className="lead-log-empty">Sin historial todavía.</p>}
                     {actividad.historial.map((row) => (
                       <div className="team-history-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }} key={row.mes}>
-                        <span>{row.mes}</span>
+                        <span title={pagoBuscado(row.mes) ? 'Pagado' : 'Sin pagar'}>
+                          {row.mes}{pagoBuscado(row.mes) ? ' ✅' : ''}
+                        </span>
                         <span>{row.clientes}</span>
                         <span>{row.tarifa}€</span>
                         <strong>{row.total.toLocaleString('es-ES')}€</strong>

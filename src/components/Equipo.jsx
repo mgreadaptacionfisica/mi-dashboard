@@ -5,7 +5,7 @@ import { insertMiembroRemote, updateMiembroRemote, deleteMiembroRemote, deleteAl
 import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, semanaVacia, DIAS_SEMANA } from '../utils/seguimientoHelpers'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { insertFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
-import { actividadTecnico, seguimientoTecnico, contactoTecnico, mesActualISO, mesLabel } from '../utils/equipoHelpers'
+import { actividadTecnico, seguimientoTecnico, contactoTecnico, mesActualISO, mesAPagarISO, mesLabel } from '../utils/equipoHelpers'
 import { calcularComisionMes, tieneTramos, resumenTramos } from '../utils/comisionesCloser'
 
 function todayISO() {
@@ -30,7 +30,21 @@ const ETAPA_LABELS = {
 
 const SEGUIMIENTO_HELPERS = { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente }
 
-function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, onDelete, onDetail }) {
+function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, pagoVencido, onEdit, onDelete, onDetail }) {
+  // Al pagar a mes vencido conviven dos cifras: lo que lleva acumulado el mes
+  // en curso (que se cobrará el mes que viene) y lo que se le debe del mes ya
+  // cerrado, que es lo que toca abonar ahora. Se enseñan las dos para no
+  // confundirlas.
+  const filaVencido = pagoVencido ? (
+    <div className="team-commission-row team-commission-highlight">
+      <span>A pagar ahora · {mesLabel(pagoVencido.mes)}</span>
+      <strong>
+        {pagoVencido.importe.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€
+        {pagoVencido.pagado ? ' ✅' : ' ⏳'}
+      </strong>
+    </div>
+  ) : null
+
   return (
     <div className="team-card">
       <div className="team-card-header">
@@ -95,10 +109,11 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, on
               <strong>{comisionInfo.porcentajeActual}%</strong>
             </div>
           )}
-          <div className="team-commission-row team-commission-highlight">
-            <span>Total a pagar este mes</span>
+          <div className="team-commission-row">
+            <span>Acumulado del mes en curso</span>
             <strong>{comisionInfo.totalMes.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</strong>
           </div>
+          {filaVencido}
         </div>
       )}
       {pagoInfo && (
@@ -111,10 +126,11 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, onEdit, on
             <span>Tarifa aplicada</span>
             <strong>{pagoInfo.tarifaActual}€/cliente</strong>
           </div>
-          <div className="team-commission-row team-commission-highlight">
-            <span>Total a pagar este mes</span>
+          <div className="team-commission-row">
+            <span>Acumulado del mes en curso</span>
             <strong>{pagoInfo.totalMes.toLocaleString('es-ES')}€</strong>
           </div>
+          {filaVencido}
         </div>
       )}
       <div className="team-card-actions">
@@ -172,8 +188,11 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
   const contenidoCount = (team.contenido || []).length
 
   // Pagos al equipo (comisión+fijo de closers, tarifa de técnicos) registrados
-  // como gasto profesional. Se identifican por persona + mes para poder marcar
-  // o deshacer el pago de un mes concreto sin duplicar registros.
+  // como gasto profesional. Se identifican por persona + mes TRABAJADO para
+  // poder marcar o deshacer el pago de un mes concreto sin duplicar registros.
+  // Ojo: `mes` es el mes trabajado y `fecha` el día en que se paga de verdad;
+  // al ser a mes vencido no coinciden (agosto se abona en septiembre) y así
+  // Finanzas imputa el gasto al mes en que sale el dinero.
   const pagoRegistrado = (persona, mesKey) =>
     gastosEmpresa.find((g) => g.origen === 'equipo' && g.personaNombre === persona.nombre && g.mes === mesKey)
 
@@ -295,6 +314,34 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
       return acc
     }, {})
   }, [team, clientes])
+
+  // Mes que toca liquidar: se paga a mes vencido, así que en septiembre lo que
+  // se abona es agosto (ver mesAPagarISO en utils/equipoHelpers).
+  const mesAPagar = mesAPagarISO()
+
+  // Importe de un mes ya cerrado. Se saca del historial —que se recalcula en
+  // vivo con los datos de ESE mes— y no del acumulado del mes en curso, que es
+  // otra cifra distinta. Si un closer no tuvo movimiento no hay fila en el
+  // historial, pero el fijo se le paga igual.
+  const importeDelMes = (persona, mesKey) => {
+    if (esCloser(persona)) {
+      const fila = actividadPorCloser[persona.nombre]?.historial.find((h) => h.mes === mesKey)
+      return fila ? fila.total : (Number(persona.fijo) || 0)
+    }
+    const fila = actividadPorTecnico[persona.nombre]?.historial.find((h) => h.mes === mesKey)
+    return fila ? fila.total : 0
+  }
+
+  // Resumen del pago pendiente/hecho del mes vencido, para la tarjeta de cada
+  // persona (el CEO no cobra del equipo, así que se queda fuera).
+  const pagoVencidoDe = (persona) => {
+    if (esCEO(persona)) return null
+    return {
+      mes: mesAPagar,
+      importe: importeDelMes(persona, mesAPagar),
+      pagado: Boolean(pagoRegistrado(persona, mesAPagar)),
+    }
+  }
 
   // Resumen del seguimiento semanal por técnico: progreso de tareas revisadas
   // de la semana actual (por cliente y agregado) y última revisión registrada.
@@ -496,6 +543,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                 persona={persona}
                 assignedCount={clienteCount[persona.nombre] ?? 0}
                 pagoInfo={esCEO(persona) ? null : actividadPorTecnico[persona.nombre]}
+                pagoVencido={pagoVencidoDe(persona)}
                 onEdit={() => startEditMember('tecnico', index)}
                 onDelete={() => deleteMember('tecnico', index)}
                 onDetail={() => abrirDetalleTecnico(persona)}
@@ -521,6 +569,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                 key={`${persona.nombre}-${index}`}
                 persona={persona}
                 comisionInfo={esCloser(persona) && !esCEO(persona) ? comisionPorCloser[persona.nombre] : null}
+                pagoVencido={esCloser(persona) ? pagoVencidoDe(persona) : null}
                 onEdit={() => startEditMember('ventas', index)}
                 onDelete={() => deleteMember('ventas', index)}
                 onDetail={esCloser(persona) ? () => setDetailCloser(persona) : null}
@@ -700,14 +749,22 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                   </div>
 
                   {!esCEO(detailCloser) && (() => {
-                    const mesKey = mesActualISO()
-                    const importe = comisionPorCloser[detailCloser.nombre]?.totalMes || 0
+                    // Se liquida el mes ya cerrado (mes vencido). Lo que lleva
+                    // acumulado el mes en curso se enseña aparte, como aviso,
+                    // porque eso se paga el mes que viene.
+                    const mesKey = mesAPagar
+                    const importe = importeDelMes(detailCloser, mesKey)
+                    const enCurso = comisionPorCloser[detailCloser.nombre]?.totalMes || 0
                     const pago = pagoRegistrado(detailCloser, mesKey)
                     return (
                       <div className="team-payment-box">
                         <div>
-                          <p className="team-payment-label">Pago de {mesLabel(mesKey)}</p>
+                          <p className="team-payment-label">Pago de {mesLabel(mesKey)} · a mes vencido</p>
                           <p className="team-payment-amount">{importe.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</p>
+                          <p className="team-activity-hint" style={{ margin: 0 }}>
+                            Se abona ahora, en {mesLabel(mesActualISO())}. El mes en curso lleva{' '}
+                            {enCurso.toLocaleString('es-ES', { maximumFractionDigits: 2 })}€ y se pagará el mes que viene.
+                          </p>
                         </div>
                         {pago ? (
                           <div className="team-payment-actions">
@@ -734,7 +791,11 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     {act.historial.length === 0 && <p className="lead-log-empty">Sin historial todavía.</p>}
                     {act.historial.map((row) => (
                       <div className="team-history-row" key={row.mes}>
-                        <span>{row.mes}</span>
+                        {/* Al pagar a mes vencido se puede liquidar cualquier mes
+                            atrasado, así que conviene ver cuáles están ya pagados. */}
+                        <span title={pagoRegistrado(detailCloser, row.mes) ? 'Pagado' : 'Sin pagar'}>
+                          {row.mes}{pagoRegistrado(detailCloser, row.mes) ? ' ✅' : ''}
+                        </span>
                         <span>{row.leads}</span>
                         <span>{row.llamadas}</span>
                         <span>{row.ventas}</span>
@@ -790,21 +851,28 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     <div className="team-activity-kpi"><span>Clientes asignados</span><strong>{act.totalAsignados}</strong></div>
                     <div className="team-activity-kpi"><span>Activos ahora</span><strong>{act.activos}</strong></div>
                     {!esCEO(detailTecnico) && <div className="team-activity-kpi"><span>Tarifa actual</span><strong>{act.tarifaActual}€/cliente</strong></div>}
-                    {!esCEO(detailTecnico) && <div className="team-activity-kpi"><span>Total a pagar este mes</span><strong>{act.totalMes.toLocaleString('es-ES')}€</strong></div>}
+                    {!esCEO(detailTecnico) && <div className="team-activity-kpi"><span>Acumulado mes en curso</span><strong>{act.totalMes.toLocaleString('es-ES')}€</strong></div>}
                     <div className="team-activity-kpi"><span>Contacto semanal (3x)</span><strong>{contacto?.total > 0 ? `${contacto.hechos}/${contacto.total} (${contacto.porcentaje}%)` : '—'}</strong></div>
                     <div className="team-activity-kpi"><span>Progreso tareas semana</span><strong>{seg?.porcentajeGeneral != null ? `${seg.porcentajeGeneral}%` : '—'}</strong></div>
                     <div className="team-activity-kpi"><span>Última revisión</span><strong style={{ fontSize: 13 }}>{seg?.ultimaRevisionGeneral || 'Sin revisiones'}</strong></div>
                   </div>
 
                   {!esCEO(detailTecnico) && (() => {
-                    const mesKey = mesActualISO()
-                    const importe = act.totalMes || 0
+                    // Igual que con los closers: se paga el mes cerrado, no el
+                    // que está corriendo.
+                    const mesKey = mesAPagar
+                    const importe = importeDelMes(detailTecnico, mesKey)
+                    const enCurso = act.totalMes || 0
                     const pago = pagoRegistrado(detailTecnico, mesKey)
                     return (
                       <div className="team-payment-box">
                         <div>
-                          <p className="team-payment-label">Pago de {mesLabel(mesKey)}</p>
+                          <p className="team-payment-label">Pago de {mesLabel(mesKey)} · a mes vencido</p>
                           <p className="team-payment-amount">{importe.toLocaleString('es-ES')}€</p>
+                          <p className="team-activity-hint" style={{ margin: 0 }}>
+                            Se abona ahora, en {mesLabel(mesActualISO())}. El mes en curso lleva{' '}
+                            {enCurso.toLocaleString('es-ES')}€ y se pagará el mes que viene.
+                          </p>
                         </div>
                         {pago ? (
                           <div className="team-payment-actions">
@@ -828,7 +896,9 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     {act.historial.length === 0 && <p className="lead-log-empty">Sin historial calculable (revisa el formato de las fechas).</p>}
                     {act.historial.map((row) => (
                       <div className="team-history-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }} key={row.mes}>
-                        <span>{row.mes}</span>
+                        <span title={pagoRegistrado(detailTecnico, row.mes) ? 'Pagado' : 'Sin pagar'}>
+                          {row.mes}{pagoRegistrado(detailTecnico, row.mes) ? ' ✅' : ''}
+                        </span>
                         <span>{row.clientes}</span>
                         <span>{row.tarifa}€</span>
                         <strong>{row.total.toLocaleString('es-ES')}€</strong>
