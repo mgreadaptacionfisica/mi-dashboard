@@ -77,6 +77,12 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
   ingreso en `ingresos_empresa` con id determinista `fin-plazo-{clienteId}-{n}` +
   la comisión de pasarela como gasto (ver `utils/comisionesHelpers.js`). El mismo
   esquema lo usa la venta con reserva y hay que mantenerlo para poder "deshacer".
+- **La venta tiene DOS fechas** y se confunden fácil: `Fecha inicio` (cuándo
+  empieza el cliente el programa) y `venta.fechaCierre` (cuándo se cierra la
+  venta). La que manda para el **mes de la comisión del closer** (los tramos se
+  cuentan por mes natural) y para el mes del ingreso de la reserva en Finanzas
+  es `fechaCierre`. Es editable en el formulario de venta (por defecto hoy) para
+  poder registrar ventas con retraso sin que caigan en el mes equivocado.
 - **Pagos al equipo a MES VENCIDO**: lo trabajado en agosto se abona a
   principios de septiembre. El botón "Marcar como pagado" (Equipo → ficha de
   closer/técnico) liquida siempre el **mes anterior** (`mesAPagarISO()` en

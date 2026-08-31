@@ -43,6 +43,11 @@ const initialVentaForm = {
   tipoPago: 'unico',
   numPlazos: '3',
   fechaInicio: '',
+  // Día en que se cierra la venta. Manda para el mes de la comisión del
+  // closer y para el mes en que Finanzas contabiliza la reserva, así que se
+  // deja editable: si la venta se registra con retraso (o justo al cambiar de
+  // mes) hay que poder ponerle su fecha real, no la del día que se teclea.
+  fechaCierre: '',
   conReserva: false,
   importeReserva: '',
   planFinanciado: '',
@@ -351,10 +356,17 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
     })
   }
 
+  // Abre el formulario de venta con la fecha de cierre de hoy ya rellena (el
+  // caso normal), pero dejando que se pueda cambiar antes de confirmar.
+  const abrirFormularioVenta = () => {
+    setVentaForm((prev) => ({ ...prev, fechaCierre: prev.fechaCierre || todayISO() }))
+    setShowVentaForm(true)
+  }
+
   const marcarCompraEnLlamada = (compro) => {
     if (!activeLead) return
     if (compro) {
-      setShowVentaForm(true)
+      abrirFormularioVenta()
     } else {
       updateLead(activeLead.id, { compraEnLlamada: false, etapa: 'seguimiento', etapaAnterior: activeLead.etapa, origenSeguimiento: null })
     }
@@ -400,7 +412,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
   const setCompraTrasSeguimiento = (compro) => {
     if (!activeLead) return
     if (compro) {
-      setShowVentaForm(true)
+      abrirFormularioVenta()
     } else {
       updateLead(activeLead.id, {
         seguimiento: { ...activeLead.seguimiento, compraTrasSeguimiento: false },
@@ -433,6 +445,9 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
       : ventaForm.tipoPago === 'financiado' ? 'FINANCIADO (HOTMART)'
       : `${ventaForm.numPlazos} PLAZOS`
     const fechaInicio = ventaForm.fechaInicio || todayISO()
+    // Fecha real del cierre: la elegida en el formulario y, si se deja vacía,
+    // hoy (que era el comportamiento de siempre).
+    const fechaCierre = ventaForm.fechaCierre || todayISO()
     const meses = ventaForm.servicioId === 'otro' ? 0 : (servicioSeleccionado?.meses || 0)
     const fechaFin = addMonthsISO(fechaInicio, meses)
     const numPlazosNum = ventaForm.tipoPago === 'plazos' ? Number(ventaForm.numPlazos) : 1
@@ -449,7 +464,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
     // de siempre (plazos desde hoy).
     let plazosFinal
     if (reservaNum > 0) {
-      const plazoReserva = { numero: 1, importe: reservaNum, fecha: fechaInicio, pagado: true, fechaPago: todayISO(), concepto: 'Reserva' }
+      const plazoReserva = { numero: 1, importe: reservaNum, fecha: fechaInicio, pagado: true, fechaPago: fechaCierre, concepto: 'Reserva' }
       const resto = generarPlazosDesdeFecha(numPlazosNum, restoAFraccionar, fechaInicio)
         .map((p, i) => ({ ...p, numero: i + 2 }))
       plazosFinal = [plazoReserva, ...resto]
@@ -514,7 +529,9 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
     // que usa Cobros pendientes al marcar un plazo cobrado — así se puede
     // deshacer desde ahí sin dejar restos.
     if (reservaNum > 0 && typeof setIngresosEmpresa === 'function') {
-      const hoy = todayISO()
+      // Se imputa al día del cierre (no al de hoy) para que el ingreso caiga en
+      // el mes que toca aunque la venta se registre con retraso.
+      const hoy = fechaCierre
       const idBase = `fin-plazo-${nuevoCliente.id}-1`
       const tarifa = tarifasPasarela.find((t) => t.id === ventaForm.formaPago)
       const { gasto, notaReserva } = construirComisionCobro({ idBase, fecha: hoy, importeBruto: reservaNum, tarifa })
@@ -547,7 +564,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
         numPlazos: ventaForm.tipoPago === 'plazos' ? Number(ventaForm.numPlazos) : null,
         planFinanciado: ventaForm.tipoPago === 'financiado' ? ventaForm.planFinanciado.trim() : null,
         formaPago: ventaForm.formaPago,
-        fechaCierre: todayISO(),
+        fechaCierre,
       },
     })
 
@@ -1084,8 +1101,26 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
                     </>
                   )}
 
+                  <label className="lead-detail-label">Fecha de inicio del programa</label>
                   <input type="date" placeholder="Fecha de inicio" value={ventaForm.fechaInicio}
                     onChange={(e) => setVentaForm({ ...ventaForm, fechaInicio: e.target.value })} />
+
+                  {/* Dos fechas distintas y fáciles de confundir: arriba cuándo
+                      EMPIEZA el cliente, aquí cuándo se CIERRA la venta. Esta
+                      segunda es la que decide el mes de la comisión del closer
+                      (los tramos se cuentan por mes natural) y el mes en que
+                      Finanzas apunta la reserva. */}
+                  <label className="lead-detail-label">Fecha de cierre de la venta</label>
+                  <input type="date" value={ventaForm.fechaCierre}
+                    onChange={(e) => setVentaForm({ ...ventaForm, fechaCierre: e.target.value })} />
+                  <p className="tramos-help" style={{ marginTop: 0 }}>
+                    Normalmente hoy. Cámbiala si registras la venta con retraso: manda para el mes
+                    de la comisión del closer y para el mes del ingreso en Finanzas.
+                    {ventaForm.fechaCierre && ventaForm.fechaCierre.slice(0, 7) !== todayISO().slice(0, 7) && (
+                      <> <strong>Ojo: esta venta contará en {ventaForm.fechaCierre.slice(0, 7)}, no en el mes actual.</strong></>
+                    )}
+                  </p>
+
                   <div className="modal-actions">
                     <button type="button" className="secondary-action" onClick={() => setShowVentaForm(false)}>Cancelar</button>
                     <button type="submit" className="primary-action">Confirmar venta y crear cliente</button>
