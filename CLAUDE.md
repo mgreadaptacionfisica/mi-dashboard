@@ -43,7 +43,7 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 54; la siguiente sería la 55). Deben ser **idempotentes**
+  (la última es la 58; la siguiente sería la 59). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -123,6 +123,25 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
     Filtra en `misClientesTodos`, así que afecta a TODA la sección (las dos
     pestañas, banners y contadores). Al añadir algo nuevo aquí, derívalo de
     `misClientes`/`misClientesTodos` y respetará el filtro solo.
+- **Red de determinantes** (`utils/redDeterminantes.js` +
+  `components/RedDeterminantes.jsx`, columna `red_determinantes` de
+  `valoraciones_clientes`): mapa bio-psico-social del cliente como grafo
+  dirigido — cada factor es un nodo y cada flecha un "esto causa esto otro, en
+  esta proporción". Lo rellena el fisio dentro de la valoración. Tres cosas
+  que confunden al leer el JSON:
+  - `causas` va indexado por el nodo **EFECTO**, no por la causa, porque es
+    como se pregunta al rellenar ("¿qué está causando esto?"). Para recorrer
+    el grafo hacia delante hay que darle la vuelta con `mapaEfectos()`.
+  - `_desconocido` ("otras causas / no lo sé") **no es un nodo**: existe para
+    cuadrar el reparto a 100 sin inventarse una causa, y no forma aristas. Se
+    calcula solo como el resto; nunca se pide a mano.
+  - El **problema diana** es una marca del nodo (`diana: true`), no un eje. Un
+    nodo diana conserva su eje bio/psico/social, que es lo que le da columna
+    en el grafo.
+  Los factores del catálogo llevan id plano y los de texto libre el prefijo
+  `otro:`. Añadir factores nuevos a `FACTORES` es seguro y no necesita
+  migración; renombrar o quitar ids ya guardados no lo es (hay fallback en
+  `etiquetaNodo()`, pero se degrada).
 - **Supabase (plan free) se pausa** tras días sin uso: si todo aparece a 0, hay
   que reactivar el proyecto en supabase.com. No es un bug del código.
 

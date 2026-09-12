@@ -366,6 +366,11 @@ export function valoracionVacia() {
     // { pasoId: { testId: 'positivo' | 'negativo' } }; la ausencia de clave
     // significa "sin evaluar". Ver src/utils/diagnosticoDiferencial.js.
     diagnosticoDiferencial: {},
+    // Red de determinantes bio-psico-social. Estructura
+    // { nodos: [{id, eje, gravedad, diana?, etiqueta?, modificable?}],
+    //   causas: { efectoId: { causaId: pct, ..., _desconocido: pct } },
+    //   notas }. Ver src/utils/redDeterminantes.js.
+    redDeterminantes: {},
     notasDolor: '',
     notasEvaluacionInicial: '',
     notasPreferenciasEntrenamiento: '',

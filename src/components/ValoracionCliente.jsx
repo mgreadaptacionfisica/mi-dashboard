@@ -31,6 +31,8 @@ import {
   ddResumenPaso,
   ddConclusion,
 } from '../utils/diagnosticoDiferencial'
+import EditorRedDeterminantes, { VistaRedDeterminantes } from './RedDeterminantes'
+import { gravedadesSugeridas, nodosDe } from '../utils/redDeterminantes'
 import { insertValoracionRemote, updateValoracionRemote, deleteValoracionRemote } from '../lib/queries/valoracionesClientes'
 
 function todayISO() {
@@ -523,6 +525,21 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
               )
             })()}
 
+            {/* Red de determinantes de la valoración más reciente que tenga
+                una. Va junto al diagnóstico diferencial porque las dos
+                responden a lo mismo: qué le pasa a este cliente, antes de
+                entrar en los números sueltos. */}
+            {(() => {
+              const conRed = historialDesc.find((v) => nodosDe(v.redDeterminantes).length > 0)
+              if (!conRed) return null
+              return (
+                <>
+                  <h4 className="team-activity-subtitle">Red de determinantes ({formatFecha(conRed.fecha)})</h4>
+                  <VistaRedDeterminantes red={conRed.redDeterminantes} />
+                </>
+              )
+            })()}
+
             {evolucionCuestionarios.length > 0 && (
               <>
                 <h4 className="team-activity-subtitle">Cuestionarios</h4>
@@ -661,6 +678,12 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                             </div>
                           )
                         })()}
+                        {nodosDe(v.redDeterminantes).length > 0 && (
+                          <>
+                            <h5 className="rd-subtitulo" style={{ marginTop: 10 }}>Red de determinantes</h5>
+                            <VistaRedDeterminantes red={v.redDeterminantes} />
+                          </>
+                        )}
                         {v.notasMovilidad && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🤸 Movilidad: {v.notasMovilidad}</p>}
                         {v.notasFuerza && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>💪 Fuerza: {v.notasFuerza}</p>}
                         {v.notasDolor && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🩹 Dolor: {v.notasDolor}</p>}
@@ -892,6 +915,17 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                   placeholder="Días disponibles, material del que dispone, gustos con los ejercicios..."
                 />
               </label>
+
+              {/* Red de determinantes: va la última a propósito. Es la
+                  síntesis de todo lo anterior, y al estar aquí el SPADI y el
+                  TAMPA ya rellenos puede proponer la gravedad del dolor y de
+                  la kinesiofobia en vez de pedirlas a ciegas. */}
+              <h4 className="team-activity-subtitle">Red de determinantes (bio · psico · social)</h4>
+              <EditorRedDeterminantes
+                red={formData.redDeterminantes}
+                sugeridas={gravedadesSugeridas(formData)}
+                onChange={(red) => setFormData((prev) => ({ ...prev, redDeterminantes: red }))}
+              />
 
               {errorGuardado && (
                 <div className="valoracion-error-guardado" role="alert">

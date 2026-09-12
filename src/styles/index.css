@@ -4811,3 +4811,583 @@ textarea {
   color: #991b1b;
   word-break: break-word;
 }
+
+/* =========================================================================
+   Red de determinantes (bio · psico · social)
+   Ver src/utils/redDeterminantes.js y src/components/RedDeterminantes.jsx.
+   Cada eje tiene su color y se mantiene en TODO: chip, punto, slider, nodo
+   del grafo y flecha. Es lo que permite seguir un factor de un sitio a otro
+   sin leer la etiqueta.
+   ========================================================================= */
+
+.rd-editor {
+  --rd-bio: #dc2626;
+  --rd-psico: #8b5cf6;
+  --rd-social: #2563eb;
+  font-size: 12px;
+}
+
+.rd-vista {
+  --rd-bio: #dc2626;
+  --rd-psico: #8b5cf6;
+  --rd-social: #2563eb;
+  font-size: 12px;
+}
+
+.rd-leyenda {
+  font-size: 11.5px;
+  background: var(--color-bg-secondary, #f8fafc);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.rd-leyenda p { margin: 0 0 8px; color: var(--color-text-secondary); }
+.rd-leyenda p:last-child { margin-bottom: 0; }
+
+.rd-leyenda-titulo {
+  display: block;
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.rd-leyenda-aviso {
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid var(--color-orange);
+  border-radius: 0 6px 6px 0;
+  padding: 6px 10px;
+}
+
+/* --- Pasos --- */
+.rd-paso {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.rd-paso-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 12.5px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.rd-paso-numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+
+.rd-paso-contador {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.rd-paso-contador em { font-style: normal; opacity: 0.75; }
+
+/* --- Ejes y chips --- */
+.rd-eje-bloque { margin-bottom: 12px; }
+.rd-eje-bloque:last-child { margin-bottom: 0; }
+
+.rd-eje-titulo {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rd-eje-titulo-bio { color: var(--rd-bio); }
+.rd-eje-titulo-psico { color: var(--rd-psico); }
+.rd-eje-titulo-social { color: var(--rd-social); }
+
+.rd-eje-descripcion {
+  font-weight: 400;
+  font-size: 10.5px;
+  color: var(--color-text-secondary);
+}
+
+.rd-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.rd-chip {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.rd-chip:hover:not(:disabled) { border-color: currentColor; }
+.rd-chip:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.rd-chip-bio:hover:not(:disabled) { color: var(--rd-bio); }
+.rd-chip-psico:hover:not(:disabled) { color: var(--rd-psico); }
+.rd-chip-social:hover:not(:disabled) { color: var(--rd-social); }
+
+.rd-chip-activo { color: #fff; font-weight: 600; }
+.rd-chip-bio.rd-chip-activo { background: var(--rd-bio); border-color: var(--rd-bio); }
+.rd-chip-psico.rd-chip-activo { background: var(--rd-psico); border-color: var(--rd-psico); }
+.rd-chip-social.rd-chip-activo { background: var(--rd-social); border-color: var(--rd-social); }
+.rd-chip-activo:hover { color: #fff; opacity: 0.88; }
+
+.rd-chip-anadir {
+  border-style: dashed;
+  color: var(--color-text-secondary);
+}
+
+.rd-otro-form { display: inline-flex; gap: 4px; align-items: center; }
+
+.rd-otro-form input {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  min-width: 150px;
+}
+
+.rd-otro-form .secondary-action { padding: 3px 8px; font-size: 11px; }
+
+/* --- Puntos de color, reutilizados en varias listas --- */
+.rd-punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  display: inline-block;
+}
+
+.rd-punto-eje-bio { background: var(--rd-bio); }
+.rd-punto-eje-psico { background: var(--rd-psico); }
+.rd-punto-eje-social { background: var(--rd-social); }
+.rd-punto-nose { background: var(--color-text-secondary); opacity: 0.45; }
+
+/* --- Paso 2: gravedad --- */
+.rd-gravedades { display: flex; flex-direction: column; gap: 4px; }
+
+.rd-gravedad-fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.rd-gravedad-fila:hover { background: rgba(15, 23, 42, 0.03); }
+
+.rd-gravedad-diana {
+  background: rgba(0, 138, 65, 0.07);
+  outline: 1px solid rgba(0, 138, 65, 0.25);
+}
+
+.rd-gravedad-diana:hover { background: rgba(0, 138, 65, 0.1); }
+
+.rd-diana-btn {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.35;
+  flex: 0 0 auto;
+  padding: 0;
+  line-height: 1;
+}
+
+.rd-diana-btn:hover { opacity: 0.8; }
+
+.rd-diana-btn-activo {
+  opacity: 1;
+  background: var(--color-primary-tint);
+  border-color: var(--color-primary);
+}
+
+.rd-gravedad-label {
+  flex: 1 1 auto;
+  min-width: 130px;
+  font-size: 11.5px;
+}
+
+.rd-gravedad-valor,
+.rd-reparto-valor {
+  width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+
+.rd-slider {
+  flex: 0 0 150px;
+  accent-color: var(--color-text-secondary);
+  height: 4px;
+  cursor: pointer;
+}
+
+.rd-slider-bio { accent-color: var(--rd-bio); }
+.rd-slider-psico { accent-color: var(--rd-psico); }
+.rd-slider-social { accent-color: var(--rd-social); }
+
+.rd-sugerida {
+  border: 1px dashed var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  flex: 0 0 auto;
+}
+
+.rd-sugerida:hover { background: var(--color-primary-tint); }
+
+/* --- Paso 3: causas --- */
+.rd-causas { display: flex; flex-direction: column; gap: 10px; }
+
+.rd-causa-bloque {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #fff;
+}
+
+.rd-causa-bloque-diana {
+  border-color: rgba(0, 138, 65, 0.4);
+  background: rgba(0, 138, 65, 0.04);
+}
+
+.rd-causa-pregunta {
+  font-size: 11.5px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rd-causa-contador {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rd-reparto {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rd-reparto-fila { display: flex; align-items: center; gap: 8px; }
+
+.rd-reparto-label {
+  flex: 1 1 auto;
+  min-width: 120px;
+  font-size: 11px;
+}
+
+.rd-reparto-nose { color: var(--color-text-secondary); font-style: italic; }
+
+.rd-reparto-nose-barra {
+  flex: 0 0 150px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.rd-reparto-nose-barra > span {
+  display: block;
+  height: 100%;
+  background: var(--color-text-secondary);
+  opacity: 0.45;
+}
+
+/* --- Avisos --- */
+.rd-avisos { display: flex; flex-direction: column; gap: 4px; margin: 10px 0; }
+
+.rd-aviso {
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 6px 9px;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.rd-aviso-info {
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--color-text-secondary);
+}
+
+.rd-aviso-aviso {
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+}
+
+.rd-aviso-fuerte {
+  background: var(--color-primary-tint);
+  color: var(--color-primary-dark);
+  border: 1px solid rgba(0, 138, 65, 0.3);
+  margin-bottom: 10px;
+}
+
+.rd-previsualizacion {
+  border-top: 2px dashed var(--color-border);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+/* --- Grafo --- */
+/* El grafo tiene ancho fijo (lo calcula el componente según cuántos nodos
+   hay), así que en pantallas estrechas se desplaza en horizontal en su
+   propia caja en vez de romper el ancho del modal. */
+.rd-grafo-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  margin-bottom: 12px;
+}
+
+.rd-grafo { display: block; max-width: none; }
+
+.rd-grafo-eje {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--color-text-secondary);
+}
+
+.rd-nodo-caja {
+  fill: #fff;
+  stroke: var(--color-border);
+  stroke-width: 1.5;
+}
+
+.rd-nodo-bio .rd-nodo-caja { stroke: var(--rd-bio); }
+.rd-nodo-psico .rd-nodo-caja { stroke: var(--rd-psico); }
+.rd-nodo-social .rd-nodo-caja { stroke: var(--rd-social); }
+
+.rd-nodo-diana .rd-nodo-caja {
+  stroke: var(--color-primary);
+  stroke-width: 3;
+  fill: rgba(0, 138, 65, 0.06);
+}
+
+.rd-nodo-texto {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--color-text-primary);
+}
+
+.rd-nodo-gravedad {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rd-nodo-barra-fondo { fill: rgba(15, 23, 42, 0.09); }
+.rd-nodo-bio .rd-nodo-barra { fill: var(--rd-bio); }
+.rd-nodo-psico .rd-nodo-barra { fill: var(--rd-psico); }
+.rd-nodo-social .rd-nodo-barra { fill: var(--rd-social); }
+
+.rd-arista { fill: none; }
+.rd-arista-bio { stroke: var(--rd-bio); }
+.rd-arista-psico { stroke: var(--rd-psico); }
+.rd-arista-social { stroke: var(--rd-social); }
+
+.rd-punta-bio { fill: var(--rd-bio); }
+.rd-punta-psico { fill: var(--rd-psico); }
+.rd-punta-social { fill: var(--rd-social); }
+
+/* --- Ranking, bucles y efectos --- */
+.rd-subtitulo {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 12px 0 4px;
+  color: var(--color-text-primary);
+}
+
+.rd-ranking { display: flex; flex-direction: column; gap: 3px; }
+
+.rd-ranking-fila { display: flex; align-items: center; gap: 8px; }
+
+.rd-ranking-label { flex: 1 1 auto; min-width: 120px; font-size: 11.5px; }
+
+.rd-ranking-barra {
+  flex: 0 0 140px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(15, 23, 42, 0.07);
+  overflow: hidden;
+}
+
+.rd-ranking-relleno { display: block; height: 100%; border-radius: 3px; }
+.rd-relleno-bio { background: var(--rd-bio); }
+.rd-relleno-psico { background: var(--rd-psico); }
+.rd-relleno-social { background: var(--rd-social); }
+
+.rd-ranking-pct {
+  width: 42px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
+
+.rd-no-modificables {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: 6px;
+  padding: 7px 10px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.rd-bucle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid var(--color-orange);
+  border-radius: 0 6px 6px 0;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.rd-bucle-ruta { flex: 1 1 auto; font-weight: 600; }
+
+.rd-bucle-peso {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
+
+.rd-efectos { display: flex; flex-direction: column; }
+
+.rd-efectos-cabecera,
+.rd-efectos-fila {
+  display: grid;
+  grid-template-columns: 1fr 64px 74px 60px;
+  gap: 8px;
+  align-items: baseline;
+  padding: 5px 4px;
+  font-size: 11px;
+}
+
+.rd-efectos-cabecera {
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.rd-efectos-fila { border-bottom: 1px solid rgba(15, 23, 42, 0.04); }
+.rd-efectos-fila > span:not(.rd-efectos-label) { text-align: right; font-variant-numeric: tabular-nums; }
+.rd-efectos-total { font-weight: 700; }
+
+.rd-efectos-label { display: flex; flex-direction: column; gap: 1px; }
+
+.rd-efectos-vias {
+  display: flex;
+  flex-direction: column;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.rd-notas {
+  font-size: 11.5px;
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: 6px;
+  padding: 7px 10px;
+  margin-top: 10px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .rd-gravedad-fila,
+  .rd-reparto-fila,
+  .rd-ranking-fila { flex-wrap: wrap; }
+
+  .rd-slider,
+  .rd-reparto-nose-barra,
+  .rd-ranking-barra { flex-basis: 100px; }
+}
+
+/* Criterio para repartir los porcentajes (paso 3 de la red). */
+.rd-ayuda-pct {
+  font-size: 11px;
+  background: rgba(0, 138, 65, 0.06);
+  border: 1px solid rgba(0, 138, 65, 0.22);
+  border-radius: 8px;
+  padding: 9px 11px;
+  line-height: 1.5;
+}
+
+.rd-ayuda-pct-titulo {
+  display: block;
+  font-weight: 700;
+  font-size: 11.5px;
+  margin-bottom: 4px;
+  color: var(--color-primary-dark);
+}
+
+.rd-ayuda-pct p { margin: 0 0 6px; color: var(--color-text-secondary); }
+.rd-ayuda-pct p:last-child { margin-bottom: 0; }
+
+.rd-ayuda-tramos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-bottom: 6px;
+}
+
+.rd-ayuda-tramos span {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.rd-ayuda-pct-nota { font-size: 10.5px; }
