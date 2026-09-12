@@ -3,6 +3,8 @@ import SERVICIOS from '../data/servicios'
 import RENOVACIONES from '../data/renovaciones'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
+import { CuestionariosHuerfanos } from './RespuestasCuestionario'
+import { reasignarCuestionario } from '../lib/queries/cuestionariosPrevios'
 import FasesObjetivos from './FasesObjetivos'
 import CobrosPendientes from './CobrosPendientes'
 import { insertClienteRemote, updateClienteRemote, deleteClienteRemote } from '../lib/queries/clientes'
@@ -146,7 +148,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function ClientesAdmin({ clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, miEmail }) {
+export default function ClientesAdmin({ cuestionariosPrevios = [], setCuestionariosPrevios, clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, miEmail }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
   // Por defecto se ven los clientes en curso: ACTIVO y EN PAUSA (menos ruido
@@ -433,6 +435,21 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
       </header>
 
       <main className="page-content">
+        {/* Cuestionarios previos que llegaron con un nombre que no casa con
+            ninguna ficha. Va arriba del todo porque es una tarea pendiente
+            (si no se asignan, esas respuestas no las ve nadie) y porque son
+            pocos y esporádicos: no molesta cuando no hay ninguno. */}
+        <CuestionariosHuerfanos
+          cuestionarios={cuestionariosPrevios}
+          clientes={clientes}
+          onReasignar={(id, nombre) => {
+            reasignarCuestionario(id, nombre)
+            if (setCuestionariosPrevios) {
+              setCuestionariosPrevios((prev) => prev.map((c) => (c.id === id ? { ...c, clienteNombre: nombre } : c)))
+            }
+          }}
+        />
+
         <div className="tabs-bar">
           <button
             type="button"
@@ -996,6 +1013,7 @@ export default function ClientesAdmin({ clientes, setClientes, team, seguimiento
 
       {valoracionCliente && typeof setValoraciones === 'function' && (
         <ValoracionCliente
+          cuestionariosPrevios={cuestionariosPrevios}
           cliente={valoracionCliente}
           valoraciones={valoraciones}
           setValoraciones={setValoraciones}

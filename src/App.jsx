@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import Onboarding from './components/Onboarding'
+import CuestionarioPrevio from './components/CuestionarioPrevio'
 import PanelLogin from './components/PanelLogin'
 import AvisoErrores from './components/AvisoErrores'
 import { getSession, onAuthChange, signOut, getRole, seccionesDelRol } from './lib/auth'
@@ -10,6 +11,9 @@ import { enmascararTodo } from './utils/modoDemo'
 // y sin cargar los módulos que contienen datos de clientes.
 const PUBLIC_PATHS = {
   '/onboarding': 'onboarding',
+  // Cuestionario previo del cliente, que alimenta la red de determinantes.
+  // Le llega por enlace con su nombre dentro: /cuestionario?c=Nombre.
+  '/cuestionario': 'cuestionario',
 }
 
 const isPublicRoute = Object.keys(PUBLIC_PATHS).includes(window.location.pathname)
@@ -153,6 +157,15 @@ const valoracionesClientesDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/valoracionesClientes')
 }
+// Cuestionarios previos que rellenan los clientes desde /cuestionario. Solo se
+// leen aquí (el envío lo hace la ruta pública, sin login).
+const cuestionariosPreviosDataPromise = async () => {
+  const { fetchCuestionariosPrevios } = await import('./lib/queries/cuestionariosPrevios')
+  const remoto = await fetchCuestionariosPrevios()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/cuestionariosPrevios')
+}
+
 // Catálogo de objetivos por fase (Valoración): mismo patrón fallback que SOPs.
 // Se deja cargado solo para no perder el historial de valoraciones antiguas
 // que ya usaban el catálogo compartido — ya no se edita desde el panel.
@@ -253,11 +266,12 @@ function PlaceholderView({ name }) {
   )
 }
 
-function PublicOnboardingPage() {
+function PublicPage() {
+  const ruta = PUBLIC_PATHS[window.location.pathname]
   return (
     <div className="app-layout app-layout-public">
       <div className="main-content main-content-public">
-        <Onboarding />
+        {ruta === 'cuestionario' ? <CuestionarioPrevio /> : <Onboarding />}
       </div>
     </div>
   )
@@ -306,6 +320,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [contactosSemanales, setContactosSemanales] = useState([])
   const [mensajesEquipo, setMensajesEquipo] = useState([])
   const [valoracionesClientes, setValoracionesClientes] = useState([])
+  const [cuestionariosPrevios, setCuestionariosPrevios] = useState([])
   const [objetivosFase, setObjetivosFase] = useState([])
   const [objetivosClienteFase, setObjetivosClienteFase] = useState([])
   const [revisionesSemanales, setRevisionesSemanales] = useState([])
@@ -353,8 +368,8 @@ function InternalApp({ session, rol, onLogout }) {
       tareasPersonalesDataPromise(), manualesDataPromise(), objetivosFaseDataPromise(),
       reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(), objetivosClienteFaseDataPromise(),
       revisionesSemanalesDataPromise(), enlacesInteresDataPromise(),
-      proyectosDataPromise(), proyectoPasosDataPromise(),
-    ]).then(async ([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of, rr, tp, ocf, rs, ei, pr, pp]) => {
+      proyectosDataPromise(), proyectoPasosDataPromise(), cuestionariosPreviosDataPromise(),
+    ]).then(async ([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of, rr, tp, ocf, rs, ei, pr, pp, cq]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -370,6 +385,7 @@ function InternalApp({ session, rol, onLogout }) {
       setContactosSemanales(cs.default)
       setMensajesEquipo(me.default)
       setValoracionesClientes(vc.default)
+      setCuestionariosPrevios(cq.default)
       setTareasPersonales(ta.default)
       setManuales(ma.default)
       setEnlacesInteres(ei.default)
@@ -465,19 +481,24 @@ function InternalApp({ session, rol, onLogout }) {
     const _src = datosDemo || {
       clientes, team, ventas, seguimientos, contactosSemanales, valoraciones: valoracionesClientes,
       objetivosClienteFase, revisionesSemanales, recontactos, ingresosEmpresa, gastosEmpresa, mensajesEquipo,
+      cuestionariosPrevios,
     }
     const {
       clientes: dClientes, team: dTeam, ventas: dVentas, seguimientos: dSeguimientos,
       contactosSemanales: dContactos, valoraciones: dValoraciones, objetivosClienteFase: dObjetivos,
       revisionesSemanales: dRevisiones, recontactos: dRecontactos, ingresosEmpresa: dIngresosEmpresa,
       gastosEmpresa: dGastosEmpresa, mensajesEquipo: dMensajes,
+      // Los cuestionarios previos son texto libre del cliente sobre su salud y
+      // no tienen versión ficticia: en modo demo `datosDemo` no trae la clave,
+      // así que este default los deja vacíos y no se enseña ninguno.
+      cuestionariosPrevios: dCuestionarios = [],
     } = _src
 
     switch (vista) {
       case 'dashboard':    return <Dashboard clientes={dClientes} ventas={dVentas} recontactos={dRecontactos} ingresosEmpresa={dIngresosEmpresa} tareasPersonales={tareasPersonales} contenidoIdeas={contenidoIdeas} />
       case 'ventas':       return <Ventas ventas={dVentas} setVentas={setVentas} team={dTeam} setClientes={setClientes} setIngresosEmpresa={setIngresosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={dRecontactos} setRecontactos={setRecontactos} />
-      case 'clientes':     return <ClientesAdmin clientes={dClientes} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} miEmail={session?.user?.email} />
-      case 'clientes-equipo': return <ClientesEquipo clientes={dClientes} team={dTeam} miEmail={session?.user?.email} rol={rol} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
+      case 'clientes':     return <ClientesAdmin clientes={dClientes} cuestionariosPrevios={dCuestionarios} setCuestionariosPrevios={setCuestionariosPrevios} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} miEmail={session?.user?.email} />
+      case 'clientes-equipo': return <ClientesEquipo clientes={dClientes} cuestionariosPrevios={dCuestionarios} team={dTeam} miEmail={session?.user?.email} rol={rol} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
       case 'equipo':       return <Equipo team={dTeam} setTeam={setTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} valoraciones={dValoraciones} objetivosClienteFase={dObjetivos} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} miEmail={session?.user?.email} />
       case 'mi-ficha':     return <MiFicha team={dTeam} clientes={dClientes} seguimientos={dSeguimientos} contactosSemanales={dContactos} gastosEmpresa={dGastosEmpresa} tareas={tareasPersonales} revisionesSemanales={dRevisiones} miEmail={session?.user?.email} onNavigate={irVistaPermitida} />
       case 'comunicacion': return <MuroEquipo mensajes={dMensajes} setMensajes={setMensajesEquipo} team={dTeam} miEmail={session?.user?.email} rol={rol} />
@@ -562,11 +583,11 @@ function AuthGate() {
 
 export default function App() {
   if (isPublicRoute) {
-    // Ruta pública: /onboarding. Sin Sidebar, sin login, sin datos de
-    // clientes cargados — no forma parte del panel interno del equipo.
+    // Rutas públicas (/onboarding y /cuestionario). Sin Sidebar, sin login y
+    // sin datos de clientes cargados — no forman parte del panel interno.
     return (
       <Suspense fallback={null}>
-        <PublicOnboardingPage />
+        <PublicPage />
       </Suspense>
     )
   }

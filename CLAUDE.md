@@ -43,7 +43,7 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 58; la siguiente sería la 59). Deben ser **idempotentes**
+  (la última es la 59; la siguiente sería la 60). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -123,6 +123,21 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
     Filtra en `misClientesTodos`, así que afecta a TODA la sección (las dos
     pestañas, banners y contadores). Al añadir algo nuevo aquí, derívalo de
     `misClientes`/`misClientesTodos` y respetará el filtro solo.
+- **Cuestionario previo** (`utils/cuestionarioPrevio.js` +
+  `components/CuestionarioPrevio.jsx`, tabla `cuestionarios_previos`): 30
+  preguntas que el cliente contesta ANTES de la valoración y que alimentan la
+  red de determinantes. Cada pregunta lleva el id del factor al que alimenta
+  (`factor`), y el panel enseña las respuestas agrupadas por factor junto al
+  editor de la red, no en el orden en que se contestaron. Dos cosas a tener
+  en cuenta:
+  - Se rellena desde **`/cuestionario`, ruta PÚBLICA sin login** (segunda del
+    panel, junto a `/onboarding` — ver `PUBLIC_PATHS` en App.jsx). Es la única
+    tabla que acepta escritura anónima: `anon` puede insertar y nada más (no
+    lee, no modifica). Por eso el envío NO puede encadenar `.select()`.
+  - El enlace con el cliente es por **nombre**, y viaja en el enlace
+    (`/cuestionario?c=Nombre`) para que coincida exacto. La búsqueda es
+    tolerante (sin tildes ni mayúsculas) y los que no casan salen en un aviso
+    arriba de Clientes para asignarlos a mano.
 - **Red de determinantes** (`utils/redDeterminantes.js` +
   `components/RedDeterminantes.jsx`, columna `red_determinantes` de
   `valoraciones_clientes`): mapa bio-psico-social del cliente como grafo

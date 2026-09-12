@@ -82,7 +82,7 @@ function formatHora12(horaHHMM) {
 // eran datos de CONSULTA que el técnico tenía delante todos los días sin
 // usarlos, y ahora viven en la cabecera del modal de Seguimiento, que es
 // donde se miran cuando hacen falta.
-export default function ClientesEquipo({ clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, onRefrescar, refrescando, onNavigate }) {
+export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, onRefrescar, refrescando, onNavigate }) {
   const [search, setSearch] = useState('')
   // Se entra directamente al registro de sesiones: es lo que el técnico
   // hace todos los días. El contacto semanal es la otra pestaña.
@@ -906,6 +906,7 @@ export default function ClientesEquipo({ clientes = [], team, miEmail, rol, segu
 
       {valoracionCliente && (
         <ValoracionCliente
+          cuestionariosPrevios={cuestionariosPrevios}
           cliente={valoracionCliente}
           valoraciones={valoraciones}
           setValoraciones={setValoraciones}

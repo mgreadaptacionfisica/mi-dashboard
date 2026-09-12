@@ -32,6 +32,8 @@ import {
   ddConclusion,
 } from '../utils/diagnosticoDiferencial'
 import EditorRedDeterminantes, { VistaRedDeterminantes } from './RedDeterminantes'
+import RespuestasCuestionario, { EnlaceCuestionario } from './RespuestasCuestionario'
+import { cuestionarioDeCliente } from '../utils/cuestionarioPrevio'
 import { gravedadesSugeridas, nodosDe } from '../utils/redDeterminantes'
 import { insertValoracionRemote, updateValoracionRemote, deleteValoracionRemote } from '../lib/queries/valoracionesClientes'
 
@@ -231,7 +233,7 @@ function CampoSemaforo({ label, item, value, onChange }) {
   )
 }
 
-export default function ValoracionCliente({ cliente, valoraciones, setValoraciones, objetivosClienteFase = [], onClose }) {
+export default function ValoracionCliente({ cliente, valoraciones, setValoraciones, objetivosClienteFase = [], cuestionariosPrevios = [], onClose }) {
   const [vista, setVista] = useState('evolucion')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -250,6 +252,11 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''))
 
   const historialDesc = historial.slice().reverse()
+
+  // Cuestionario previo de este cliente. Se enlaza por NOMBRE, como todo el
+  // historial del panel. El más reciente es el que vale: si lo mandó dos
+  // veces, la segunda corrige a la primera.
+  const cuestionarioDelCliente = cuestionarioDeCliente(cuestionariosPrevios, cliente.Nombre)
 
   // La fase ya no se gestiona aquí (se movió a "Fases y objetivos", propia
   // de cada cliente) — se calcula sola a partir de sus objetivos, y aquí
@@ -524,6 +531,8 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                 </>
               )
             })()}
+
+            {cuestionarioDelCliente && <RespuestasCuestionario cuestionario={cuestionarioDelCliente} />}
 
             {/* Red de determinantes de la valoración más reciente que tenga
                 una. Va junto al diagnóstico diferencial porque las dos
@@ -921,6 +930,9 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                   TAMPA ya rellenos puede proponer la gravedad del dolor y de
                   la kinesiofobia en vez de pedirlas a ciegas. */}
               <h4 className="team-activity-subtitle">Red de determinantes (bio · psico · social)</h4>
+              {cuestionarioDelCliente
+                ? <RespuestasCuestionario cuestionario={cuestionarioDelCliente} />
+                : <EnlaceCuestionario clienteNombre={cliente.Nombre} />}
               <EditorRedDeterminantes
                 red={formData.redDeterminantes}
                 sugeridas={gravedadesSugeridas(formData)}
