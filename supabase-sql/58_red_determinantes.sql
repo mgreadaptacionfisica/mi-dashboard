@@ -29,8 +29,8 @@
 --
 --   {
 --     "nodos": [
---       { "id": "dolor",        "eje": "diana",  "gravedad": 70 },
---       { "id": "kinesiofobia", "eje": "psico",  "gravedad": 55 },
+--       { "id": "dolor",        "eje": "bio",   "gravedad": 70, "diana": true },
+--       { "id": "kinesiofobia", "eje": "psico", "gravedad": 55 },
 --       { "id": "otro:turnos-de-noche", "eje": "social",
 --         "etiqueta": "Turnos de noche", "gravedad": 40, "modificable": false }
 --     ],
@@ -54,6 +54,10 @@
 --     de texto libre van con prefijo 'otro:' y su etiqueta dentro del nodo.
 --     El prefijo permite agregar datos entre clientes sin mezclar: los del
 --     catálogo son comparables, los 'otro:' no.
+--   - El "problema diana" (la queja u objetivo que se está explicando) es la
+--     marca `diana: true` de un nodo, NO un eje. Un nodo diana conserva su eje
+--     bio/psico/social, que es lo que le da columna en el grafo; ponerlo como
+--     eje haría perder ese dato.
 --   - `modificable` solo aparece en los nodos 'otro:'. Para los del catálogo
 --     el valor vive en el código (FACTORES), que es donde se puede corregir
 --     sin migrar datos ya guardados.
@@ -65,6 +69,6 @@ alter table public.valoraciones_clientes
   add column if not exists red_determinantes jsonb not null default '{}'::jsonb;
 
 comment on column public.valoraciones_clientes.red_determinantes is
-  'Red de determinantes bio-psico-social {nodos:[{id,eje,gravedad,etiqueta?,modificable?}], causas:{efectoId:{causaId:pct,...,_desconocido:pct}}, notas} — ver src/utils/redDeterminantes.js';
+  'Red de determinantes bio-psico-social {nodos:[{id,eje,gravedad,diana?,etiqueta?,modificable?}], causas:{efectoId:{causaId:pct,...,_desconocido:pct}}, notas} — ver src/utils/redDeterminantes.js';
 
 notify pgrst, 'reload schema';
