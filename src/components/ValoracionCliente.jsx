@@ -245,6 +245,9 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
   const [guardando, setGuardando] = useState(false)
   const [errorGuardado, setErrorGuardado] = useState(null)
   const [formData, setFormData] = useState({ fecha: todayISO(), ...valoracionVacia() })
+  // Foto del formulario tal y como se abrió, para saber si hay cambios sin
+  // guardar y pedir confirmación antes de tirarlos (ver cerrarFormulario).
+  const [formInicial, setFormInicial] = useState(null)
 
   const historial = valoraciones
     .filter((v) => v.clienteNombre === cliente.Nombre)
@@ -375,11 +378,13 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     // cambian de una valoración a otra, así que se arrastran automáticamente
     // de la última — el técnico solo las edita si algo ha cambiado.
     const anterior = historialDesc[0]
-    setFormData({
+    const inicial = {
       fecha: todayISO(),
       ...valoracionVacia(),
       notasPreferenciasEntrenamiento: anterior?.notasPreferenciasEntrenamiento || '',
-    })
+    }
+    setFormData(inicial)
+    setFormInicial(inicial)
     setShowForm(true)
   }
 
@@ -401,8 +406,19 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     base.objetivosCumplidos = valoracion.objetivosCumplidos || []
     setEditingId(valoracion.id)
     setFormData(base)
+    setFormInicial(base)
     setErrorGuardado(null)
     setShowForm(true)
+  }
+
+  // Cerrar el formulario con ✕ o Cancelar. Si hay algo escrito sin guardar
+  // se pregunta antes: una valoración completa son muchos minutos de trabajo
+  // y se perdía entera con un clic despistado.
+  const hayCambiosSinGuardar = showForm && JSON.stringify(formData) !== JSON.stringify(formInicial)
+  const cerrarFormulario = () => {
+    if (hayCambiosSinGuardar && !window.confirm('Tienes cambios sin guardar en la valoración. ¿Cerrar y perderlos?')) return
+    setShowForm(false)
+    setEditingId(null)
   }
 
   const eliminar = (id) => {
@@ -709,14 +725,17 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
       </div>
 
       {showForm && (
-        <div className="client-modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="client-modal valoracion-form-modal" onClick={(e) => e.stopPropagation()}>
+        // Pinchar fuera del formulario NO lo cierra (antes sí, y además el clic
+        // subía hasta el fondo de la ventana de valoración y la cerraba entera,
+        // perdiendo todo lo escrito). Solo se sale con ✕, Cancelar o guardando.
+        <div className="client-modal-overlay" onClick={(e) => e.stopPropagation()}>
+          <div className="client-modal valoracion-form-modal">
             <div className="card-header">
               <div>
                 <div className="card-title">{editingId ? 'Editar valoración' : 'Nueva valoración'} — {cliente.Nombre}</div>
                 <div className="card-subtitle">Rellena solo los ítems que hayas medido en esta sesión</div>
               </div>
-              <button className="close-modal-btn" onClick={() => setShowForm(false)}>✕</button>
+              <button type="button" className="close-modal-btn" onClick={cerrarFormulario}>✕</button>
             </div>
 
             <form className="modal-form valoracion-form" onSubmit={handleSubmit}>
@@ -951,7 +970,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
               )}
 
               <div className="modal-actions">
-                <button type="button" className="secondary-action" onClick={() => setShowForm(false)}>Cancelar</button>
+                <button type="button" className="secondary-action" onClick={cerrarFormulario}>Cancelar</button>
                 <button type="submit" className="primary-action" disabled={guardando}>
                   {guardando ? 'Guardando…' : 'Guardar valoración'}
                 </button>
