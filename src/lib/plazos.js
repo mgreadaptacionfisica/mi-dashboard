@@ -20,6 +20,10 @@ export function generarPlazosDesdeFecha(n, importeTotal, fechaInicioISO) {
   const numero = Number(n) || 1
   if (total <= 0 || numero <= 0) return []
   const base = Math.round((total / numero) * 100) / 100
+  // El último plazo se lleva el descuadre de los redondeos (1.000€ en 3 no da
+  // 333,33 × 3), para que la suma de los plazos sea exactamente el total
+  // contratado y no falten céntimos en Finanzas.
+  const ultimo = Math.round((total - base * (numero - 1)) * 100) / 100
   const inicio = /^\d{4}-\d{2}-\d{2}$/.test(fechaInicioISO || '')
     ? new Date(`${fechaInicioISO}T00:00:00`)
     : new Date()
@@ -28,10 +32,20 @@ export function generarPlazosDesdeFecha(n, importeTotal, fechaInicioISO) {
     fecha.setMonth(fecha.getMonth() + i)
     return {
       numero: i + 1,
-      importe: base,
-      fecha: fecha.toISOString().slice(0, 10),
+      importe: i === numero - 1 ? ultimo : base,
+      fecha: fechaLocalISO(fecha),
       pagado: false,
       fechaPago: null,
     }
   })
+}
+
+// Las fechas se construyen en hora LOCAL (`...T00:00:00`), así que no se
+// pueden serializar con toISOString(): en España eso resta 1-2 horas y
+// devuelve el día anterior (pedías el 1 de octubre y salía el 30 de
+// septiembre). Se formatea a mano con el día local.
+function fechaLocalISO(fecha) {
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0')
+  const dia = String(fecha.getDate()).padStart(2, '0')
+  return `${fecha.getFullYear()}-${mes}-${dia}`
 }

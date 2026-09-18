@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { insertFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
 import { updateClienteRemote } from '../lib/queries/clientes'
+import { generarPlazosDesdeFecha } from '../lib/plazos'
 import { calcularComision, construirComisionCobro } from '../utils/comisionesHelpers'
 
 // Vista global de plazos pendientes de cobro, generados desde Clientes al
@@ -29,10 +30,39 @@ function idIngresoPlazo(clienteId, numero) {
   return `fin-plazo-${clienteId}-${numero}`
 }
 
+// Un plazo "de contrato" es el que salió del plan inicial del cliente: no
+// lleva origen (los de renovación llevan 'renovacion' y los cobros sueltos
+// 'manual') ni concepto propio. Son los únicos que se rehacen al cambiar el
+// plan de pago; los de renovación y los cobros sueltos se quedan intactos.
+// Los cobros sueltos antiguos no tienen `origen` (se añadió después), pero sí
+// concepto, que es lo que los distingue.
+function esPlazoContrato(plazo) {
+  return !plazo.origen && !plazo.concepto
+}
+
+// Los plazos ya cobrados NUNCA se renumeran: el ingreso que generaron en
+// Finanzas tiene un id determinista (`fin-plazo-{clienteId}-{numero}`), así
+// que cambiarles el número dejaría ese ingreso huérfano y rompería el
+// "Deshacer". Al rehacer el plan, los plazos nuevos cogen los números libres
+// más bajos, empezando por el 1, para que la columna "Plazo x/y" siga
+// leyéndose bien.
+function numerosLibres(reservados, cuantos) {
+  const usados = new Set(reservados)
+  const libres = []
+  let n = 1
+  while (libres.length < cuantos) {
+    if (!usados.has(n)) libres.push(n)
+    n += 1
+  }
+  return libres
+}
+
 export default function CobrosPendientes({ clientes = [], setClientes, setIngresosEmpresa, setGastosEmpresa, tarifasPasarela = [] }) {
   const [editando, setEditando] = useState(null) // `${clienteIndex}-${numero}`
   const [mostrarForm, setMostrarForm] = useState(false)
   const [nuevoCobro, setNuevoCobro] = useState({ clienteId: '', concepto: '', importe: '', fecha: todayISO() })
+  const [mostrarPlan, setMostrarPlan] = useState(false)
+  const [nuevoPlan, setNuevoPlan] = useState({ clienteId: '', numPlazos: 3, importe: '', fecha: todayISO() })
 
   const pendientes = useMemo(() => {
     const lista = []
@@ -77,12 +107,88 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
       pagado: false,
       fechaPago: null,
       concepto: nuevoCobro.concepto || '',
+      // Marca de "cobro suelto": lo distingue de los plazos del contrato para
+      // que "Cambiar plan de pago" no lo borre al rehacer el plan.
+      origen: 'manual',
     }
     const plazosActualizados = [...existentes, nuevoPlazo]
     setClientes(prev => prev.map((c, i) => i === clienteIndex ? { ...c, Plazos: plazosActualizados } : c))
     if (cliente.id) updateClienteRemote(cliente.id, { Plazos: plazosActualizados })
     setNuevoCobro({ clienteId: '', concepto: '', importe: '', fecha: todayISO() })
     setMostrarForm(false)
+  }
+
+  // Foto del plan de contrato del cliente elegido en "Cambiar plan de pago":
+  // qué lleva cobrado, qué queda pendiente y cuántos cobros hay que no se
+  // van a tocar (renovación o sueltos).
+  const planCliente = useMemo(() => {
+    const cliente = clientes.find((c) => c.id === nuevoPlan.clienteId)
+    if (!cliente) return null
+    const plazos = cliente.Plazos || []
+    const contrato = plazos.filter(esPlazoContrato)
+    const pendientes = contrato.filter((p) => !p.pagado)
+    const cobrados = contrato.filter((p) => p.pagado)
+    return {
+      cliente,
+      plazos,
+      pendientes,
+      cobrados,
+      importePendiente: pendientes.reduce((sum, p) => sum + (Number(p.importe) || 0), 0),
+      importeCobrado: cobrados.reduce((sum, p) => sum + (Number(p.importe) || 0), 0),
+      intocables: plazos.length - contrato.length,
+    }
+  }, [clientes, nuevoPlan.clienteId])
+
+  // Al elegir cliente se precargan el importe pendiente y la fecha del primer
+  // cobro que tenía previsto: lo normal es repartir eso mismo en más veces.
+  const elegirClientePlan = (clienteId) => {
+    const cliente = clientes.find((c) => c.id === clienteId)
+    const pendientes = (cliente?.Plazos || []).filter((p) => esPlazoContrato(p) && !p.pagado)
+    const importe = pendientes.reduce((sum, p) => sum + (Number(p.importe) || 0), 0)
+    const primeraFecha = pendientes.map((p) => p.fecha).filter(Boolean).sort()[0]
+    setNuevoPlan(prev => ({
+      ...prev,
+      clienteId,
+      importe: importe > 0 ? String(importe) : '',
+      fecha: primeraFecha || todayISO(),
+    }))
+  }
+
+  // Rehace los plazos PENDIENTES del contrato: el caso típico es el cliente
+  // que contrató en pago único y luego pide pagarlo en 2 o 3 veces (o al
+  // revés). Solo toca lo pendiente del contrato — lo ya cobrado, los cobros
+  // sueltos y los de renovación se conservan tal cual, con su número, para no
+  // romper los ingresos que ya están en Finanzas.
+  const cambiarPlanDePago = () => {
+    if (!planCliente) return
+    const n = Math.round(Number(nuevoPlan.numPlazos) || 0)
+    const importe = Number(nuevoPlan.importe) || 0
+    if (n < 1 || n > 12 || importe <= 0) return
+    const clienteIndex = clientes.findIndex((c) => c.id === nuevoPlan.clienteId)
+    if (clienteIndex === -1) return
+
+    const cuota = Math.round((importe / n) * 100) / 100
+    const aviso = `Se van a rehacer los cobros pendientes de ${planCliente.cliente.Nombre}: ${planCliente.pendientes.length} pendiente(s) por ${euro(planCliente.importePendiente)} pasan a ${n} plazo(s) de ${euro(cuota)}.` +
+      (planCliente.cobrados.length > 0 ? `\n\nLo ya cobrado (${planCliente.cobrados.length} plazo(s), ${euro(planCliente.importeCobrado)}) no se toca.` : '') +
+      (planCliente.intocables > 0 ? `\nLos ${planCliente.intocables} cobro(s) de renovación o sueltos tampoco.` : '') +
+      '\n\n¿Continuar?'
+    if (!window.confirm(aviso)) return
+
+    const conservados = planCliente.plazos.filter((p) => !(esPlazoContrato(p) && !p.pagado))
+    const libres = numerosLibres(conservados.map((p) => p.numero), n)
+    const nuevos = generarPlazosDesdeFecha(n, importe, nuevoPlan.fecha).map((p, i) => ({ ...p, numero: libres[i] }))
+    const plazosFinal = [...conservados, ...nuevos].sort((a, b) => (a.numero || 0) - (b.numero || 0))
+
+    // "Tipo de pago" de la ficha es solo la etiqueta del plan, pero si se
+    // queda desfasada confunde, así que se recalcula con los plazos de
+    // contrato que quedan.
+    const totalContrato = plazosFinal.filter(esPlazoContrato).length
+    const patch = { Plazos: plazosFinal, Pago: totalContrato === 1 ? 'COMPLETO' : `${totalContrato} PLAZOS` }
+
+    setClientes(prev => prev.map((c, i) => i === clienteIndex ? { ...c, ...patch } : c))
+    if (planCliente.cliente.id) updateClienteRemote(planCliente.cliente.id, patch)
+    setNuevoPlan({ clienteId: '', numPlazos: 3, importe: '', fecha: todayISO() })
+    setMostrarPlan(false)
   }
 
   const cobradosRecientes = useMemo(() => {
@@ -190,10 +296,105 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
             <div className="card-title">Plazos pendientes de cobro</div>
             <div className="card-subtitle">Ordenados por fecha prevista. Al marcar "Cobrado" se añade automáticamente a Finanzas &gt; Ingresos empresa.</div>
           </div>
-          <button type="button" className="secondary-action" onClick={() => setMostrarForm(v => !v)}>
-            {mostrarForm ? 'Cancelar' : '➕ Añadir cobro pendiente'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => { setMostrarPlan(v => !v); setMostrarForm(false) }}
+            >
+              {mostrarPlan ? 'Cancelar' : '🔄 Cambiar plan de pago'}
+            </button>
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => { setMostrarForm(v => !v); setMostrarPlan(false) }}
+            >
+              {mostrarForm ? 'Cancelar' : '➕ Añadir cobro pendiente'}
+            </button>
+          </div>
         </div>
+
+        {mostrarPlan && (
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border, #e5e7eb)' }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
+              Reparte lo que queda por cobrar del contrato en el número de plazos que quieras (p. ej. un pago único que el cliente pide pagar en 3 veces).
+              Lo ya cobrado, los cobros sueltos y los de renovación no se tocan.
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12, gap: 4 }}>
+                Cliente
+                <select
+                  value={nuevoPlan.clienteId}
+                  onChange={(e) => elegirClientePlan(e.target.value)}
+                  style={{ minWidth: 180 }}
+                >
+                  <option value="">Selecciona...</option>
+                  {clientes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.Nombre}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12, gap: 4 }}>
+                Nº de plazos
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  step="1"
+                  value={nuevoPlan.numPlazos}
+                  onChange={(e) => setNuevoPlan(prev => ({ ...prev, numPlazos: e.target.value }))}
+                  style={{ width: 90 }}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12, gap: 4 }}>
+                Importe a repartir (€)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={nuevoPlan.importe}
+                  onChange={(e) => setNuevoPlan(prev => ({ ...prev, importe: e.target.value }))}
+                  style={{ width: 130 }}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12, gap: 4 }}>
+                Fecha del primer plazo
+                <input
+                  type="date"
+                  value={nuevoPlan.fecha}
+                  onChange={(e) => setNuevoPlan(prev => ({ ...prev, fecha: e.target.value }))}
+                />
+              </label>
+              <button
+                type="button"
+                className="row-action-btn"
+                disabled={!planCliente || !(Number(nuevoPlan.importe) > 0) || !(Number(nuevoPlan.numPlazos) >= 1)}
+                onClick={cambiarPlanDePago}
+              >
+                Aplicar
+              </button>
+            </div>
+            {planCliente && (
+              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 10 }}>
+                {planCliente.cobrados.length > 0 && (
+                  <div>✅ Ya cobrado: {planCliente.cobrados.length} plazo(s) — {euro(planCliente.importeCobrado)} (no se toca)</div>
+                )}
+                <div>
+                  ⏳ Pendiente del contrato: {planCliente.pendientes.length} plazo(s) — {euro(planCliente.importePendiente)}
+                  {planCliente.pendientes.length === 0 && ' (no queda nada pendiente: al aplicar se crearán cobros nuevos)'}
+                </div>
+                {planCliente.intocables > 0 && (
+                  <div>🔒 {planCliente.intocables} cobro(s) de renovación o sueltos: se conservan</div>
+                )}
+                {Number(nuevoPlan.importe) > 0 && Number(nuevoPlan.numPlazos) >= 1 && (
+                  <div style={{ marginTop: 4, fontWeight: 600, color: 'var(--color-text)' }}>
+                    → Quedará en {Math.round(Number(nuevoPlan.numPlazos))} plazo(s) de {euro(Math.round((Number(nuevoPlan.importe) / Math.round(Number(nuevoPlan.numPlazos))) * 100) / 100)}, mensuales desde {formatFecha(nuevoPlan.fecha)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {mostrarForm && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', padding: '12px 16px', borderBottom: '1px solid var(--color-border, #e5e7eb)' }}>

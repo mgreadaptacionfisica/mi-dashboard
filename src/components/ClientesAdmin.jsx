@@ -827,11 +827,18 @@ export default function ClientesAdmin({ cuestionariosPrevios = [], setCuestionar
                 <option value="COMPLETO">COMPLETO (pago único)</option>
                 <option value="2 PLAZOS">2 PLAZOS</option>
                 <option value="3 PLAZOS">3 PLAZOS</option>
+                {/* "Cambiar plan de pago" (Cobros pendientes) puede dejar el
+                    plan en más de 3 plazos; sin esta opción el desplegable se
+                    quedaría en blanco y al guardar se perdería la etiqueta. */}
+                {!['COMPLETO', '2 PLAZOS', '3 PLAZOS'].includes(formData.pago) && formData.pago && (
+                  <option value={formData.pago}>{formData.pago}</option>
+                )}
               </select>
               {formData.plazosDetalle.length > 0 ? (
                 <p className="plan-subtitle-inline" style={{ fontSize: 12 }}>
-                  Ya existe un plan de cobro para este cliente ({formData.plazosDetalle.filter(p => p.pagado).length}/{formData.plazosDetalle.length} cobrados).
-                  Para corregir importes o fechas pendientes, ve a Clientes → Cobros pendientes.
+                  Ya existe un plan de cobro para este cliente ({formData.plazosDetalle.filter(p => p.pagado).length}/{formData.plazosDetalle.length} cobrados),
+                  así que cambiar aquí el tipo de pago NO lo rehace. Para repartirlo en más (o menos) plazos, o corregir importes y fechas,
+                  ve a Clientes → 💳 Cobros pendientes → "🔄 Cambiar plan de pago".
                 </p>
               ) : (
                 formData.pago !== 'COMPLETO' && Number(formData.importeTotal) > 0 && (
