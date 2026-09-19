@@ -1013,6 +1013,7 @@ export default function ClientesAdmin({ cuestionariosPrevios = [], setCuestionar
           objetivosClienteFase={objetivosClienteFase}
           revisionesSemanales={revisionesSemanales}
           setRevisionesSemanales={setRevisionesSemanales}
+          contactosSemanales={contactosSemanales}
           miEmail={miEmail}
           onClose={() => setSeguimientoCliente(null)}
         />

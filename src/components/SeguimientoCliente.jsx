@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   DIAS_SEMANA,
   mondayOf,
@@ -9,7 +9,10 @@ import {
   semanaVacia,
   progresoSemana,
   ultimaRevisionCliente,
+  motivosNoCierre,
+  resumenSemanaCliente,
 } from '../utils/seguimientoHelpers'
+import ResumenSemanaCliente from './ResumenSemanaCliente'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { upsertRevisionSemanalRemote } from '../lib/queries/revisionesSemanales'
@@ -26,7 +29,7 @@ function formatDate(value) {
   return iso ? formatFechaISO(iso) : value
 }
 
-export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, miEmail, weekOffsetInicial = 0, onClose }) {
+export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], miEmail, weekOffsetInicial = 0, onClose }) {
   // weekOffsetInicial: 0 = semana actual (por defecto), -1 = abre en la
   // semana anterior (cuando se entra desde el aviso "semana pasada sin
   // cerrar" para terminarla tal cual quedó).
@@ -46,6 +49,15 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
   const diasActuales = registro?.dias || semanaVacia()
   const cambiosPendientes = registro?.cambiosPendientes || []
   const progreso = progresoSemana(registro)
+  const contacto = contactosSemanales.find((c) => c.clienteNombre === cliente.Nombre && c.semana === mondayISO)
+
+  // Comentario semanal del trabajador (feedback para Raúl). Se edita en un
+  // borrador local y se guarda al salir del cuadro, no en cada tecla (cada
+  // guardado es un upsert de la semana entera). Al cambiar de semana se
+  // recarga el de esa semana.
+  const comentarioGuardado = registro?.comentarios || ''
+  const [comentarioDraft, setComentarioDraft] = useState(comentarioGuardado)
+  useEffect(() => { setComentarioDraft(comentarioGuardado) }, [mondayISO, comentarioGuardado])
 
   const actualizarSemana = (patch) => {
     const base = registro || { clienteNombre: cliente.Nombre, semana: mondayISO, dias: semanaVacia(), comentarios: '', cambiosPendientes: [], revisiones: [] }
@@ -90,6 +102,18 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
     actualizarSemana({ cambiosPendientes: cambiosPendientes.filter((_, i) => i !== index) })
   }
 
+  const guardarComentario = () => {
+    if (comentarioDraft === comentarioGuardado) return
+    actualizarSemana({ comentarios: comentarioDraft })
+  }
+
+  // Lo que falta para poder cerrar la semana. Se calcula con el borrador del
+  // comentario (no con el guardado) para que, al escribirlo, el bloqueo
+  // desaparezca sin tener que salir antes del cuadro de texto.
+  const semanaConBorrador = { ...(registro || {}), comentarios: comentarioDraft }
+  const motivos = motivosNoCierre({ seguimiento: semanaConBorrador, contacto })
+  const resumen = resumenSemanaCliente({ seguimiento: semanaConBorrador, contacto })
+
   const faseActual = useMemo(() => {
     const spadiTope = faseTopeSpadi(ultimoSpadiCliente(valoraciones, cliente.Nombre))
     return faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre), spadiTope)
@@ -113,6 +137,9 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
 
   const toggleRevisionSemana = () => {
     if (typeof setRevisionesSemanales !== 'function') return
+    // Cerrar solo si no falta nada; reabrir, siempre.
+    if (!semanaRevisada && motivos.length > 0) return
+    guardarComentario()
     const actualizado = {
       clienteNombre: cliente.Nombre,
       semana: mondayISO,
@@ -215,12 +242,14 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
                 <div className="seguimiento-tareas-list">
                   {info.tareas.length === 0 && <span className="lead-log-empty">Sin sesiones registradas</span>}
                   {info.tareas.map((tarea, i) => (
-                    <span
-                      key={i}
-                      className={`seguimiento-tarea-chip seguimiento-tarea-solo-lectura ${tarea.revisado ? 'seguimiento-tarea-revisada' : ''}`}
-                      title={tarea.revisado ? 'Hecha' : 'Pendiente de marcar en el Registro rápido'}
-                    >
-                      {tarea.revisado ? '✅' : '⬜'} {tarea.texto}
+                    <span key={i} className="seguimiento-tarea-con-nota">
+                      <span
+                        className={`seguimiento-tarea-chip seguimiento-tarea-solo-lectura ${tarea.revisado ? 'seguimiento-tarea-revisada' : ''}`}
+                        title={tarea.revisado ? 'Hecha' : 'Pendiente de marcar en el Registro de sesiones'}
+                      >
+                        {tarea.revisado ? '✅' : '⬜'} {tarea.texto}
+                      </span>
+                      {tarea.nota && <span className="seguimiento-tarea-nota">💬 {tarea.nota}</span>}
                     </span>
                   ))}
                 </div>
@@ -230,7 +259,7 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
         </div>
 
         <div>
-          <label className="lead-detail-label">Cambios y revisado (comentario semanal)</label>
+          <label className="lead-detail-label">🔧 Cambios de la semana</label>
           <div className="seguimiento-tareas-list" style={{ marginBottom: 8 }}>
             {cambiosPendientes.length === 0 && <span className="lead-log-empty">Sin cambios pendientes</span>}
             {cambiosPendientes.map((cambio, i) => (
@@ -253,13 +282,44 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
           </div>
         </div>
 
-        <div className={`seguimiento-check-final${semanaRevisada ? ' seguimiento-check-final-marcado' : ''}`}>
+        <div className="seguimiento-comentario-semanal">
+          <label className="lead-detail-label" htmlFor="comentario-semanal">📝 Comentario semanal para Raúl</label>
+          <textarea
+            id="comentario-semanal"
+            rows={3}
+            placeholder="Cómo ha ido la semana, cómo lo ves, qué has cambiado y por qué, qué te preocupa, qué necesitas… Es tu feedback de la semana."
+            value={comentarioDraft}
+            onChange={(e) => setComentarioDraft(e.target.value)}
+            onBlur={guardarComentario}
+          />
+        </div>
+
+        <div className="seguimiento-resumen-semanal">
+          <label className="lead-detail-label">📋 Resumen de la semana</label>
+          <ResumenSemanaCliente resumen={resumen} mostrarComentario={false} />
+        </div>
+
+        {!semanaRevisada && motivos.length > 0 && (
+          <div className="seguimiento-cierre-bloqueado">
+            <strong>🔒 Todavía no se puede cerrar esta semana. Falta:</strong>
+            <ul>
+              {motivos.map((m, i) => <li key={i}>{m.texto}</li>)}
+            </ul>
+          </div>
+        )}
+
+        <div className={`seguimiento-check-final${semanaRevisada ? ' seguimiento-check-final-marcado' : ''}${!semanaRevisada && motivos.length > 0 ? ' seguimiento-check-final-bloqueado' : ''}`}>
           <label>
-            <input type="checkbox" checked={semanaRevisada} onChange={toggleRevisionSemana} />
+            <input
+              type="checkbox"
+              checked={semanaRevisada}
+              disabled={!semanaRevisada && motivos.length > 0}
+              onChange={toggleRevisionSemana}
+            />
             <span>Semana revisada y cerrada para {cliente.Nombre}</span>
           </label>
           <p className="valoracion-referencia">
-            ℹ️ Marca esto solo cuando: esté todo revisado, hayas hecho los cambios oportunos en el seguimiento, y ya tengas preparada la semana que viene para este cliente.
+            ℹ️ Solo se puede cerrar con todas las sesiones marcadas, los cambios hechos, el contacto semanal completo (3/3) y el comentario semanal escrito. Márcalo cuando además tengas preparada la semana que viene.
           </p>
           {semanaRevisada && revisionSemana?.revisadoEn && (
             <p className="valoracion-referencia">

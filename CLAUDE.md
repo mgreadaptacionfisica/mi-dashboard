@@ -121,8 +121,23 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
     Nivel `atrasado` (semanas ya terminadas, hasta 6 atrás) vs `semana` (la
     actual, informativo); solo lo atrasado cuenta para el badge rojo.
   - En el modal `SeguimientoCliente.jsx` la rejilla de días es **solo lectura**
-    (un resumen). Lo editable ahí es otra cosa: cambios de la semana, revisiones
-    y el cierre de semana.
+    (un resumen). Lo editable ahí es otra cosa: cambios de la semana, el
+    comentario semanal y el cierre de semana.
+  - **Nota por sesión**: cada sesión puede llevar `nota` (texto libre: cambio de
+    ejercicio, molestia, lo que dijo el cliente por WhatsApp). Vive en
+    `dias -> tareas[i].nota` (sin columna nueva) y se escribe con el 💬 de la
+    rejilla. El **comentario semanal** del trabajador para Raúl usa la columna
+    `seguimientos.comentarios`, que ya existía.
+  - **El cierre de semana tiene condiciones** (`motivosNoCierre()` en
+    `seguimientoHelpers`): todas las sesiones marcadas, cambios hechos,
+    contacto semanal 3/3 y comentario semanal escrito (una semana sin sesiones
+    solo se cierra explicándolo en el comentario). Si falta algo, el check sale
+    deshabilitado y se lista qué falta. Reabrir siempre se puede. Por eso el
+    modal necesita `contactosSemanales` en los tres sitios donde se abre
+    (ClientesEquipo, ClientesAdmin, Equipo).
+  - **📝 Resúmenes** (`ResumenesSemanales.jsx`, solo admin): el resumen de
+    cada cliente por semana (`resumenSemanaCliente()`), para leer el feedback
+    del equipo. Solo lectura; por defecto abre la semana pasada.
   - **Filtro por trabajador** (`filtroAdmin`, solo admin): chips arriba con
     "Todo el equipo" + uno por trabajador (con su nº de activos) + "Sin asignar".
     Filtra en `misClientesTodos`, así que afecta a TODA la sección (las dos

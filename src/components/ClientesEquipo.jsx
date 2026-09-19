@@ -4,6 +4,7 @@ import ValoracionCliente from './ValoracionCliente'
 import FasesObjetivos from './FasesObjetivos'
 import ContactoSemanal from './ContactoSemanal'
 import PendientesSeguimiento from './PendientesSeguimiento'
+import ResumenesSemanales from './ResumenesSemanales'
 import {
   semanaActualISO,
   formatRangoSemana,
@@ -111,6 +112,9 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   // se queda corto porque hay cosas que añadir que no están en la lista.
   const [addCell, setAddCell] = useState(null)
   const [addTexto, setAddTexto] = useState('')
+  // Nota de una sesión que se está editando: `${cliente}|${dia}|${índice}`.
+  const [notaCell, setNotaCell] = useState(null)
+  const [notaTexto, setNotaTexto] = useState('')
 
   // Admin: acceso a Seguimiento/Valoración de TODOS los clientes (no solo
   // los suyos), porque necesita poder supervisar el trabajo de cualquier
@@ -341,6 +345,29 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
     })
   }
 
+  // Nota de una sesión (a petición de Raúl): solo cuando hay algo que
+  // contar — un ejercicio cambiado, una molestia, lo que el cliente haya
+  // dicho por WhatsApp… Una sesión normal no lleva nota. Se guarda dentro de
+  // la propia sesión (dias -> tareas[i].nota) y sale en el resumen semanal.
+  const setNotaTareaRapida = (clienteNombre, diaId, index, nota) => {
+    actualizarSeguimientoSemana(clienteNombre, (dias) => {
+      const dia = dias[diaId] || diaVacio()
+      const tareas = dia.tareas.map((t, i) => (i === index ? { ...t, nota: (nota || '').trim() } : t))
+      return { ...dias, [diaId]: { tareas } }
+    })
+  }
+
+  const abrirNota = (clienteNombre, diaId, index, notaActual) => {
+    setNotaCell(`${clienteNombre}|${diaId}|${index}`)
+    setNotaTexto(notaActual || '')
+    setAddCell(null)
+  }
+
+  const cerrarNota = () => {
+    setNotaCell(null)
+    setNotaTexto('')
+  }
+
   const cerrarAddCell = () => {
     setAddCell(null)
     setAddTexto('')
@@ -526,6 +553,12 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                   {pendientesAtrasados > 0 && <span className="tab-btn-badge">{pendientesAtrasados}</span>}
                 </button>
               )}
+              {/* Solo admin: el feedback semanal de cada trabajador, para leer. */}
+              {esAdmin && (
+                <button type="button" className={`tab-btn ${vista === 'resumenes' ? 'tab-btn-active' : ''}`} onClick={() => setVista('resumenes')}>
+                  📝 Resúmenes
+                </button>
+              )}
             </div>
 
             {misClientesEnPausa.length > 0 && (
@@ -681,7 +714,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
               <div className="registro-rapido-leyenda">
                 <span><span className="registro-rapido-chip registro-rapido-chip-hecho" style={{ pointerEvents: 'none' }}>✅ Hecho</span></span>
                 <span><span className="registro-rapido-chip" style={{ pointerEvents: 'none' }}>⬜ Pendiente</span></span>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Clic en una sesión para marcarla / desmarcarla · ✕ para quitarla</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Clic en una sesión para marcarla / desmarcarla · 💬 para apuntar un cambio, una molestia o lo que diga el cliente · ✕ para quitarla</span>
               </div>
 
               <div className="table-wrapper">
@@ -777,28 +810,77 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                             return (
                               <td key={d.id} className="registro-rapido-celda">
                                 <div className="registro-rapido-celda-inner">
-                                  {tareas.map((t, i) => (
-                                    // Chip + ✕ como botones hermanos (no anidados: un
-                                    // <button> dentro de otro no es HTML válido).
-                                    <div key={i} className="registro-rapido-chip-row">
-                                      <button
-                                        type="button"
-                                        className={`registro-rapido-chip ${t.revisado ? 'registro-rapido-chip-hecho' : ''}`}
-                                        onClick={() => toggleTareaRapida(cliente.Nombre, d.id, i)}
-                                        title={t.revisado ? 'Hecho — clic para desmarcar' : 'Clic para marcar hecho'}
-                                      >
-                                        {t.revisado ? '✅' : '⬜'} {t.texto}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="registro-rapido-chip-del"
-                                        onClick={() => removeTareaRapida(cliente.Nombre, d.id, i)}
-                                        title="Quitar esta sesión"
-                                      >
-                                        ✕
-                                      </button>
+                                  {tareas.map((t, i) => {
+                                    const notaKey = `${cliente.Nombre}|${d.id}|${i}`
+                                    return (
+                                    <div key={i} className="registro-rapido-sesion">
+                                      {/* Chip + 💬 + ✕ como botones hermanos (no anidados:
+                                          un <button> dentro de otro no es HTML válido). */}
+                                      <div className="registro-rapido-chip-row">
+                                        <button
+                                          type="button"
+                                          className={`registro-rapido-chip ${t.revisado ? 'registro-rapido-chip-hecho' : ''}`}
+                                          onClick={() => toggleTareaRapida(cliente.Nombre, d.id, i)}
+                                          title={t.revisado ? 'Hecho — clic para desmarcar' : 'Clic para marcar hecho'}
+                                        >
+                                          {t.revisado ? '✅' : '⬜'} {t.texto}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={`registro-rapido-chip-nota ${t.nota ? 'registro-rapido-chip-nota-llena' : ''}`}
+                                          onClick={() => abrirNota(cliente.Nombre, d.id, i, t.nota)}
+                                          title={t.nota ? 'Editar la nota de esta sesión' : 'Añadir nota: cambio de ejercicio, molestia, comentario del cliente…'}
+                                        >
+                                          💬
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="registro-rapido-chip-del"
+                                          onClick={() => removeTareaRapida(cliente.Nombre, d.id, i)}
+                                          title="Quitar esta sesión"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                      {notaCell === notaKey ? (
+                                        <form
+                                          className="registro-rapido-notaform"
+                                          onSubmit={(e) => {
+                                            e.preventDefault()
+                                            setNotaTareaRapida(cliente.Nombre, d.id, i, notaTexto)
+                                            cerrarNota()
+                                          }}
+                                        >
+                                          <textarea
+                                            autoFocus
+                                            rows={3}
+                                            value={notaTexto}
+                                            placeholder="Qué ha cambiado, molestias, lo que ha dicho por WhatsApp…"
+                                            onChange={(e) => setNotaTexto(e.target.value)}
+                                            onKeyDown={(e) => {
+                                              // Enter guarda; Mayús+Enter hace salto de línea.
+                                              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.form.requestSubmit() }
+                                              if (e.key === 'Escape') cerrarNota()
+                                            }}
+                                          />
+                                          <div className="registro-rapido-addform-btns">
+                                            <button type="submit" className="registro-rapido-add-ok" title="Guardar nota">✓</button>
+                                            <button type="button" className="registro-rapido-add-cancel" onClick={cerrarNota} title="Cancelar">✕</button>
+                                          </div>
+                                        </form>
+                                      ) : t.nota ? (
+                                        <button
+                                          type="button"
+                                          className="registro-rapido-nota"
+                                          onClick={() => abrirNota(cliente.Nombre, d.id, i, t.nota)}
+                                          title={t.nota}
+                                        >
+                                          {t.nota}
+                                        </button>
+                                      ) : null}
                                     </div>
-                                  ))}
+                                    )
+                                  })}
                                   {!lleno && addCell === cellKey && (
                                     <form
                                       className="registro-rapido-addform"
@@ -864,6 +946,17 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
           />
         )}
 
+        {esAdmin && vista === 'resumenes' && (
+          <ResumenesSemanales
+            clientes={misClientes}
+            seguimientos={seguimientos}
+            contactos={contactosSemanales}
+            revisionesSemanales={revisionesSemanales}
+            trabajadoresDe={trabajadoresDe}
+            onAbrirSeguimiento={abrirSeguimientoEnSemana}
+          />
+        )}
+
         {(esAdmin || miPersona) && vista === 'contacto' && (
           <div className="table-card">
             <div className="card-header">
@@ -898,6 +991,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
           objetivosClienteFase={objetivosClienteFase}
           revisionesSemanales={revisionesSemanales}
           setRevisionesSemanales={setRevisionesSemanales}
+          contactosSemanales={contactosSemanales}
           miEmail={miEmail}
           weekOffsetInicial={seguimientoOffset}
           onClose={() => { setSeguimientoCliente(null); setSeguimientoOffset(0) }}

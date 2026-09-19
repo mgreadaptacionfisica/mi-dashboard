@@ -90,12 +90,22 @@ export function enmascararTodo(d) {
     ...s,
     clienteNombre: cli.get(s.clienteNombre),
     comentarios: reemplazaEnTexto(s.comentarios, pares()),
+    // Las notas de sesión son texto libre sobre la salud del cliente (sale en
+    // los resúmenes semanales): también se enmascaran.
+    dias: Object.fromEntries(Object.entries(s.dias || {}).map(([dia, info]) => [dia, {
+      ...info,
+      tareas: (info?.tareas || []).map((tarea) => (tarea.nota ? { ...tarea, nota: reemplazaEnTexto(tarea.nota, pares()) } : tarea)),
+    }])),
     cambiosPendientes: (s.cambiosPendientes || []).map((c) => ({ ...c, texto: reemplazaEnTexto(c.texto, pares()) })),
     revisiones: (s.revisiones || []).map((r) => ({ ...r, persona: r.persona ? worker.get(r.persona) : r.persona })),
   }))
 
   const conNombreCliente = (arr) => (arr || []).map((x) => ({ ...x, clienteNombre: cli.get(x.clienteNombre) }))
-  const contactosSemanales = conNombreCliente(d.contactosSemanales)
+  // Los comentarios del contacto semanal salen en los resúmenes: se enmascaran.
+  const contactosSemanales = conNombreCliente(d.contactosSemanales).map((c) => {
+    const punto = (x) => (x?.comentario ? { ...x, comentario: reemplazaEnTexto(x.comentario, pares()) } : x)
+    return { ...c, inicio: punto(c.inicio), mitad: punto(c.mitad), fin: punto(c.fin) }
+  })
   const valoraciones = conNombreCliente(d.valoraciones)
   const objetivosClienteFase = conNombreCliente(d.objetivosClienteFase)
   const revisionesSemanales = (d.revisionesSemanales || []).map((r) => ({

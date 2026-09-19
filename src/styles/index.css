@@ -5861,3 +5861,242 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
     margin: 2px 0 0 30px;
   }
 }
+
+/* ==========================================================================
+   Seguimiento: notas de sesión, comentario semanal, cierre con condiciones y
+   resúmenes semanales (SeguimientoCliente, ClientesEquipo, ResumenesSemanales)
+   ========================================================================== */
+
+/* Una sesión de la rejilla = fila del chip + su nota debajo (si tiene). */
+.registro-rapido-sesion {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 💬 en gris y medio escondido si no hay nota (igual que la ✕), y siempre
+   visible en azul cuando la hay, para que se vea de un vistazo qué sesiones
+   tienen algo que contar. */
+.registro-rapido-chip-nota {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  padding: 4px 1px;
+  opacity: 0;
+  filter: grayscale(1);
+  transition: opacity 0.15s ease;
+}
+
+.registro-rapido-chip-row:hover .registro-rapido-chip-nota,
+.registro-rapido-chip-nota:focus {
+  opacity: 0.8;
+}
+
+.registro-rapido-chip-nota-llena {
+  opacity: 1;
+  filter: none;
+}
+
+.registro-rapido-nota {
+  border: none;
+  border-left: 3px solid #3b82f6;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  white-space: pre-wrap;
+  /* Máximo 3 líneas en la rejilla; el texto entero sale al pasar el ratón y
+     en el resumen semanal. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.registro-rapido-notaform {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.registro-rapido-notaform textarea {
+  width: 100%;
+  min-width: 120px;
+  font: inherit;
+  font-size: 11px;
+  padding: 4px 6px;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  resize: vertical;
+}
+
+/* Modal: la sesión con su nota debajo, en solo lectura. */
+.seguimiento-tarea-con-nota {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 100%;
+}
+
+.seguimiento-tarea-nota {
+  font-size: 11px;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border-radius: 6px;
+  padding: 3px 7px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
+.seguimiento-comentario-semanal {
+  margin-top: 12px;
+}
+
+.seguimiento-comentario-semanal textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  resize: vertical;
+}
+
+.seguimiento-resumen-semanal {
+  margin-top: 12px;
+}
+
+.seguimiento-cierre-bloqueado {
+  margin-top: 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid var(--color-danger);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #7f1d1d;
+  line-height: 1.5;
+}
+
+.seguimiento-cierre-bloqueado ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.seguimiento-check-final-bloqueado label {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Bloque de resumen (modal y pestaña 📝 Resúmenes). */
+.resumen-semana {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.resumen-semana-cifras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.resumen-semana-cifras span {
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.resumen-semana-cifras span.resumen-ok {
+  background: var(--color-primary-tint);
+  color: var(--color-primary-dark);
+}
+
+.resumen-semana-etq {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  margin-bottom: 2px;
+}
+
+.resumen-semana-bloque ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.resumen-semana-bloque li {
+  margin-bottom: 2px;
+  line-height: 1.45;
+}
+
+.resumen-semana-comentario {
+  margin: 0;
+  white-space: pre-wrap;
+  background: #fffbeb;
+  border-left: 3px solid var(--color-orange);
+  border-radius: 6px;
+  padding: 6px 10px;
+  line-height: 1.5;
+}
+
+/* Pestaña 📝 Resúmenes. */
+.resumenes-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 0 20px 14px;
+}
+
+.resumenes-totales {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.resumenes-lista {
+  display: flex;
+  flex-direction: column;
+}
+
+.resumenes-item {
+  padding: 14px 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.resumenes-item-abierta {
+  background: #fffdf7;
+}
+
+.resumenes-item-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.resumenes-item-trabajador {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+  .resumenes-barra,
+  .resumenes-item {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}

@@ -995,6 +995,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
           objetivosClienteFase={objetivosClienteFase}
           revisionesSemanales={revisionesSemanales}
           setRevisionesSemanales={setRevisionesSemanales}
+          contactosSemanales={contactosSemanales}
           miEmail={miEmail}
           onClose={() => setSeguimientoClienteAbierto(null)}
         />

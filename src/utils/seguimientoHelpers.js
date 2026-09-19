@@ -283,3 +283,93 @@ export function ultimaRevisionCliente(seguimientos, clienteNombre) {
     })
   return ultima
 }
+
+// ————————————————————————————————————————————————————————————————
+// Cierre de semana con condiciones + resumen semanal (a petición de Raúl)
+// ————————————————————————————————————————————————————————————————
+// Antes el check "Semana revisada y cerrada" se podía marcar a mano en
+// cualquier momento. Ahora solo se deja cerrar cuando la semana está de
+// verdad terminada, y si no se puede, se dice exactamente POR QUÉ, para que
+// el trabajador sepa qué le falta rellenar. Desmarcar (reabrir) una semana
+// sigue estando siempre permitido.
+//
+// Cada sesión puede llevar una `nota` opcional (texto libre): cambios de
+// ejercicio, molestias, lo que el cliente haya contado por WhatsApp… Solo se
+// rellena cuando hay algo que contar; una sesión normal no necesita nota.
+// Vive dentro de dias -> tareas, así que no necesita columna nueva.
+//
+// El comentario semanal del trabajador (feedback para Raúl) usa la columna
+// `comentarios` de `seguimientos`, que ya existía y no se estaba usando.
+
+// Nombres de los puntos de contacto que faltan, para el mensaje de bloqueo.
+function puntosContactoPendientes(contacto) {
+  return PUNTOS_CONTACTO.filter((p) => !contacto?.[p.id]?.hecho).map((p) => p.label.toLowerCase())
+}
+
+// Lista de motivos por los que una semana NO se puede cerrar todavía. Vacía
+// = se puede cerrar. Cada motivo lleva `donde` para decir en qué pestaña se
+// arregla (el modal no deja editar sesiones ni contacto: solo cambios y
+// comentario).
+export function motivosNoCierre({ seguimiento, contacto }) {
+  const motivos = []
+  const progreso = progresoSemana(seguimiento)
+  const comentario = (seguimiento?.comentarios || '').trim()
+  const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`
+
+  // Una semana sin ninguna sesión se puede cerrar (vacaciones, parón…), pero
+  // solo explicándolo en el comentario semanal: así no se cierra "en blanco"
+  // por olvido de registrar.
+  if (progreso.total === 0) {
+    if (!comentario) {
+      motivos.push({ donde: 'comentario', texto: 'No hay ninguna sesión registrada. Si no ha entrenado esta semana (vacaciones, parón…), explícalo en el comentario semanal.' })
+    }
+  } else if (progreso.revisadas < progreso.total) {
+    const faltan = progreso.total - progreso.revisadas
+    motivos.push({ donde: 'registro', texto: `${plural(faltan, 'sesión', 'sesiones')} sin marcar como hecha (⚡ Registro de sesiones).` })
+  }
+
+  const cambiosSinHacer = (seguimiento?.cambiosPendientes || []).filter((c) => !c.hecho).length
+  if (cambiosSinHacer > 0) {
+    motivos.push({ donde: 'cambios', texto: `${plural(cambiosSinHacer, 'cambio', 'cambios')} de la semana sin marcar como hecho (aquí abajo).` })
+  }
+
+  const faltanContacto = puntosContactoPendientes(contacto)
+  if (faltanContacto.length > 0) {
+    motivos.push({ donde: 'contacto', texto: `Contacto semanal ${3 - faltanContacto.length}/3: falta ${faltanContacto.join(', ')} (🤝 Contacto semanal).` })
+  }
+
+  if (!comentario) {
+    motivos.push({ donde: 'comentario', texto: 'Falta el comentario semanal para Raúl (aquí abajo).' })
+  }
+  return motivos
+}
+
+// Todo lo que ha pasado con un cliente en una semana, junto, para leerlo de
+// un tirón: sesiones, notas de sesión, cambios, contacto y el comentario del
+// trabajador. Lo usan el modal de Seguimiento y la pestaña 📝 Resúmenes.
+export function resumenSemanaCliente({ seguimiento, contacto }) {
+  const sesiones = progresoSemana(seguimiento)
+  const notas = []
+  DIAS_SEMANA.forEach((d) => {
+    ;(seguimiento?.dias?.[d.id]?.tareas || []).forEach((t) => {
+      if ((t.nota || '').trim()) notas.push({ dia: d.label, sesion: t.texto, nota: t.nota.trim(), hecha: Boolean(t.revisado) })
+    })
+  })
+  const contactoPuntos = PUNTOS_CONTACTO.map((p) => ({
+    label: p.label,
+    hecho: Boolean(contacto?.[p.id]?.hecho),
+    comentario: (contacto?.[p.id]?.comentario || '').trim(),
+  }))
+  const cambios = seguimiento?.cambiosPendientes || []
+  const comentario = (seguimiento?.comentarios || '').trim()
+  return {
+    sesiones,
+    notas,
+    cambios,
+    contacto: { hechos: contactoPuntos.filter((p) => p.hecho).length, puntos: contactoPuntos },
+    comentario,
+    // ¿Hay algo que leer? Sirve para ordenar la pestaña de resúmenes y poner
+    // arriba los clientes con novedades.
+    tieneContenido: notas.length > 0 || cambios.length > 0 || Boolean(comentario) || contactoPuntos.some((p) => p.comentario),
+  }
+}
