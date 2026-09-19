@@ -373,3 +373,79 @@ export function resumenSemanaCliente({ seguimiento, contacto }) {
     tieneContenido: notas.length > 0 || cambios.length > 0 || Boolean(comentario) || contactoPuntos.some((p) => p.comentario),
   }
 }
+
+// ————————————————————————————————————————————————————————————————
+// Historial del cliente (📜 en el modal de Seguimiento)
+// ————————————————————————————————————————————————————————————————
+// Todo lo apuntado de un cliente, semana a semana y con fecha: notas de
+// sesión, cambios, lo que contó en el contacto y el comentario semanal. No es
+// un dato nuevo: son las mismas filas de `seguimientos` y
+// `contactos_semanales` de siempre (nada se borra al cambiar de semana), solo
+// que juntas y ordenadas para poder buscar "¿cuándo le dolió?" o "¿cuándo se
+// le cambió tal ejercicio?".
+
+// Fecha real (Date local) de un día de una semana. Tiene en cuenta el desfase
+// de la clave de semana explicado en formatRangoSemana(): si la clave cae en
+// domingo, el lunes real es el día siguiente.
+function fechaDiaSemana(semanaISO, indiceDia) {
+  const d = new Date(`${semanaISO}T00:00:00`)
+  if (d.getDay() === 0) d.setDate(d.getDate() + 1)
+  d.setDate(d.getDate() + indiceDia)
+  return d
+}
+
+const fechaCorta = (d) => d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })
+
+// Devuelve las semanas con algo apuntado, de la más reciente a la más
+// antigua: [{ semana, rango, cerrada, cerradaPor, entradas: [...] }]. Cada
+// entrada: { tipo: 'nota'|'cambio'|'contacto'|'comentario', fecha (texto),
+// titulo, texto, hecho? }.
+export function historialCliente({ clienteNombre, seguimientos = [], contactos = [], revisionesSemanales = [] }) {
+  const semanas = new Set([
+    ...seguimientos.filter((s) => s.clienteNombre === clienteNombre).map((s) => s.semana),
+    ...contactos.filter((c) => c.clienteNombre === clienteNombre).map((c) => c.semana),
+  ])
+  return [...semanas]
+    .sort((a, b) => (a < b ? 1 : -1))
+    .map((semana) => {
+      const seg = seguimientos.find((s) => s.clienteNombre === clienteNombre && s.semana === semana)
+      const contacto = contactos.find((c) => c.clienteNombre === clienteNombre && c.semana === semana)
+      const revision = revisionesSemanales.find((r) => r.clienteNombre === clienteNombre && r.semana === semana && r.revisado)
+      const entradas = []
+
+      DIAS_SEMANA.forEach((d, i) => {
+        ;(seg?.dias?.[d.id]?.tareas || []).forEach((t) => {
+          if ((t.nota || '').trim()) {
+            const dia = fechaDiaSemana(semana, i)
+            entradas.push({ tipo: 'nota', ts: dia.getTime(), fecha: fechaCorta(dia), titulo: `Sesión ${t.texto}`, texto: t.nota.trim() })
+          }
+        })
+      })
+      const inicioSemana = fechaDiaSemana(semana, 0).getTime()
+      ;(seg?.cambiosPendientes || []).forEach((c) => {
+        entradas.push({
+          tipo: 'cambio',
+          ts: c.hecho && c.hechoEn ? new Date(c.hechoEn).getTime() : inicioSemana,
+          fecha: c.hecho && c.hechoEn ? fechaCorta(new Date(c.hechoEn)) : 'Semana',
+          titulo: c.hecho ? 'Cambio hecho' : 'Cambio pendiente',
+          texto: c.texto,
+          hecho: Boolean(c.hecho),
+        })
+      })
+      PUNTOS_CONTACTO.forEach((p) => {
+        const punto = contacto?.[p.id]
+        if ((punto?.comentario || '').trim()) {
+          const fechaPunto = punto.fecha ? new Date(punto.fecha.length === 10 ? `${punto.fecha}T00:00:00` : punto.fecha) : null
+          entradas.push({ tipo: 'contacto', ts: fechaPunto ? fechaPunto.getTime() : inicioSemana, fecha: fechaPunto ? fechaCorta(fechaPunto) : p.dia, titulo: `Contacto · ${p.label.toLowerCase()}`, texto: punto.comentario.trim() })
+        }
+      })
+      if ((seg?.comentarios || '').trim()) {
+        entradas.push({ tipo: 'comentario', ts: Infinity, fecha: 'Semana', titulo: 'Comentario semanal', texto: seg.comentarios.trim() })
+      }
+      // Dentro de la semana, por fecha; el comentario semanal, al final.
+      entradas.sort((a, b) => a.ts - b.ts)
+
+      return { semana, rango: formatRangoSemana(semana), cerrada: Boolean(revision), cerradaPor: revision?.revisadoPor || '', entradas }
+    })
+    .filter((s) => s.entradas.length > 0)
+}

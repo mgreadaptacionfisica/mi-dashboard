@@ -6100,3 +6100,82 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
     padding-right: 14px;
   }
 }
+
+/* Historial del cliente (vista 📜 del modal de Seguimiento). */
+.seguimiento-modal-tabs {
+  margin: 4px 0 12px;
+}
+
+.historial-cliente-busqueda {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.historial-cliente-busqueda input {
+  flex: 1;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.historial-semana {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  background: #fff;
+}
+
+.historial-semana-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 6px;
+  font-size: 13.5px;
+}
+
+.historial-entradas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.historial-entrada {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px dashed var(--color-border);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.historial-entrada:first-child {
+  border-top: none;
+}
+
+.historial-entrada-fecha {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.historial-entrada-comentario {
+  background: #fffbeb;
+  border-radius: 6px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+@media (max-width: 768px) {
+  .historial-entrada {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}

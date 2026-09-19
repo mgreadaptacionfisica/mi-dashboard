@@ -13,6 +13,7 @@ import {
   resumenSemanaCliente,
 } from '../utils/seguimientoHelpers'
 import ResumenSemanaCliente from './ResumenSemanaCliente'
+import HistorialCliente from './HistorialCliente'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { upsertRevisionSemanalRemote } from '../lib/queries/revisionesSemanales'
@@ -35,6 +36,18 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
   // cerrar" para terminarla tal cual quedó).
   const [weekOffset, setWeekOffset] = useState(weekOffsetInicial)
   const [cambioDraft, setCambioDraft] = useState('')
+  // 'semana' = trabajar la semana; 'historial' = todo lo apuntado del cliente.
+  const [vistaModal, setVistaModal] = useState('semana')
+
+  // Desde el historial se salta a una semana concreta: offset en semanas
+  // respecto a la actual (las dos claves salen de la misma función, así que
+  // la diferencia es siempre un múltiplo de 7 días; el redondeo absorbe el
+  // cambio de hora).
+  const irASemana = (semanaISO) => {
+    const dias = (new Date(`${semanaISO}T00:00:00`) - new Date(`${semanaActualISO()}T00:00:00`)) / 86400000
+    setWeekOffset(Math.round(dias / 7))
+    setVistaModal('semana')
+  }
 
   const mondayISO = useMemo(() => {
     const base = mondayOf(new Date())
@@ -205,6 +218,21 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
           </div>
         </dl>
 
+        <div className="tabs-bar seguimiento-modal-tabs">
+          <button type="button" className={`tab-btn ${vistaModal === 'semana' ? 'tab-btn-active' : ''}`} onClick={() => setVistaModal('semana')}>📅 Semana</button>
+          <button type="button" className={`tab-btn ${vistaModal === 'historial' ? 'tab-btn-active' : ''}`} onClick={() => setVistaModal('historial')}>📜 Historial</button>
+        </div>
+
+        {vistaModal === 'historial' ? (
+          <HistorialCliente
+            clienteNombre={cliente.Nombre}
+            seguimientos={seguimientos}
+            contactos={contactosSemanales}
+            revisionesSemanales={revisionesSemanales}
+            onIrSemana={irASemana}
+          />
+        ) : (
+        <>
         <div className="seguimiento-week-nav">
           <button type="button" className="secondary-action" onClick={() => setWeekOffset((w) => w - 1)}>← Semana anterior</button>
           <strong>
@@ -327,6 +355,8 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
             </p>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   )

@@ -138,6 +138,10 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
   - **📝 Resúmenes** (`ResumenesSemanales.jsx`, solo admin): el resumen de
     cada cliente por semana (`resumenSemanaCliente()`), para leer el feedback
     del equipo. Solo lectura; por defecto abre la semana pasada.
+  - **📜 Historial** (vista del modal de Seguimiento, `HistorialCliente.jsx`
+    + `historialCliente()`): todo lo apuntado de un cliente, semana a semana y
+    con fecha, con buscador. No guarda nada nuevo: lee las mismas filas de
+    `seguimientos` y `contactos_semanales` (nada se borra al cambiar de semana).
   - **Filtro por trabajador** (`filtroAdmin`, solo admin): chips arriba con
     "Todo el equipo" + uno por trabajador (con su nº de activos) + "Sin asignar".
     Filtra en `misClientesTodos`, así que afecta a TODA la sección (las dos
