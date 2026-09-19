@@ -8,8 +8,8 @@ import CalendarioAvisos from './CalendarioAvisos'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 
 // Dashboard con datos reales (clientes + ingresos de empresa), en vez del
-// snapshot congelado de src/api/index.js (exportado de Notion el 29/06/2026
-// y nunca más actualizado). Todo se calcula aquí mismo a partir de los
+// snapshot congelado que se exportó de Notion el 29/06/2026 (src/api/index.js,
+// ya borrado porque nunca más se actualizó). Todo se calcula aquí mismo a partir de los
 // props que ya carga App.jsx desde Supabase.
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444']

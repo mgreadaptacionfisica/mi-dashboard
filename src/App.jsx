@@ -33,7 +33,6 @@ const MuroEquipo = lazy(() => import('./components/MuroEquipo'))
 const MisTareas = lazy(() => import('./components/MisTareas'))
 const Manuales = lazy(() => import('./components/Manuales'))
 const EnlacesInteres = lazy(() => import('./components/EnlacesInteres'))
-const Proyectos = lazy(() => import('./components/Proyectos'))
 // Clientes: último módulo migrado a Supabase. Los 64 clientes reales se
 // recuperaron del estado en memoria del panel (nunca hubo persistencia
 // real antes) y se migraron con supabase-sql/04_clientes.sql + 04b.
@@ -62,30 +61,6 @@ const seguimientosDataPromise = async () => {
   const remoto = await fetchSeguimientos()
   if (remoto !== null) return { default: remoto }
   return import('./data/seguimientos')
-}
-const settingDataPromise = async () => {
-  const { fetchSetting } = await import('./lib/queries/settingInstagram')
-  const remoto = await fetchSetting()
-  if (remoto !== null) return { default: remoto }
-  return import('./data/setting')
-}
-const adsKpiDataPromise = async () => {
-  const { fetchAdsKpi } = await import('./lib/queries/ads')
-  const remoto = await fetchAdsKpi()
-  if (remoto !== null) return { default: remoto }
-  return import('./data/adsKpi')
-}
-const adsNotasDataPromise = async () => {
-  const { fetchAdsNotas } = await import('./lib/queries/ads')
-  const remoto = await fetchAdsNotas()
-  if (remoto !== null) return { default: remoto }
-  return import('./data/adsNotasMensuales')
-}
-const anunciosDataPromise = async () => {
-  const { fetchAnuncios } = await import('./lib/queries/ads')
-  const remoto = await fetchAnuncios()
-  if (remoto !== null) return { default: remoto }
-  return import('./data/anuncios')
 }
 const recontactosDataPromise = async () => {
   const { fetchRecontactos } = await import('./lib/queries/recontactos')
@@ -166,15 +141,6 @@ const cuestionariosPreviosDataPromise = async () => {
   return import('./data/cuestionariosPrevios')
 }
 
-// Catálogo de objetivos por fase (Valoración): mismo patrón fallback que SOPs.
-// Se deja cargado solo para no perder el historial de valoraciones antiguas
-// que ya usaban el catálogo compartido — ya no se edita desde el panel.
-const objetivosFaseDataPromise = async () => {
-  const { fetchObjetivosFase } = await import('./lib/queries/objetivosFase')
-  const remoto = await fetchObjetivosFase()
-  if (remoto !== null) return { default: remoto }
-  return import('./data/objetivosFase')
-}
 // Objetivos por fase DE CADA CLIENTE ("Fases y objetivos", separado de
 // Valoración): mismo patrón fallback.
 const objetivosClienteFaseDataPromise = async () => {
@@ -234,22 +200,6 @@ const enlacesInteresDataPromise = async () => {
   return { default: remoto || [] }
 }
 
-// Proyectos + sus pasos: sección admin-only (ver SECCIONES_POR_ROL). Dos
-// tablas separadas porque los pasos se marcan de uno en uno; el % de avance
-// no se guarda, se calcula en Proyectos.jsx a partir de los pasos.
-const proyectosDataPromise = async () => {
-  const { fetchProyectos } = await import('./lib/queries/proyectos')
-  const remoto = await fetchProyectos()
-  if (remoto !== null) return { default: remoto }
-  return import('./data/proyectos')
-}
-const proyectoPasosDataPromise = async () => {
-  const { fetchProyectoPasos } = await import('./lib/queries/proyectoPasos')
-  const remoto = await fetchProyectoPasos()
-  if (remoto !== null) return { default: remoto }
-  return import('./data/proyectoPasos')
-}
-
 function PlaceholderView({ name }) {
   return (
     <>
@@ -304,10 +254,6 @@ function InternalApp({ session, rol, onLogout }) {
   const [team, setTeam] = useState([])
   const [ventas, setVentas] = useState([])
   const [seguimientos, setSeguimientos] = useState([])
-  const [setting, setSetting] = useState([])
-  const [adsKpi, setAdsKpi] = useState([])
-  const [adsNotas, setAdsNotas] = useState([])
-  const [anuncios, setAnuncios] = useState([])
   const [recontactos, setRecontactos] = useState([])
   const [ingresosPersonales, setIngresosPersonales] = useState([])
   const [gastosPersonales, setGastosPersonales] = useState([])
@@ -321,14 +267,11 @@ function InternalApp({ session, rol, onLogout }) {
   const [mensajesEquipo, setMensajesEquipo] = useState([])
   const [valoracionesClientes, setValoracionesClientes] = useState([])
   const [cuestionariosPrevios, setCuestionariosPrevios] = useState([])
-  const [objetivosFase, setObjetivosFase] = useState([])
   const [objetivosClienteFase, setObjetivosClienteFase] = useState([])
   const [revisionesSemanales, setRevisionesSemanales] = useState([])
   const [tareasPersonales, setTareasPersonales] = useState([])
   const [manuales, setManuales] = useState([])
   const [enlacesInteres, setEnlacesInteres] = useState([])
-  const [proyectos, setProyectos] = useState([])
-  const [proyectoPasos, setProyectoPasos] = useState([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
   // Modo demo / presentación (solo admin): enmascara los datos personales en
@@ -361,24 +304,18 @@ function InternalApp({ session, rol, onLogout }) {
     let cancelled = false
     Promise.all([
       clientesDataPromise(), teamDataPromise(), ventasDataPromise(), seguimientosDataPromise(),
-      settingDataPromise(), adsKpiDataPromise(), adsNotasDataPromise(), anunciosDataPromise(),
       recontactosDataPromise(), ingresosPersonalesDataPromise(), gastosPersonalesDataPromise(),
       ingresosEmpresaDataPromise(), gastosEmpresaDataPromise(), contenidoIdeasDataPromise(), sopsDataPromise(),
       contactosSemanalesDataPromise(), mensajesEquipoDataPromise(), valoracionesClientesDataPromise(),
-      tareasPersonalesDataPromise(), manualesDataPromise(), objetivosFaseDataPromise(),
+      tareasPersonalesDataPromise(), manualesDataPromise(),
       reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(), objetivosClienteFaseDataPromise(),
-      revisionesSemanalesDataPromise(), enlacesInteresDataPromise(),
-      proyectosDataPromise(), proyectoPasosDataPromise(), cuestionariosPreviosDataPromise(),
-    ]).then(async ([c, t, v, s, st, ak, an, anu, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, of, rr, tp, ocf, rs, ei, pr, pp, cq]) => {
+      revisionesSemanalesDataPromise(), enlacesInteresDataPromise(), cuestionariosPreviosDataPromise(),
+    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
       setVentas(v.default)
       setSeguimientos(s.default)
-      setSetting(st.default)
-      setAdsKpi(ak.default)
-      setAdsNotas(an.default)
-      setAnuncios(anu.default)
       setRecontactos(rc.default)
       setContenidoIdeas(ci.default)
       setSops(so.default)
@@ -389,9 +326,6 @@ function InternalApp({ session, rol, onLogout }) {
       setTareasPersonales(ta.default)
       setManuales(ma.default)
       setEnlacesInteres(ei.default)
-      setProyectos(pr.default)
-      setProyectoPasos(pp.default)
-      setObjetivosFase(of.default)
       setReglasRecurrentes(rr.default)
       setTarifasPasarela(tp.default)
       setObjetivosClienteFase(ocf.default)
@@ -496,7 +430,7 @@ function InternalApp({ session, rol, onLogout }) {
 
     switch (vista) {
       case 'dashboard':    return <Dashboard clientes={dClientes} ventas={dVentas} recontactos={dRecontactos} ingresosEmpresa={dIngresosEmpresa} tareasPersonales={tareasPersonales} contenidoIdeas={contenidoIdeas} />
-      case 'ventas':       return <Ventas ventas={dVentas} setVentas={setVentas} team={dTeam} setClientes={setClientes} setIngresosEmpresa={setIngresosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} setting={setting} setSetting={setSetting} adsKpi={adsKpi} setAdsKpi={setAdsKpi} adsNotas={adsNotas} setAdsNotas={setAdsNotas} anuncios={anuncios} setAnuncios={setAnuncios} recontactos={dRecontactos} setRecontactos={setRecontactos} />
+      case 'ventas':       return <Ventas ventas={dVentas} setVentas={setVentas} team={dTeam} setClientes={setClientes} setIngresosEmpresa={setIngresosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} recontactos={dRecontactos} setRecontactos={setRecontactos} />
       case 'clientes':     return <ClientesAdmin clientes={dClientes} cuestionariosPrevios={dCuestionarios} setCuestionariosPrevios={setCuestionariosPrevios} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} miEmail={session?.user?.email} />
       case 'clientes-equipo': return <ClientesEquipo clientes={dClientes} cuestionariosPrevios={dCuestionarios} team={dTeam} miEmail={session?.user?.email} rol={rol} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
       case 'equipo':       return <Equipo team={dTeam} setTeam={setTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} valoraciones={dValoraciones} objetivosClienteFase={dObjetivos} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} miEmail={session?.user?.email} />
@@ -522,7 +456,6 @@ function InternalApp({ session, rol, onLogout }) {
       case 'tareas':       return <MisTareas tareas={tareasPersonales} setTareas={setTareasPersonales} miEmail={session?.user?.email} />
       case 'manuales':     return <Manuales manuales={manuales} setManuales={setManuales} rol={rol} />
       case 'enlaces':      return <EnlacesInteres enlaces={enlacesInteres} setEnlaces={setEnlacesInteres} />
-      case 'proyectos':    return <Proyectos proyectos={proyectos} setProyectos={setProyectos} pasos={proyectoPasos} setPasos={setProyectoPasos} />
       default:             return null
     }
   }

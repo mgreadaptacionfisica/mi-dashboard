@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react'
 import SERVICIOS from '../data/servicios'
-import SettingInstagram from './SettingInstagram'
-import AdsKpi from './AdsKpi'
 import Recontactar from './Recontactar'
 import CalendarioVentas from './CalendarioVentas'
 import ResumenSemanalVentas from './ResumenSemanalVentas'
@@ -93,7 +91,7 @@ function LeadCard({ lead, onOpen }) {
   )
 }
 
-export default function Ventas({ ventas, setVentas, team, setClientes, setIngresosEmpresa, setGastosEmpresa, tarifasPasarela = [], setting, setSetting, adsKpi, setAdsKpi, adsNotas, setAdsNotas, anuncios, setAnuncios, recontactos, setRecontactos }) {
+export default function Ventas({ ventas, setVentas, team, setClientes, setIngresosEmpresa, setGastosEmpresa, tarifasPasarela = [], recontactos, setRecontactos }) {
   const [activeTab, setActiveTab] = useState('pipeline')
   const [showNewLead, setShowNewLead] = useState(false)
   const [leadForm, setLeadForm] = useState(initialLeadForm)
@@ -603,8 +601,6 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
           <div className="topbar-title">Ventas</div>
           <div className="topbar-subtitle">
             {activeTab === 'pipeline' && 'Pipeline comercial: de la llamada al cliente'}
-            {activeTab === 'setting' && 'Setting de Instagram: bienvenidas y follow-ups'}
-            {activeTab === 'ads' && 'Inversión y resultados de Ads'}
             {activeTab === 'recontactar' && 'Personas a las que hay que volver a contactar'}
             {activeTab === 'calendario' && 'Llamadas agendadas, por mes o por semana'}
             {activeTab === 'resumen' && 'Cómo ha ido la semana: llamadas, cierres y dinero'}
@@ -628,20 +624,6 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
           </button>
           <button
             type="button"
-            className={`tab-btn ${activeTab === 'setting' ? 'tab-btn-active' : ''}`}
-            onClick={() => setActiveTab('setting')}
-          >
-            👋 Setting Instagram
-          </button>
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'ads' ? 'tab-btn-active' : ''}`}
-            onClick={() => setActiveTab('ads')}
-          >
-            📊 KPI Ads
-          </button>
-          <button
-            type="button"
             className={`tab-btn ${activeTab === 'recontactar' ? 'tab-btn-active' : ''}`}
             onClick={() => setActiveTab('recontactar')}
           >
@@ -662,21 +644,6 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
             📈 Resumen semanal
           </button>
         </div>
-
-        {activeTab === 'setting' && (
-          <SettingInstagram setting={setting} setSetting={setSetting} />
-        )}
-
-        {activeTab === 'ads' && (
-          <AdsKpi
-            adsKpi={adsKpi}
-            setAdsKpi={setAdsKpi}
-            adsNotas={adsNotas}
-            setAdsNotas={setAdsNotas}
-            anuncios={anuncios}
-            setAnuncios={setAnuncios}
-          />
-        )}
 
         {activeTab === 'recontactar' && (
           <Recontactar
