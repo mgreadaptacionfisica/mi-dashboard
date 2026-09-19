@@ -6179,3 +6179,69 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
     gap: 2px;
   }
 }
+
+/* ==========================================================================
+   Dashboard: bloque "⚡ Requiere acción" (components/Dashboard.jsx)
+   Sustituye a los banners sueltos de tareas, pausas y vídeos: una sola lista
+   con todo lo que se escapa si no se mira hoy, cada línea lleva a su sección.
+   ========================================================================== */
+.dash-acciones {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+
+.dash-acciones-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.dash-acciones-ok {
+  margin: 0;
+  color: var(--color-primary-dark);
+  font-size: 13.5px;
+}
+
+.dash-acciones ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dash-accion + .dash-accion {
+  border-top: 1px solid var(--color-border);
+}
+
+.dash-accion button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: none;
+  padding: 7px 4px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.dash-accion button:hover {
+  background: #f8fafc;
+}
+
+.dash-accion-alerta button {
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.dash-texto-rojo { color: #b91c1c; }
+.dash-texto-ambar { color: #b45309; }
+.dash-texto-verde { color: #047857; }
+.dash-texto-gris { color: inherit; }

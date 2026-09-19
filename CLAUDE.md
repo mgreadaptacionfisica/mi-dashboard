@@ -195,5 +195,9 @@ corriendo en local sí puede pushear directamente.
 - `MIGRACION_SUPABASE.md` — estado de la migración a Supabase.
 - `src/lib/auth.js` — `SECCIONES_POR_ROL` (qué ve cada rol).
 - `docs/manual-closer.html` — fuente del Manual del Closer
-  (`public/manual-closer-mg.pdf`). Se edita el HTML y se regenera el PDF con
-  Chrome headless (el comando está en el comentario de arriba del archivo).
+  (`public/manual-closer-mg.pdf`) y `docs/manual-panel-tecnico.html` — fuente
+  del manual del panel para técnicos (`public/manual-panel-tecnico.pdf`). Se
+  edita el HTML y se regenera el PDF con Chrome headless (el comando está en
+  el comentario de arriba de cada archivo). Los manuales de admin, closer y
+  contenido (`public/manual-panel-*.pdf`) siguen SIN fuente en el repo y están
+  desactualizados (hablan de Proyectos, Setting IG y KPI Ads, ya quitados).

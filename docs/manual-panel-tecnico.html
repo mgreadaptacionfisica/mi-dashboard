@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Manual del Panel MG Group — rol Técnico</title>
+<!--
+  Fuente del PDF public/manual-panel-tecnico.pdf (el que se enlaza desde
+  Manuales). Para regenerarlo tras editar este archivo:
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+      --no-pdf-header-footer --print-to-pdf=public/manual-panel-tecnico.pdf \
+      "file://$PWD/docs/manual-panel-tecnico.html"
+-->
+<style>
+  @page { size: A4; margin: 15mm 14mm; }
+  :root {
+    --verde: #008A41; --verde-osc: #00602D; --verde-claro: #eaf7f0;
+    --tinta: #0f172a; --gris: #475569; --borde: #dbe2ea;
+    --ambar-claro: #fff8e6; --ambar: #b45309;
+    --rojo: #c0262d; --rojo-claro: #fdeceb;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--tinta); font-size: 10.6pt; line-height: 1.5; }
+  h1 { font-size: 24pt; margin: 0; }
+  h2 { font-size: 15pt; color: var(--verde); margin: 0 0 8px; break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 14px 0 4px; break-after: avoid; }
+  p { margin: 0 0 8px; }
+  ul { margin: 4px 0 10px; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  section { break-before: page; }
+  section.primera { break-before: auto; }
+  .portada { text-align: center; padding: 60mm 0 0; }
+  .portada .logo { font-size: 46pt; font-weight: 800; color: var(--verde); letter-spacing: -2px; }
+  .portada p { color: var(--gris); margin-top: 6px; }
+  .portada hr { width: 120px; border: none; border-top: 2px solid var(--verde); margin: 18px auto; }
+  .caja { background: var(--verde-claro); border: 1px solid #cdeadd; border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
+  .caja-aviso { background: var(--ambar-claro); border: 1px solid #fde4b5; border-left: 4px solid var(--ambar); border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
+  .caja-nuevo { background: #eef6ff; border: 1px solid #cfe3fb; border-left: 4px solid #2563eb; border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
+  .caja b, .caja-aviso b, .caja-nuevo b { color: inherit; }
+  .etq { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--verde-osc); margin-bottom: 3px; }
+  .caja-aviso .etq { color: var(--ambar); }
+  .caja-nuevo .etq { color: #1d4ed8; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 10pt; }
+  th { background: var(--tinta); color: #fff; text-align: left; padding: 6px 9px; }
+  td { padding: 6px 9px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  tr { break-inside: avoid; }
+  tbody tr:nth-child(even) td { background: #f8fafc; }
+  .donde td:last-child { color: var(--verde-osc); font-weight: 600; }
+  .pie { margin-top: 16px; color: var(--gris); font-size: 9pt; font-style: italic; }
+</style>
+</head>
+<body>
+
+<section class="primera">
+  <div class="portada">
+    <div class="logo">MG</div>
+    <h1>Manual del Panel MG Group</h1>
+    <p>Guía de uso — rol Técnico (entrenadores y fisioterapeutas)</p>
+    <hr>
+    <p>Actualizado: septiembre 2026</p>
+  </div>
+</section>
+
+<section>
+  <h2>Antes de empezar</h2>
+  <p>Se entra desde el enlace que os pasa Raúl, con vuestro email y contraseña. Funciona en ordenador, móvil y tablet: en pantallas pequeñas el menú lateral se recoge en el botón ☰ de arriba a la izquierda. Para la rejilla semanal se trabaja más cómodo en ordenador.</p>
+
+  <div class="caja">
+    <span class="etq">Acceso por rol</span>
+    <p>Cada persona entra con su cuenta. Con el rol <b>Técnico</b> ves: <b>Seguimiento y Valoración, Mi Ficha, Operaciones (solo SOPs), Mis tareas, Comunicación y Manuales</b>. Que no aparezca el resto es a propósito: cada rol ve solo lo suyo.</p>
+  </div>
+
+  <div class="caja-nuevo">
+    <span class="etq">Novedades de septiembre 2026</span>
+    <ul>
+      <li><b>💬 Notas en cada sesión</b>: para apuntar un cambio, una molestia o lo que el cliente cuente por WhatsApp.</li>
+      <li><b>Comentario semanal</b> de cada cliente: tu feedback de la semana, que lee Raúl.</li>
+      <li><b>La semana ya no se cierra si falta algo</b>: sesiones sin marcar, cambios sin hacer, contacto incompleto o comentario sin escribir. El panel te dice qué falta.</li>
+      <li><b>📜 Historial</b> por cliente: todo lo apuntado, con fecha y buscador.</li>
+    </ul>
+  </div>
+
+  <h2 style="margin-top:16px">Seguimiento y Valoración</h2>
+  <p>Es tu sitio de trabajo. Se listan solo tus <b>clientes ACTIVOS</b> asignados (los que están EN PAUSA o NO ACTIVO no aparecen; los de pausa salen avisados aparte). Tiene dos pestañas:</p>
+  <ul>
+    <li><b>⚡ Registro de sesiones</b> — la rejilla del día a día. Es el único sitio donde se añaden, marcan y quitan sesiones.</li>
+    <li><b>🤝 Contacto semanal</b> — los tres contactos de la semana con cada cliente.</li>
+  </ul>
+  <p>Arriba a la derecha tienes <b>🔄 Actualizar</b>: el panel no se refresca solo, así que si compartes clientes con otra persona, púlsalo para traer lo que haya marcado.</p>
+
+  <h3>⚡ Registro de sesiones</h3>
+  <p>Una fila por cliente y una columna por día (lunes a domingo). En cada casilla:</p>
+  <ul>
+    <li><b>＋ sesión</b>: escribes la sesión de ese día (texto libre; máximo 3 por día).</li>
+    <li><b>Clic en la sesión</b>: la marcas como hecha (verde) o la desmarcas.</li>
+    <li><b>✕</b>: quita una sesión mal puesta.</li>
+    <li><b>💬</b>: añade o edita la <b>nota de esa sesión</b>.</li>
+  </ul>
+  <p>Con las flechas de arriba puedes ir a semanas anteriores para terminarlas. Si un cliente lo lleváis dos personas, sale la etiqueta <b>🤝 Compartido con…</b>: coordinaos para no pisaros.</p>
+
+  <div class="caja-nuevo">
+    <span class="etq">Qué se apunta en la nota 💬 de una sesión</span>
+    <p>Solo cuando hay algo que contar. Si la sesión fue bien y sin novedad, no hace falta nota.</p>
+    <ul>
+      <li>Un <b>cambio</b>: «press militar → landmine press por molestia».</li>
+      <li>Un <b>dolor o molestia</b>, con el detalle útil: dónde, cuánto (0-10) y en qué ejercicio o serie.</li>
+      <li>Lo que el cliente <b>te diga por WhatsApp</b> sobre esa sesión, aunque te lo diga días después.</li>
+      <li>Cualquier cosa que quieras recordar o que deba saber Raúl.</li>
+    </ul>
+    <p>La nota se queda guardada con su fecha: sale en el resumen de la semana y en el historial del cliente, y se puede buscar meses después.</p>
+  </div>
+
+  <h3>🤝 Contacto semanal</h3>
+  <p>Tres contactos por cliente y semana: <b>inicio</b> (lunes), <b>mitad</b> (miércoles o jueves) y <b>fin</b> (viernes o sábado). Cada uno se marca al hacerlo y admite un comentario con lo que te haya contado — ese comentario también entra en el resumen y en el historial. Puedes retroceder de semana para completar la anterior.</p>
+</section>
+
+<section>
+  <h2>La ficha de Seguimiento de un cliente</h2>
+  <p>Se abre pulsando el nombre del cliente o el botón 📋 de su fila. Tiene dos vistas: <b>📅 Semana</b> y <b>📜 Historial</b>.</p>
+
+  <h3>📅 Semana</h3>
+  <ul>
+    <li><b>Resumen del día a día</b>: las sesiones de la semana con sus notas. Aquí es <b>solo lectura</b>: se editan en la rejilla.</li>
+    <li><b>🔧 Cambios de la semana</b>: lista de cambios pendientes con su casilla. Se añade lo que haya que hacer («subir carga en remo», «grabar vídeo del ejercicio nuevo») y se marca cuando está hecho.</li>
+    <li><b>📝 Comentario semanal para Raúl</b>: cómo ha ido la semana, qué has cambiado y por qué, qué te preocupa, qué necesitas. Es tu feedback y es obligatorio para cerrar.</li>
+    <li><b>📋 Resumen de la semana</b>: se genera solo con las sesiones, las notas, los cambios y el contacto. Sirve para repasar antes de cerrar.</li>
+    <li><b>Semana revisada y cerrada</b>: el check final, cliente por cliente.</li>
+  </ul>
+
+  <div class="caja-aviso">
+    <span class="etq">La semana solo se cierra si está todo</span>
+    <p>Si falta algo, el check sale bloqueado y el panel te dice exactamente qué. Estos son los motivos posibles:</p>
+    <table>
+      <thead><tr><th style="width:42%">Te dice…</th><th>Se arregla en…</th></tr></thead>
+      <tbody>
+        <tr><td>X sesiones sin marcar como hechas</td><td>⚡ Registro de sesiones (marcando las sesiones de esa semana)</td></tr>
+        <tr><td>X cambios de la semana sin marcar como hechos</td><td>La propia ficha, en 🔧 Cambios de la semana</td></tr>
+        <tr><td>Contacto semanal 2/3: falta fin de semana</td><td>🤝 Contacto semanal</td></tr>
+        <tr><td>Falta el comentario semanal para Raúl</td><td>La propia ficha, en 📝 Comentario semanal</td></tr>
+        <tr><td>No hay ninguna sesión registrada</td><td>Regístralas, o explica en el comentario por qué no hubo (vacaciones, parón, lesión…)</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-bottom:0">Una semana ya cerrada se puede reabrir cuando quieras desmarcando el check.</p>
+  </div>
+
+  <h3>📜 Historial del cliente</h3>
+  <p>Todo lo apuntado de ese cliente, semana a semana y con fecha: notas de sesión (con el día exacto), cambios (con el día en que se hicieron), lo que contó en el contacto y los comentarios semanales. Tiene un <b>buscador</b>: escribe «dolor», «press» o lo que sea y te deja solo lo que coincide, con su fecha. No hace falta escribir tildes. Pulsando una semana vas a ella.</p>
+  <p>Es muy útil antes de una valoración o cuando el cliente dice «esto ya me pasó hace meses»: lo buscas y tienes la fecha.</p>
+
+  <h3>📈 Valoración y 🎯 Fases y objetivos</h3>
+  <p>Los otros dos botones de cada fila abren la valoración funcional y las fases del cliente. Son los mismos de siempre.</p>
+
+  <div class="caja">
+    <span class="etq">Movilidad de hombro — ítems de la valoración</span>
+    <ul>
+      <li><b>RE desde ABD y RI desde ABD</b>: rotación externa e interna con el brazo en abducción de 90°.</li>
+      <li><b>Rotación desde FLEX</b>: rotación interna valorada desde flexión.</li>
+      <li><b>Rotación externa y Rotación interna</b>: en reposo, con el brazo pegado al cuerpo (0° de abducción); la interna llevando el brazo por detrás, con la mano subiendo por la espalda.</li>
+      <li><b>Shoulder test (Apley scratch test)</b>: un brazo por arriba y por detrás del cuello, el otro por detrás de la espalda desde abajo, intentando tocarse los dedos; hay versión con el derecho arriba y con el izquierdo arriba.</li>
+    </ul>
+    <p style="margin-bottom:0">Cada ítem compara primera y última medición con % de mejoría, y los pares izquierda/derecha dan un índice de simetría (en rojo si baja del 90%).</p>
+  </div>
+
+  <h3>Fases y objetivos</h3>
+  <ul>
+    <li><b>Objetivos propios de cada cliente</b>, escritos por ti o por Raúl: no es un catálogo compartido.</li>
+    <li><b>Las 4 fases a la vez</b>, cada una con sus objetivos y su casilla de cumplido.</li>
+    <li><b>Avance automático</b>: la fase sube sola cuando están cumplidos todos los objetivos de la fase actual. Todos empiezan en Fase 1.</li>
+    <li><b>Techo por SPADI</b>: SPADI ≥10 no pasa de Fase 1; entre 1 y 9 no pasa de Fase 2; con 0 no hay techo. Si el SPADI es lo único que frena, la pantalla lo avisa.</li>
+  </ul>
+
+  <h3>🕐 Registrar última revisión</h3>
+  <p>Al final de la rejilla, para dejar constancia de cuándo revisaste a un cliente: cliente, día y hora en formato 12 h con AM/PM (igual que Harbiz, para copiarlo tal cual).</p>
+</section>
+
+<section>
+  <h2>La rutina de la semana</h2>
+  <p>Resumido, lo que se espera de cada cliente:</p>
+  <table>
+    <thead><tr><th style="width:22%">Cuándo</th><th>Qué haces</th></tr></thead>
+    <tbody>
+      <tr><td><b>Cada día</b></td><td>Marcas las sesiones hechas en la rejilla y, si ha pasado algo (cambio, molestia, algo que te dice por WhatsApp), lo apuntas en la nota 💬 de esa sesión.</td></tr>
+      <tr><td><b>Lunes</b></td><td>Contacto de inicio de semana con cada cliente.</td></tr>
+      <tr><td><b>Miércoles o jueves</b></td><td>Contacto de mitad de semana.</td></tr>
+      <tr><td><b>Viernes o sábado</b></td><td>Contacto de fin de semana.</td></tr>
+      <tr><td><b>Al terminar la semana</b></td><td>Por cada cliente: repasas el resumen, marcas los cambios hechos, escribes el comentario semanal y cierras la semana. Y dejas preparada la semana siguiente.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="caja-aviso">
+    <span class="etq">Semana pasada sin cerrar</span>
+    <p style="margin-bottom:0">Si una semana anterior se quedó abierta, sale un aviso arriba y un badge <b>⚠️ Semana pasada</b> junto al cliente. Al pulsarlo, la rejilla se coloca en esa semana para que la termines. El aviso desaparece cuando la cierras.</p>
+  </div>
+
+  <h2 style="margin-top:16px">Mi Ficha</h2>
+  <p>Solo para consultar; aquí no se marca nada. Tienes tus datos, tus clientes activos, tu tarifa, el contacto semanal hecho/total, cuántos clientes tienes ya cerrados esta semana, tu historial de pagos y una pestaña 🗓️ Calendario con tus tareas y revisiones. Para trabajar, el botón te lleva a Seguimiento y Valoración.</p>
+
+  <h2>Operaciones → SOPs</h2>
+  <p>Solo lectura: los protocolos de trabajo, incluidos el sistema de trabajo con clientes y los protocolos clínicos de hombro (RCSRP). El calendario de contenido no es de tu rol.</p>
+
+  <h2>Comunicación</h2>
+  <p>El muro del equipo para avisos y dudas. El autor sale automáticamente según tu cuenta. Puedes mencionar a alguien con @nombre y filtrar los mensajes en los que te han mencionado.</p>
+
+  <h2>Mis tareas</h2>
+  <p>Tu lista personal de pendientes (cada uno ve solo la suya), con fecha opcional, casilla de hecha y filtros.</p>
+
+  <h2>Manuales</h2>
+  <p>El archivo de documentos del equipo. Todos consultan y descargan; solo Raúl añade o edita.</p>
+</section>
+
+<section>
+  <h2>¿Dónde hago cada cosa?</h2>
+  <table class="donde">
+    <tbody>
+      <tr><td>Añadir o marcar las sesiones del día</td><td>Seguimiento y Valoración → ⚡ Registro de sesiones</td></tr>
+      <tr><td>Apuntar un cambio, una molestia o algo que dijo el cliente</td><td>⚡ Registro de sesiones → 💬 de esa sesión</td></tr>
+      <tr><td>Marcar un contacto semanal</td><td>Seguimiento y Valoración → 🤝 Contacto semanal</td></tr>
+      <tr><td>Anotar cambios a hacer esta semana</td><td>Ficha del cliente (📋) → 🔧 Cambios de la semana</td></tr>
+      <tr><td>Escribir el comentario semanal para Raúl</td><td>Ficha del cliente (📋) → 📝 Comentario semanal</td></tr>
+      <tr><td>Cerrar la semana de un cliente</td><td>Ficha del cliente (📋) → Semana revisada y cerrada</td></tr>
+      <tr><td>Saber por qué no me deja cerrar</td><td>Ficha del cliente (📋) → aviso 🔒 encima del check</td></tr>
+      <tr><td>Buscar cuándo pasó algo con un cliente</td><td>Ficha del cliente (📋) → 📜 Historial</td></tr>
+      <tr><td>Terminar una semana pasada</td><td>Badge ⚠️ Semana pasada, o las flechas de la rejilla</td></tr>
+      <tr><td>Traer lo que ha marcado un compañero</td><td>🔄 Actualizar (arriba a la derecha)</td></tr>
+      <tr><td>Registrar una valoración funcional</td><td>Fila del cliente → 📈 Valoración</td></tr>
+      <tr><td>Ver o marcar objetivos de fase</td><td>Fila del cliente → 🎯 Fases y objetivos</td></tr>
+      <tr><td>Registrar cuándo revisaste a un cliente</td><td>Seguimiento y Valoración → 🕐 Registrar última revisión</td></tr>
+      <tr><td>Ver tu resumen y lo que te falta</td><td>Mi Ficha</td></tr>
+      <tr><td>Consultar un protocolo</td><td>Operaciones → SOPs</td></tr>
+      <tr><td>Anotar un pendiente tuyo</td><td>Mis tareas</td></tr>
+      <tr><td>Avisar de algo al equipo</td><td>Comunicación</td></tr>
+    </tbody>
+  </table>
+
+  <p class="pie">Documento generado a partir del panel MG Group (actualizado septiembre 2026). Cualquier duda, coméntala en Comunicación o directamente con Raúl.</p>
+</section>
+
+</body>
+</html>
