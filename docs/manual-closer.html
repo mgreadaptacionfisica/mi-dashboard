@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Manual del Closer — MG Readaptación</title>
+<!--
+  Fuente del PDF public/manual-closer-mg.pdf (el que enlaza Ventas → Pipeline).
+  Para regenerarlo después de editar este archivo:
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+      --no-pdf-header-footer --print-to-pdf=public/manual-closer-mg.pdf \
+      "file://$PWD/docs/manual-closer.html"
+  Precios, enlaces de pago, datos bancarios, casos y garantía salen del manual
+  v1 sin tocar: si cambian, cambiarlos aquí.
+-->
+<style>
+  @page { size: A4; margin: 13mm 13mm 14mm; }
+  :root {
+    --verde: #008A41; --verde-osc: #00602D; --verde-claro: #e8f6ee;
+    --tinta: #0f172a; --gris: #475569; --gris-claro: #f1f5f9; --borde: #dbe2ea;
+    --rojo: #c0262d; --rojo-claro: #fdecec; --ambar: #b45309; --ambar-claro: #fff6e5;
+    --azul: #1e3a5f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--tinta); font-size: 10.2pt; line-height: 1.42; }
+  h1, h2, h3 { margin: 0; line-height: 1.2; }
+  p { margin: 0 0 6px; }
+  ul, ol { margin: 4px 0 8px; padding-left: 18px; }
+  li { margin-bottom: 3px; }
+  a { color: var(--azul); text-decoration: none; word-break: break-all; }
+  .pagina { break-after: page; }
+  .pagina:last-child { break-after: auto; }
+  .evita-corte { break-inside: avoid; }
+  /* Solo se fuerza página nueva antes de los bloques de consulta (quién eres,
+     pre-llamada, tarifas, objeciones); el resto fluye para no dejar páginas
+     medio vacías. Títulos pegados a su contenido y cajas sin partir. */
+  .nueva-pagina { break-before: page; }
+  h2, h3, .etq { break-after: avoid; }
+  .di, .caja, .caja-verde, .caja-roja, .caja-ambar { break-inside: avoid; }
+
+  .portada { background: var(--tinta); color: #fff; padding: 18px 20px; border-radius: 10px; margin-bottom: 12px; border-left: 8px solid var(--verde); }
+  .portada h1 { font-size: 21pt; letter-spacing: -0.3px; }
+  .portada p { margin: 4px 0 0; color: #cbd5e1; font-size: 9.5pt; }
+
+  h2 { font-size: 13pt; background: var(--azul); color: #fff; padding: 7px 12px; border-radius: 6px; margin: 12px 0 8px; }
+  h2.verde { background: var(--verde); }
+  h2.rojo { background: var(--rojo); }
+  h2:first-child { margin-top: 0; }
+  h3 { font-size: 10.8pt; color: var(--verde-osc); margin: 10px 0 4px; }
+  .sub { color: var(--gris); font-size: 9.3pt; margin-bottom: 8px; }
+
+  .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .caja { background: var(--gris-claro); border-radius: 8px; padding: 9px 12px; }
+  .caja-verde { background: var(--verde-claro); border-left: 4px solid var(--verde); border-radius: 6px; padding: 8px 12px; margin: 6px 0 8px; }
+  .caja-roja { background: var(--rojo-claro); border-left: 4px solid var(--rojo); border-radius: 6px; padding: 8px 12px; margin: 6px 0 8px; }
+  .caja-ambar { background: var(--ambar-claro); border-left: 4px solid var(--ambar); border-radius: 6px; padding: 8px 12px; margin: 6px 0 8px; }
+  .etq { display: block; font-size: 8.2pt; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--verde-osc); margin-bottom: 2px; }
+  .caja-roja .etq { color: var(--rojo); }
+  .caja-ambar .etq { color: var(--ambar); }
+
+  /* Frases para decir tal cual: se distinguen de un vistazo del resto. */
+  .di { display: block; background: #fff; border: 1px solid var(--borde); border-left: 4px solid var(--verde); border-radius: 6px; padding: 6px 10px; margin: 5px 0; font-style: italic; }
+  .di::before { content: "Di: "; font-style: normal; font-weight: 700; color: var(--verde-osc); }
+  .nota { color: var(--gris); font-size: 9pt; }
+
+  table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; font-size: 9.4pt; }
+  th { background: var(--tinta); color: #fff; text-align: left; padding: 5px 8px; font-weight: 600; }
+  td { padding: 5px 8px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  tr { break-inside: avoid; }
+  tbody tr:nth-child(even) td { background: #f8fafc; }
+  td.num { white-space: nowrap; font-weight: 700; }
+  .link { font-size: 8.4pt; }
+
+  /* Chuleta: la hoja que se tiene abierta durante la llamada. */
+  .pasos { display: grid; gap: 6px; }
+  .paso { display: grid; grid-template-columns: 34px 1fr; gap: 10px; border: 1px solid var(--borde); border-radius: 8px; padding: 7px 10px; break-inside: avoid; }
+  .paso-n { width: 30px; height: 30px; border-radius: 50%; background: var(--verde); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 12pt; }
+  .paso-t { font-weight: 700; font-size: 10.6pt; }
+  .paso-t span { font-weight: 500; color: var(--gris); font-size: 9pt; margin-left: 6px; }
+  .paso p { margin: 2px 0 0; }
+  .paso .frase { font-style: italic; color: var(--verde-osc); }
+
+  .reglas { counter-reset: r; list-style: none; padding: 0; }
+  .reglas li { counter-increment: r; position: relative; padding-left: 26px; margin-bottom: 5px; }
+  .reglas li::before { content: counter(r); position: absolute; left: 0; top: 0; width: 18px; height: 18px; border-radius: 50%; background: var(--tinta); color: #fff; font-size: 8.5pt; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+  .check li { list-style: none; margin-left: -18px; }
+  .check li::before { content: "☐  "; font-size: 11pt; }
+
+  .pie { margin-top: 12px; padding: 7px 12px; background: var(--tinta); color: #94a3b8; font-size: 8.5pt; border-radius: 6px; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ 1. CHULETA -->
+<section>
+  <div class="portada">
+    <h1>MANUAL DEL CLOSER</h1>
+    <p>Readaptación física especializada en lesiones de hombro — Raúl Morales · MG Readaptación</p>
+    <p>Versión 2.0 — septiembre 2026</p>
+  </div>
+
+  <h2 class="verde">Chuleta de la llamada — tenla abierta mientras hablas</h2>
+  <p class="sub">Unos 45 minutos. Quien pregunta, dirige. Tu trabajo no es convencer: es ayudar a la persona a tomar una decisión — sí o no — en esta llamada.</p>
+
+  <div class="pasos">
+    <div class="paso"><div class="paso-n">1</div><div>
+      <div class="paso-t">Conexión <span>3 min</span></div>
+      <p>Nombre, desde dónde habla, su deporte. Sonríe, habla despacio. Nada de vender todavía.</p>
+    </div></div>
+    <div class="paso"><div class="paso-n">2</div><div>
+      <div class="paso-t">Marco de la llamada <span>2 min</span></div>
+      <p>Cómo va a ir la llamada + <b>pacta un sí o un no al final</b> + pregunta quién más decide.</p>
+      <p class="frase">«Lo único que te pido es que al final me digas un sí o un no. Si es que no, no pasa nada.»</p>
+    </div></div>
+    <div class="paso"><div class="paso-n">3</div><div>
+      <div class="paso-t">Descubrimiento <span>15–20 min · la parte más importante</span></div>
+      <p>Presente → pasado → futuro → <b>por qué ahora</b> → <b>prioridad del 1 al 10</b>. Profundiza tres veces en el dolor.</p>
+      <p class="frase">«¿Y eso cómo te afecta?» · «Si en 6 meses sigues igual, ¿qué pasa?» · «¿Por qué ahora y no hace tres meses?»</p>
+    </div></div>
+    <div class="paso"><div class="paso-n">4</div><div>
+      <div class="paso-t">Resumen y permiso <span>2 min</span></div>
+      <p>Repite su situación con sus palabras hasta que diga «sí, eso es». Después pide permiso para explicar.</p>
+    </div></div>
+    <div class="paso"><div class="paso-n">5</div><div>
+      <div class="paso-t">Programa <span>8–10 min</span></div>
+      <p>Cada parte del programa, conectada con algo que te ha dicho. Termómetro del 1 al 10 antes del precio.</p>
+    </div></div>
+    <div class="paso"><div class="paso-n">6</div><div>
+      <div class="paso-t">Precio y cierre <span>5 min</span></div>
+      <p>Recomienda UN plan y di por qué → precio → <b>silencio</b> → pregunta de cierre.</p>
+      <p class="frase">«Por lo que me has contado, te recomiendo el semestre. Son 997 €. ¿Lo empezamos?» — y te callas.</p>
+    </div></div>
+    <div class="paso"><div class="paso-n">7</div><div>
+      <div class="paso-t">Pago y siguiente paso <span>5 min</span></div>
+      <p>Pago o reserva <b>durante la llamada</b>, enlace de onboarding, avisar a Raúl y marcarlo en el panel.</p>
+    </div></div>
+  </div>
+
+  <h3>Las 6 reglas que no se saltan</h3>
+  <ol class="reglas">
+    <li><b>No expliques el programa hasta entender su dolor.</b> Si presentas antes de descubrir, vendes un catálogo.</li>
+    <li><b>Haz la pregunta incómoda con cariño.</b> «¿Qué te ha costado seguir así?» no es agresivo: es tomarse en serio su problema.</li>
+    <li><b>Di el precio y cállate.</b> El primero que habla después del precio, pierde.</li>
+    <li><b>Una objeción no es un no.</b> Acógela, aíslala, pregunta el fondo, responde con lo que te dijo y vuelve a cerrar.</li>
+    <li><b>«Me lo pienso» no es un resultado.</b> Sal siempre con un sí, un no o una fecha y hora concretas (máximo 48 h).</li>
+    <li><b>Nunca mientas ni metas prisas falsas.</b> Apretamos con sus propias razones, no con presión inventada.</li>
+  </ol>
+</section>
+
+<!-- ============================================================ 2. QUIÉN / MENTALIDAD -->
+<section class="nueva-pagina">
+  <h2>Quién eres y qué vendes</h2>
+  <div class="dos">
+    <div class="caja">
+      <span class="etq">Raúl Morales</span>
+      <p>Readaptador físico especializado en lesiones de hombro, Málaga.</p>
+      <span class="etq">Qué vendes</span>
+      <p>Servicio online de readaptación física para deportistas con lesión de hombro que quieren volver a entrenar fuerte, sin dolor y sin volver a lesionarse.</p>
+      <span class="etq">Promesa</span>
+      <p><i>«Te ayudo a volver a entrenar fuerte y sin dolor, aunque lleves meses estancado y hayas probado de todo, entrenando desde el primer momento, con un proceso estructurado y acompañamiento total.»</i></p>
+    </div>
+    <div class="caja">
+      <span class="etq">Cliente ideal</span>
+      <ul>
+        <li>30–50 años; gym, crossfit, pádel, escalada, calistenia.</li>
+        <li>Dolor de hombro persistente que le impide entrenar fuerte.</li>
+        <li>Ha probado fisio, reposo o infiltraciones sin éxito.</li>
+        <li>Quiere volver a entrenar fuerte, no solo estar sin dolor.</li>
+      </ul>
+      <span class="etq">Qué nos diferencia</span>
+      <ul>
+        <li>No eliminamos ejercicios → los adaptamos.</li>
+        <li>No mandamos reposo → ajustamos cargas.</li>
+        <li>No trabajamos solo el tejido lesionado → todo el sistema.</li>
+        <li>Enfoque en rendimiento, no solo en quitar el dolor.</li>
+        <li>Te preparamos para tu deporte concreto.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Mentalidad: apretar sin empujar</h2>
+  <p>Apretar no es presionar. Es <b>no dejar pasar</b> lo que la persona dice a medias: el dolor que minimiza, la excusa que usa para no decidir, el «ya veré» que lleva meses repitiendo. La persona que agenda ya sabe que tiene un problema; muchas veces lo que le falta es alguien que le ayude a decidir. Si le dejas irse sin decidir, no le has hecho un favor: lo más probable es que siga igual otros seis meses.</p>
+
+  <div class="dos">
+    <div class="caja-verde">
+      <span class="etq">Esto sí es apretar</span>
+      <ul>
+        <li>Repreguntar: «¿Qué quieres decir con "bastante"?», «¿Y eso cómo te afecta?».</li>
+        <li>Poner números: meses con dolor, dinero gastado, entrenos perdidos.</li>
+        <li>Hacerle decir <b>a él</b> por qué tiene que solucionarlo ahora.</li>
+        <li>Callarte después de una pregunta importante, aunque el silencio incomode.</li>
+        <li>Pedir una decisión clara y no aceptar un «ya te digo» sin fecha.</li>
+        <li>Recomendar con seguridad: «Yo en tu caso haría esto».</li>
+      </ul>
+    </div>
+    <div class="caja-roja">
+      <span class="etq">Esto no se hace nunca</span>
+      <ul>
+        <li>Prometer resultados o plazos cerrados («en 3 meses estás curado»).</li>
+        <li>Urgencias falsas: plazas o descuentos inventados que «caducan hoy».</li>
+        <li>Hablar mal de otro profesional. Di «eso no ha funcionado en tu caso», no «tu fisio lo hizo mal».</li>
+        <li>Dar diagnósticos médicos. Eso lo hace la valoración.</li>
+        <li>Insistir después de un no claro y razonado.</li>
+        <li>Bajar el precio por iniciativa propia.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Tres ideas que lo cambian todo</h3>
+  <ul>
+    <li><b>La gente compra por sus razones, no por las tuyas.</b> Tu argumento más fuerte es una frase que ha dicho él/ella en la llamada. Apúntalas tal cual.</li>
+    <li><b>El precio solo es caro cuando el problema parece pequeño.</b> Si al llegar al precio la persona no siente lo que le cuesta seguir así, el problema está en el descubrimiento, no en el precio.</li>
+    <li><b>Las objeciones se previenen antes que se rebaten.</b> El marco (paso 2) evita el «me lo pienso»; preguntar quién decide evita el «lo hablo con mi pareja»; el 1–10 destapa las dudas antes del precio.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ 3. PRE-LLAMADA -->
+<section class="nueva-pagina">
+  <h2>Paso 0 — Protocolo pre-llamada</h2>
+  <p class="sub">La venta empieza antes de la llamada: si no viene, no hay nada que cerrar. Objetivo: <b>asistencia de 70 % o más</b> (lo ves en Ventas → 🩺 Embudo). Agenda lo más cerca posible de la reserva: lo ideal es de 24 a 72 h; cuantos más días pasan, más plantones.</p>
+
+  <table>
+    <thead><tr><th style="width:20%">Cuándo</th><th>Qué haces</th><th style="width:17%">En el panel</th></tr></thead>
+    <tbody>
+      <tr><td><b>Al reservar</b> (en la primera hora)</td><td>WhatsApp de confirmación <b>personal</b>, no una plantilla fría, + vídeo de presentación: <a href="https://youtu.be/0YRQGIje8fw">https://youtu.be/0YRQGIje8fw</a>. Pide una respuesta: «¿Me confirmas que te viene bien a esa hora?». Si decide con alguien más (pareja…), invítale a que esté en la llamada.</td><td>☑ Contacto por WhatsApp</td></tr>
+      <tr><td><b>Días previos</b></td><td>Un caso de éxito al día, elegido según su perfil (tabla «Casos de éxito», más abajo), o PDFs de valor: <a href="https://mgreadaptacionfisica.com/">https://mgreadaptacionfisica.com/</a>. Nunca todos a la vez.</td><td>☑ Enviar prellamada</td></tr>
+      <tr><td><b>Día anterior</b></td><td>Recordatorio con el enlace. Pide que esté en un sitio tranquilo, con cámara y unos 45 minutos sin interrupciones.</td><td>☑ Recordatorio</td></tr>
+      <tr><td><b>Si la llamada es por la tarde</b></td><td>Recordatorio adicional por la mañana.</td><td></td></tr>
+      <tr><td><b>10–30 min antes</b></td><td>Reenvía el enlace de la llamada.</td><td></td></tr>
+      <tr><td><b>5 min antes (tú)</b></td><td>Lee la ficha y el informe de prellamada del lead. Escribe tres hipótesis: qué le duele, qué ha probado y qué quiere conseguir. Ten a mano el caso de éxito que más le encaja.</td><td>Ver informe (PDF)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="caja-ambar">
+    <span class="etq">Si no aparece</span>
+    <ul>
+      <li><b>Minuto 3:</b> WhatsApp («Te estoy esperando en la llamada, ¿todo bien?») + llamada de teléfono.</li>
+      <li><b>Minuto 10:</b> márcalo como <i>No show</i> en el panel y propón <b>dos huecos concretos</b>, no un «¿cuándo te viene bien?»:</li>
+    </ul>
+    <span class="di">Nos hemos debido de cruzar. ¿Te viene mejor mañana a las 18:00 o el jueves a las 10:00?</span>
+    <p class="nota">Reagendar en el momento recupera muchas más llamadas que esperar a que conteste. Si no responde, el panel lo pasa a 🔁 Recontactar con aviso a los 2 días.</p>
+  </div>
+
+  <h2>Casos de éxito — cuál usar con quién</h2>
+  <p class="sub">Antes de la llamada: el que más encaje, uno por día. Durante la llamada: menciónalo cuando aparezca la duda que resuelve, o envíalo por WhatsApp en ese momento. Todos están documentados en Instagram y en mgreadaptacionfisica.com.</p>
+  <table>
+    <thead><tr><th style="width:13%">Caso</th><th style="width:27%">Úsalo si el lead…</th><th>Antes → después</th><th style="width:25%">Enlace</th></tr></thead>
+    <tbody>
+      <tr><td><b>María</b><br><span class="nota">Pádel</span></td><td>Juega al pádel · dolor en el día a día · mujer deportista · quiere volver a su deporte.</td><td>Dolor muy limitante en el deporte y en lo cotidiano → juega al pádel sin dolor y entrena en el gimnasio más fuerte que nunca. «Nos cambió la vida.»</td><td class="link"><a href="https://www.instagram.com/reel/DFaQ8-LojwS/">instagram.com/reel/DFaQ8-LojwS</a></td></tr>
+      <tr><td><b>Gabor</b><br><span class="nota">Gym</span></td><td>Le han recomendado operar · miedo a la operación · quiere evitar la cirugía.</td><td>Le dijeron que necesitaba operarse → evitó la cirugía y mejora marcas por encima de su nivel previo.</td><td class="link"><a href="https://www.instagram.com/reel/DQJ2VafjPVZ/">instagram.com/reel/DQJ2VafjPVZ</a></td></tr>
+      <tr><td><b>Carlos</b><br><span class="nota">Gym</span></td><td>Meses o años con dolor · ha probado infiltraciones · frustración acumulada.</td><td>2 años con dolor e infiltraciones sin resultado → en 4 meses prácticamente recuperado, más fuerte que antes.</td><td class="link"><a href="https://www.instagram.com/reel/DK9SG8qILMr/">instagram.com/reel/DK9SG8qILMr</a></td></tr>
+      <tr><td><b>Adán</b><br><span class="nota">Gym</span></td><td>Dolor nocturno · dolor fuerte en el día a día · ha ido a urgencias o al ambulatorio.</td><td>Visitas frecuentes al ambulatorio, no dormía por el dolor → entrena fuerte, sin dolor al dormir ni en el día a día.</td><td class="link"><a href="https://youtu.be/jNX05yz_JQ0">youtu.be/jNX05yz_JQ0</a></td></tr>
+      <tr><td><b>Saulo</b><br><span class="nota">Gym / CrossFit</span></td><td>No ha parado de entrenar pero tiene dolor · no quiere dejar de entrenar.</td><td>Entrenaba siempre con dolor → sigue entrenando igual de fuerte (o más) y sin dolor.</td><td class="link"><a href="https://youtu.be/GSBWMjlNViU">youtu.be/GSBWMjlNViU</a></td></tr>
+      <tr><td><b>José Miguel (1)</b><br><span class="nota">Gym</span></td><td>Calcificación · persona mayor que duda de poder recuperarse.</td><td>Calcificación que le limitaba, dudas por la edad → entrena sin dolor en su mejor pico de fuerza. La edad no es excusa.</td><td class="link">Parte 1: <a href="https://www.instagram.com/reel/C5Yy0eeoHA2/">instagram.com/reel/C5Yy0eeoHA2</a><br>Parte 2: <a href="https://www.instagram.com/reel/C5blSyJoJ75/">instagram.com/reel/C5blSyJoJ75</a></td></tr>
+      <tr><td><b>José Miguel (2)</b><br><span class="nota">Gym</span></td><td>Miedo a que la lesión vuelva · duda de que el resultado dure.</td><td>Meses después: sin recaídas y sin miedo a entrenar.</td><td class="link"><a href="https://www.instagram.com/reel/DV9WNpFjXoE/">instagram.com/reel/DV9WNpFjXoE</a></td></tr>
+      <tr><td><b>David</b><br><span class="nota">Entrenador</span></td><td>Profesional del fitness · sabe entrenar pero no aplicarlo a su lesión.</td><td>Entrenador que no sabía readaptar su propio hombro → se recuperó y aprendió a readaptar hombros de sus clientes.</td><td class="link"><a href="https://youtu.be/tEPe4imc3e8">youtu.be/tEPe4imc3e8</a></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ 4. LA LLAMADA (1–4) -->
+<section>
+  <h2 class="verde">La llamada, paso a paso</h2>
+
+  <h3>① Conexión (3 min)</h3>
+  <p>Rapport de verdad: su nombre, desde dónde te habla, su deporte, algo que haya contado al reservar. Tono tranquilo, sin prisa. Nada de programa ni de precio.</p>
+
+  <h3>② Marco de la llamada (2 min) — aquí se gana o se pierde el cierre</h3>
+  <p>Deja claro cómo va a ir la llamada y <b>pacta de antemano que habrá una decisión</b>. Es lo que más reduce el «me lo tengo que pensar» del final, porque ya lo ha aceptado al principio.</p>
+  <span class="di">Te cuento cómo va la llamada. Primero te voy a hacer bastantes preguntas para entender bien tu hombro y qué has probado. Si veo que te podemos ayudar, te explico cómo lo haríamos y lo que cuesta; y si veo que no, te lo digo igual de claro y te oriento. Lo único que te pido es que al final me digas un sí o un no. Un «me lo pienso» no nos ayuda a ninguno de los dos, y si es que no, no pasa nada. ¿Te parece justo?</span>
+  <span class="di">Una cosa antes de empezar: si al final lo ves claro, ¿la decisión es solo tuya o hay alguien con quien lo quieras hablar?</span>
+  <p class="nota">Si dice que lo decide con su pareja: «¿Puede estar un momento al final de la llamada?». Si no puede, agenda ya una llamada corta con los dos. Tampoco se resuelve el caso en esta llamada: hace falta valoración y proceso. Si esperaba empezar YA: «Estamos a tope ayudando a personas como tú y la prioridad es quien ya está dentro; sin valoración no se resuelve nada». Si insiste en una valoración exhaustiva: cuesta 70 € con pago previo — <a href="https://buy.stripe.com/cNi6oH7vl2y68cGgCLf3a0z">buy.stripe.com/cNi6oH7vl2y68cGgCLf3a0z</a>.</p>
+
+  <h3>③ Descubrimiento (15–20 min) — la parte más importante</h3>
+  <p>Aquí consigues los motivos para comprar. <b>Profundiza tres veces</b>: la primera respuesta es la educada, la tercera es la verdadera. Apunta sus frases literales: las usarás en el paso 5 y en las objeciones.</p>
+  <div class="dos">
+    <div>
+      <span class="etq">Presente</span>
+      <ul>
+        <li>¿Cómo estás ahora, físicamente y de ánimo?</li>
+        <li>¿Qué has dejado de hacer por el hombro? → «¿Y eso cómo te afecta?» → «¿Y cómo te sientes con eso?». Si hay dolor fuerte, quédate ahí.</li>
+        <li>¿Por qué entrenas? ¿Qué objetivos tienes? → así ve que el programa va más allá del hombro.</li>
+      </ul>
+      <span class="etq">Pasado</span>
+      <ul>
+        <li>¿Cómo empezó?</li>
+        <li>¿Qué has probado y por qué crees que no funcionó?</li>
+        <li>Si le mandaron ejercicios: «¿Cuáles? Las gomas están bien para quien no es deportista, pero tú necesitas gestión real de cargas y una progresión específica para tu deporte. ¿Te han hecho eso alguna vez?». Lo habitual es que diga que no.</li>
+        <li>¿Cuánto llevas gastado en intentarlo, entre fisio, pruebas, infiltraciones…?</li>
+      </ul>
+    </div>
+    <div>
+      <span class="etq">Futuro</span>
+      <ul>
+        <li>¿Cómo te verías en 4–6 meses sin la lesión? ¿Qué harías que ahora no haces?</li>
+        <li><b>Coste de esperar:</b> «Y si dentro de seis meses sigues exactamente igual, ¿qué pasa?». Déjale contestar entero.</li>
+      </ul>
+      <span class="etq">Por qué ahora (no te la saltes)</span>
+      <span class="di">Llevas [X meses] así. ¿Por qué has decidido pedir ayuda ahora y no hace tres meses?</span>
+      <p class="nota">Su respuesta es el motivo real de compra. Sin ella, el cierre se queda cojo.</p>
+      <span class="etq">Prioridad del 1 al 10</span>
+      <span class="di">Del 1 al 10, ¿cuánta prioridad tiene para ti solucionar esto ya?</span>
+      <ul>
+        <li>8 o más: «¿Por qué un 8 y no un 5?». Te está dando él las razones para empezar.</li>
+        <li>Menos de 7: «¿Qué haría falta para que fuera un 9?». Destapa ahora la duda, no después del precio.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>④ Resumen y permiso (2 min)</h3>
+  <span class="di">Déjame ver si lo he entendido: llevas [tiempo] con dolor, has probado [lo que sea] y no ha funcionado, has dejado de [lo que ha dejado], y lo que quieres es [su objetivo] porque [su motivo]. ¿Es así? ¿Me dejo algo?</span>
+  <p>Espera a que diga <b>«sí, eso es»</b>. Solo entonces:</p>
+  <span class="di">¿Quieres que te cuente cómo lo trabajaríamos en tu caso?</span>
+</section>
+
+<!-- ============================================================ 5. LA LLAMADA (5–7) -->
+<section>
+  <h3>⑤ El programa (8–10 min) — conectado con lo que te ha contado</h3>
+  <p>No recites una lista. Cada parte del programa responde a algo que te ha dicho: «Tú me has dicho X → por eso hacemos Y».</p>
+  <table>
+    <thead><tr><th style="width:38%">Si te ha dicho…</th><th>Conéctalo con…</th></tr></thead>
+    <tbody>
+      <tr><td>«He hecho ejercicios / gomas y nada»</td><td>Planificación personalizada en Harbiz, con vídeos, instrucciones y registro de pesos y sensaciones. Gestión real de cargas, no ejercicios sueltos.</td></tr>
+      <tr><td>«No sé bien qué me pasa»</td><td>Valoración inicial (movilidad, tolerancia a la carga, dolor), que decide la fase de partida, + educación sobre el dolor y la lesión para que entienda lo que le pasa.</td></tr>
+      <tr><td>«Quiero volver a mi deporte / entrenar fuerte»</td><td>4 fases: ① reducir dolor y ganar movilidad → ② fuerza → ③ movimientos específicos de su deporte → ④ rendimiento y prevención. Objetivo final: entrenar más fuerte que antes de la lesión.</td></tr>
+      <tr><td>«Me da miedo que vuelva»</td><td>Fase 4 de prevención + caso de José Miguel (2).</td></tr>
+      <tr><td>«Me he sentido solo / nadie me ha seguido»</td><td>Seguimiento semanal ajustando las cargas según responde, WhatsApp diario, videollamadas cuando hace falta, y equipo multidisciplinar: Javi (fisioterapeuta) + Raúl (readaptador).</td></tr>
+      <tr><td>«Me han dicho que me opere»</td><td>El proceso completo + caso de Gabor.</td></tr>
+    </tbody>
+  </table>
+  <p>No son sesiones sueltas: es un programa completo (entrenamiento, pautas, educación del dolor y todo lo necesario). Cada pocos minutos, comprueba: «¿Cómo lo ves hasta aquí?».</p>
+  <span class="etq">Termómetro antes del precio</span>
+  <span class="di">Del 1 al 10, ¿cuánto ves que esto es lo que necesitas?</span>
+  <p class="nota">Si dice menos de 8: «¿Qué te falta para verlo un 10?». Resuélvelo antes de hablar de dinero. Una duda sin resolver se convierte después en «es caro».</p>
+
+  <h3>⑥ Precio y cierre (5 min)</h3>
+  <ol>
+    <li><b>Recomienda UN plan y di por qué.</b> Semestre si el caso es grave (mucho dolor, sin entrenar, operación, poca movilidad); si no lo ve, cuatrimestre y ya veremos. No enseñes un menú de opciones.</li>
+    <li><b>Di el precio y cállate.</b> No añadas nada: ni financiación, ni «bueno, pero…». Espera.</li>
+    <li><b>Pregunta de cierre:</b> una pregunta con respuesta de sí o no.</li>
+  </ol>
+  <span class="di">Por lo que me has contado — [su situación] — lo que te recomiendo es el semestre, porque [motivo de su caso]. Son 997 €. ¿Lo empezamos?</span>
+  <ul>
+    <li><b>Si dice que sí:</b> pasa directamente al pago (paso 7). No sigas vendiendo.</li>
+    <li><b>Si duda:</b> «¿Qué es lo que te frena?» → método de la sección Objeciones.</li>
+    <li><b>Si el problema real es el dinero:</b> primero «¿Cuánto puedes poner ahora?» y ofrece <b>solo</b> la opción que encaja: 2 plazos, Hotmart a plazos o reserva. La financiación solo si de verdad no puede pagarlo.</li>
+    <li><b>Si lleva muy poco tiempo con dolor</b> o no puede de ninguna forma con el cuatrimestre: low ticket de 397 € como último recurso.</li>
+  </ul>
+
+  <h3>⑦ Pago y siguiente paso (5 min)</h3>
+  <ul>
+    <li><b>El pago o la reserva, en la misma llamada.</b> «Te paso el enlace por WhatsApp y lo hacemos juntos ahora; así, si hay cualquier problema, lo resolvemos al momento.»</li>
+    <li>Nada más comprar, envía el onboarding: <a href="https://mi-dashboard-red.vercel.app/onboarding">https://mi-dashboard-red.vercel.app/onboarding</a> y explícale que ahí tiene todo lo que necesita para empezar.</li>
+    <li>Avisa a Raúl para que le contacte por otro número.</li>
+    <li>Márcalo en el panel: <i>Llamada realizada → Sí, compró</i>, con la fecha de cierre real.</li>
+  </ul>
+  <div class="caja-verde">
+    <span class="etq">Felicítale por la decisión</span>
+    <p>«Has tomado una buena decisión. Lo difícil era dar el paso, y ya está dado.» Reduce el arrepentimiento del comprador y arranca bien la relación.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 6. TARIFAS -->
+<section class="nueva-pagina">
+  <h2>Tarifas y enlaces de pago</h2>
+
+  <h3 style="margin-top:4px">Cuatrimestre — 697 €</h3>
+  <table>
+    <thead><tr><th style="width:40%">Opción</th><th style="width:17%">Precio</th><th>Enlace de pago</th></tr></thead>
+    <tbody>
+      <tr><td>Pago único (online)</td><td class="num">697 €</td><td class="link"><a href="https://buy.stripe.com/00w8wP8zpfkS78Ccmvf3a09">https://buy.stripe.com/00w8wP8zpfkS78Ccmvf3a09</a></td></tr>
+      <tr><td>Pago en 2 plazos *</td><td class="num">2 × 350 €</td><td class="link"><a href="https://buy.stripe.com/aFabJ19Dt1u2csWeuDf3a0M">https://buy.stripe.com/aFabJ19Dt1u2csWeuDf3a0M</a></td></tr>
+      <tr><td>A plazos (Hotmart) — 3 m: 239,33 € · 6 m: 123,16 € · 9 m: 84,44 € · 12 m: 65,08 €</td><td class="num">desde 65,08 €/mes</td><td class="link"><a href="https://pay.hotmart.com/V106562470T?off=x0f2bpsx">https://pay.hotmart.com/V106562470T?off=x0f2bpsx</a></td></tr>
+      <tr><td>Reserva cuatrimestre</td><td class="num">70 €</td><td class="link"><a href="https://buy.stripe.com/dRm6oH9Dt3CagJccmvf3a0s">https://buy.stripe.com/dRm6oH9Dt3CagJccmvf3a0s</a></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Semestre — 997 €</h3>
+  <table>
+    <thead><tr><th style="width:40%">Opción</th><th style="width:17%">Precio</th><th>Enlace de pago</th></tr></thead>
+    <tbody>
+      <tr><td>Pago único (online)</td><td class="num">997 €</td><td class="link"><a href="https://buy.stripe.com/6oU14n9DtgoWfF80DNf3a05">https://buy.stripe.com/6oU14n9DtgoWfF80DNf3a05</a></td></tr>
+      <tr><td>Pago en 2 plazos *</td><td class="num">2 × 500 €</td><td class="link"><a href="https://buy.stripe.com/00w8wP4j9c8G78CeuDf3a0g">https://buy.stripe.com/00w8wP4j9c8G78CeuDf3a0g</a></td></tr>
+      <tr><td>A plazos (Hotmart) — 3 m: 340,73 € · 6 m: 174,56 € · 9 m: 119,17 € · 12 m: 91,48 €</td><td class="num">desde 91,48 €/mes</td><td class="link"><a href="https://pay.hotmart.com/V106562470T?off=ohoibt48">https://pay.hotmart.com/V106562470T?off=ohoibt48</a></td></tr>
+      <tr><td>Reserva semestre</td><td class="num">100 €</td><td class="link"><a href="https://buy.stripe.com/8x214n3f5dcKakObirf3a0t">https://buy.stripe.com/8x214n3f5dcKakObirf3a0t</a></td></tr>
+    </tbody>
+  </table>
+  <p class="nota">* Pago en 2 plazos = envía este enlace ahora y otra vez al mes siguiente. Son 2 pagos, no una suscripción.</p>
+
+  <h3>Low ticket — 397 € / cuatrimestre (solo si lleva MUY poco tiempo con dolor, o como downsell)</h3>
+  <table>
+    <thead><tr><th style="width:40%">Opción</th><th style="width:17%">Precio</th><th>Enlace de pago</th></tr></thead>
+    <tbody>
+      <tr><td>Cuatrimestre (low ticket)</td><td class="num">397 €</td><td class="link"><a href="https://buy.stripe.com/9B68wPdTJfkS64y3PZf3a0Q">https://buy.stripe.com/9B68wPdTJfkS64y3PZf3a0Q</a></td></tr>
+    </tbody>
+  </table>
+  <p class="nota">Diferencia: seguimiento mensual, aprende a avanzar solo, solo 1 día a la semana de resolución de dudas.</p>
+
+  <h3>Transferencia bancaria (alternativa)</h3>
+  <table>
+    <tbody>
+      <tr><td style="width:22%"><b>Nombre</b></td><td>EMGEE MOMENTUM LLC</td></tr>
+      <tr><td><b>IBAN</b></td><td>BE19 9054 0179 3912</td></tr>
+      <tr><td><b>BIC/SWIFT</b></td><td>TRWIBEB1XXX</td></tr>
+      <tr><td><b>Banco</b></td><td>Wise — Rue du Trône 100, 3rd floor, Brussels, 1050, Belgium</td></tr>
+      <tr><td><b>Importante</b></td><td>Pedir el justificante al hacer la transferencia.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Pago a plazos en Hotmart (seQura) — hazlo con el cliente en la videollamada</h3>
+  <table>
+    <thead><tr><th style="width:5%">#</th><th style="width:40%">Qué hacer</th><th>Ojo</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Abrir el enlace de Hotmart</td><td>El país se detecta solo según la ubicación del cliente.</td></tr>
+      <tr><td>2</td><td>Email y confirmación de email</td><td>Que use el email que más usa.</td></tr>
+      <tr><td>3</td><td>Nombre completo</td><td>Tal como aparece en su DNI.</td></tr>
+      <tr><td>4</td><td>Zona: Península o Canarias</td><td>Elegirla bien para que funcione seQura.</td></tr>
+      <tr><td>5</td><td>Método de pago: seQura</td><td>Solo aparece si el país lo permite. En España funciona para la mayoría, salvo casos con deudas pendientes.</td></tr>
+      <tr><td>6</td><td>Elegir los plazos</td><td>3, 6, 9 o 12 meses, según le venga mejor.</td></tr>
+    </tbody>
+  </table>
+  <p class="nota">Si la financiación no está disponible para ese cliente → ofrece pago único o reserva.</p>
+</section>
+
+<!-- ============================================================ 7. OBJECIONES -->
+<section class="nueva-pagina">
+  <h2 class="rojo">Objeciones — el método antes que las respuestas</h2>
+  <p class="sub">Una objeción casi nunca es un no: es una duda que no se ha resuelto. No discutas ni te defiendas. Sigue estos cuatro pasos, siempre en este orden:</p>
+  <div class="dos evita-corte">
+    <div class="caja">
+      <span class="etq">1 · Acoger</span>
+      <p>«Tiene todo el sentido.» / «Normal que lo pienses.» Baja la guardia; nunca empieces con «pero».</p>
+      <span class="etq">2 · Aislar</span>
+      <p>«Aparte de eso, ¿hay algo más que te frene? Si eso estuviera resuelto, ¿empezarías?» Así sabes si es la objeción real o una excusa.</p>
+    </div>
+    <div class="caja">
+      <span class="etq">3 · Preguntar el fondo</span>
+      <p>«¿Qué es exactamente lo que te hace dudar?» Deja que se explique. Muchas veces la resuelve solo al decirla.</p>
+      <span class="etq">4 · Responder con lo suyo y volver a cerrar</span>
+      <p>Usa algo que te dijo en el descubrimiento («Me dijiste que llevas dos años sin poder…») y termina con la pregunta de cierre: «¿Lo empezamos?».</p>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th style="width:26%">Objeción</th><th>Qué hacer / qué decir</th></tr></thead>
+    <tbody>
+      <tr><td><b>«Me lo tengo que pensar»</b><br><span class="nota">La más habitual. Casi siempre esconde otra.</span></td><td>«Claro. ¿Qué es exactamente lo que necesitas pensar: si esto funciona, el dinero o el momento?». Trata la que diga. Si aun así quiere pensarlo: «Me parece bien. Te guardo la plaza hasta el [día] a las [hora], máximo 48 h. Ese día te escribo y me dices sí o no, ¿trato?». Recuérdale con suavidad lo que pactasteis al principio: un sí o un no.</td></tr>
+      <tr><td><b>«Lo tengo que hablar con mi pareja»</b></td><td>«Me parece muy bien. Y si fuera solo por ti, ¿lo empezarías?». Si dice que sí: «¿Qué crees que te va a preguntar?» y prepárale las respuestas. Después: «¿Hacemos mañana una llamada de 10 minutos con los dos y resolvemos sus dudas directamente?». Agéndala ya, con día y hora.</td></tr>
+      <tr><td><b>«No tengo dinero / es caro»</b></td><td>«¿Es que no puedes pagarlo, o es que ahora mismo no es tu prioridad?». Si es prioridad, vuelve a su dolor y al coste de seguir así (lo que lleva gastado sin resultado). Si de verdad no puede: «¿Cuánto puedes poner ahora?» → ofrece solo esa opción (2 plazos, Hotmart o reserva).</td></tr>
+      <tr><td><b>«Ya he gastado mucho y no sé si gastar más»</b></td><td>«Lo entiendo. Precisamente porque has gastado sin resultado, no tiene sentido seguir haciendo lo mismo. Este proceso es diferente, y si hay compromiso y no funciona, te devolvemos el dinero.»</td></tr>
+      <tr><td><b>«¿Y si no funciona?»</b></td><td>La garantía (sección Garantía): si hay compromiso y comunicación y no mejora, se revisa todo con él/ella y, si no funciona, se le devuelve el dinero; si le faltan semanas al terminar, se amplía sin coste. «¿Qué tienes que perder?»</td></tr>
+      <tr><td><b>«Necesito saber qué me pasa antes / hasta que no me hagan pruebas no empiezo»</b></td><td>«¿Necesitas saber qué tienes, o necesitas recuperarte?». Las pruebas no garantizan resultados ni son concluyentes; nosotros valoramos cómo funciona tu hombro, no solo una imagen. Muchos empiezan con nosotros y se hacen las pruebas después.</td></tr>
+      <tr><td><b>«Prefiero intentarlo por mi cuenta / con mi fisio»</b></td><td>«¿Cuánto tiempo llevas intentándolo? ¿Te lo ha solucionado?» → <b>silencio</b>. Deja que conteste él.</td></tr>
+      <tr><td><b>«Lo dejo para después del verano / más adelante»</b></td><td>«Cuanto más se deja, peor suele ponerse. Imagínate dentro de 4–6 meses: empezando hoy o sin haber empezado. ¿Dónde prefieres estar?». Si se va de vacaciones, esas semanas se pueden prorrogar.</td></tr>
+      <tr><td><b>«Espero a que baje el dolor / empezaré cuando pueda entrenar»</b></td><td>«Para eso estamos. ¿Cómo lo vas a reducir, con reposo? Si después vuelves a entrenar, el dolor vuelve. Ese momento no llega solo: prepararte para poder entrenar es justo lo que hacemos.»</td></tr>
+      <tr><td><b>«No sé si online me puede ayudar» / «Prefiero presencial»</b></td><td>«¿Has probado presencial y te ha funcionado?». El seguimiento diario online supera lo que da una sesión presencial a la semana. Y con garantía de devolución, ¿qué tienes que perder?</td></tr>
+      <tr><td><b>«Ya he probado ejercicios y no funcionan»</b></td><td>«Los ejercicios sin gestión de cargas ni progresión se quedan cortos para un deportista. No es lo mismo hacer gomas que un programa estructurado para tu deporte.»</td></tr>
+      <tr><td><b>«Ahora no tengo tiempo»</b></td><td>«¿Cuánto entrenas ahora a la semana?». Ya entrena: no se trata de sumar horas, sino de que lo que ya hace le sirva para recuperarse en vez de mantener el dolor.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ 8. SEGUIMIENTO / GARANTÍA / TUS NÚMEROS -->
+<section>
+  <h2>Si no cierra en la llamada — seguimiento de 48 horas</h2>
+  <p class="sub">Solo si hay un motivo concreto y una fecha pactada. Un «ya te digo» sin fecha se trata como un no.</p>
+  <table>
+    <thead><tr><th style="width:17%">Cuándo</th><th>Qué haces</th></tr></thead>
+    <tbody>
+      <tr><td><b>Antes de colgar</b></td><td>Fecha y hora concretas para la respuesta (máximo 48 h) y apunta la objeción en el panel (<i>No compró → seguimiento</i>, + objeción).</td></tr>
+      <tr><td><b>Mismo día</b></td><td>WhatsApp con un resumen: «Lo que me contaste: … Lo que te propongo: … Te escribo el [día]». Adjunta el caso de éxito que responde a su duda.</td></tr>
+      <tr><td><b>A las 24 h</b></td><td>Audio corto y personal que responda a su objeción concreta. Nada de «¿qué tal, lo has pensado?».</td></tr>
+      <tr><td><b>A las 48 h</b></td><td>Pregunta cerrada: «¿Te guardo la plaza o se la doy a otra persona?». Sí → pago. No → márcalo como perdido con el motivo real.</td></tr>
+      <tr><td><b>Sin respuesta</b></td><td>Un último intento a los 3 días. Si no contesta, márcalo como perdido. Un seguimiento que se alarga semanas casi nunca cierra.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="verde">Garantía y aclaraciones para el cliente</h2>
+  <div class="dos">
+    <div class="caja">
+      <span class="etq">Garantía</span>
+      <ul>
+        <li>Si analizamos tu caso y no podemos ayudarte, te lo decimos directamente y te damos alternativas.</li>
+        <li>No trabajamos con todo el mundo.</li>
+        <li>Si hay compromiso y comunicación y aun así no mejoras → revisamos todo contigo. Si no funciona, se devuelve el dinero. (Nunca hemos devuelto el dinero.)</li>
+        <li>Si al terminar el programa faltan semanas para recuperarte → ampliamos el servicio sin coste.</li>
+      </ul>
+    </div>
+    <div class="caja">
+      <span class="etq">Aclaraciones importantes</span>
+      <ul>
+        <li>No es un proceso milagro.</li>
+        <li>Requiere compromiso activo del cliente.</li>
+        <li>No todos los casos son iguales.</li>
+        <li>No sustituimos el diagnóstico médico cuando es necesario.</li>
+        <li>Los resultados dependen de la implicación del cliente.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Después de cada llamada</h2>
+  <div class="dos">
+    <div>
+      <h3 style="margin-top:0">Apúntalo en el panel (si no se apunta, no existe)</h3>
+      <ul>
+        <li>Resultado: realizada, no show, cancelada o reagendada.</li>
+        <li>¿Compró en la llamada? Sí / no.</li>
+        <li>Las objeciones, con sus palabras.</li>
+        <li>Si se pierde: el motivo real, no «no le interesa».</li>
+      </ul>
+      <h3>Tus números — Ventas → 🩺 Embudo</h3>
+      <ul>
+        <li><b>Asistencia ≥ 70 %</b>: si baja, revisa la pre-llamada.</li>
+        <li><b>Cierre ≥ 25 %</b> de las llamadas hechas: si baja, revisa el descubrimiento y las objeciones.</li>
+        <li>Las objeciones más repetidas salen allí: son tu lista de práctica.</li>
+      </ul>
+    </div>
+    <div class="caja">
+      <h3 style="margin-top:0">Autoevaluación de 1 minuto</h3>
+      <ul class="check">
+        <li>¿Hice el marco y pacté un sí o un no?</li>
+        <li>¿Pregunté quién más decide?</li>
+        <li>¿Sé por qué quiere solucionarlo <b>ahora</b>?</li>
+        <li>¿Sé cuánto le cuesta seguir así?</li>
+        <li>¿Resumí y me dijo «sí, eso es»?</li>
+        <li>¿Conecté el programa con lo que me contó?</li>
+        <li>¿Dije el precio y me callé?</li>
+        <li>¿Aislé la objeción antes de responderla?</li>
+        <li>¿Salí con un sí, un no o una fecha concreta?</li>
+      </ul>
+      <p class="nota">Si fallas en la misma casilla tres llamadas seguidas, esa es tu tarea de la semana. Escucha la grabación de esa parte.</p>
+    </div>
+  </div>
+
+  <div class="pie"><span>mgreadaptacionfisica.com</span><span>Manual del Closer — Raúl Morales</span><span>Versión 2.0 — septiembre 2026</span></div>
+</section>
+
+</body>
+</html>

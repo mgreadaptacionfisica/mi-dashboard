@@ -175,3 +175,6 @@ corriendo en local sí puede pushear directamente.
 - `DOCUMENTACION_TECNICA.md` — documentación técnica completa.
 - `MIGRACION_SUPABASE.md` — estado de la migración a Supabase.
 - `src/lib/auth.js` — `SECCIONES_POR_ROL` (qué ve cada rol).
+- `docs/manual-closer.html` — fuente del Manual del Closer
+  (`public/manual-closer-mg.pdf`). Se edita el HTML y se regenera el PDF con
+  Chrome headless (el comando está en el comentario de arriba del archivo).
