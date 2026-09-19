@@ -83,6 +83,11 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
   cuentan por mes natural) y para el mes del ingreso de la reserva en Finanzas
   es `fechaCierre`. Es editable en el formulario de venta (por defecto hoy) para
   poder registrar ventas con retraso sin que caigan en el mes equivocado.
+- **Tasa de cierre = compraron ÷ tuvieron la llamada**, nunca ganadas ÷
+  (ganadas + perdidas): un no show o una cancelación que acaba en "Perdida"
+  no ha tenido llamada y solo cuenta en la **asistencia**. La lógica está en
+  `utils/embudoVentas.js` (`tuvoLlamada()`), que usan el Pipeline y la
+  pestaña 🩺 Embudo; no recalcular el % a mano en otro sitio.
 - **Pagos al equipo a MES VENCIDO**: lo trabajado en agosto se abona a
   principios de septiembre. El botón "Marcar como pagado" (Equipo → ficha de
   closer/técnico) liquida siempre el **mes anterior** (`mesAPagarISO()` en

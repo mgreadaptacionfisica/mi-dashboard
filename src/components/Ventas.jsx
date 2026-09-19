@@ -3,11 +3,13 @@ import SERVICIOS from '../data/servicios'
 import Recontactar from './Recontactar'
 import CalendarioVentas from './CalendarioVentas'
 import ResumenSemanalVentas from './ResumenSemanalVentas'
+import EmbudoVentas from './EmbudoVentas'
 import { insertLeadRemote, updateLeadRemote, deleteLeadRemote, uploadInformePrellamada, getInformePrellamadaUrl } from '../lib/queries/ventas'
 import { insertClienteRemote } from '../lib/queries/clientes'
 import { insertFinanzaRemote } from '../lib/queries/finanzas'
 import { construirComisionCobro } from '../utils/comisionesHelpers'
 import { generarPlazosPorNumero, generarPlazosDesdeFecha } from '../lib/plazos'
+import { calcularEmbudo, semaforo } from '../utils/embudoVentas'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -119,34 +121,27 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
   )
   const activeLead = useMemo(() => ventas.find((l) => l.id === activeLeadId) || null, [ventas, activeLeadId])
 
+  // Números de arriba del Pipeline, de todo el histórico. La tasa de cierre
+  // ya NO es ganadas ÷ (ganadas + perdidas): ahí contaban como "perdidas" los
+  // no shows y cancelaciones que ni llegaron a la llamada, y bajaban el cierre
+  // del closer por algo que pasa antes. Ahora sale del embudo (ver
+  // utils/embudoVentas.js): cierre = compraron ÷ tuvieron la llamada, y los
+  // plantones van a su propio número, la asistencia. El detalle por periodo y
+  // por closer está en la pestaña 🩺 Embudo.
   const stats = useMemo(() => {
-    const activos = ventas.filter((l) => !['ganada', 'perdida'].includes(l.etapa)).length
-    const ganadas = ventas.filter((l) => l.etapa === 'ganada').length
-    const perdidas = ventas.filter((l) => l.etapa === 'perdida').length
-    const cerradas = ganadas + perdidas
-    const tasa = cerradas > 0 ? Math.round((ganadas / cerradas) * 100) : 0
-    return { activos, ganadas, perdidas, tasa }
-  }, [ventas])
-
-  // Tasa de cierre por persona del equipo de ventas (a petición de Raúl:
-  // aunque no vea importes/comisiones, sí quiere ver la actividad y el
-  // rendimiento de cada closer). Se agrupan los leads por su closer.
-  const cierrePorCloser = useMemo(() => {
-    const mapa = {}
-    ventas.forEach((l) => {
-      const c = l.closer || 'Sin closer'
-      if (!mapa[c]) mapa[c] = { closer: c, ganadas: 0, perdidas: 0, activos: 0, total: 0 }
-      mapa[c].total += 1
-      if (l.etapa === 'ganada') mapa[c].ganadas += 1
-      else if (l.etapa === 'perdida') mapa[c].perdidas += 1
-      else mapa[c].activos += 1
-    })
-    return Object.values(mapa)
-      .map((x) => {
-        const cerradas = x.ganadas + x.perdidas
-        return { ...x, tasa: cerradas > 0 ? Math.round((x.ganadas / cerradas) * 100) : 0 }
-      })
-      .sort((a, b) => b.tasa - a.tasa || b.ganadas - a.ganadas)
+    const embudo = calcularEmbudo(ventas)
+    return {
+      activos: ventas.filter((l) => !['ganada', 'perdida'].includes(l.etapa)).length,
+      ganadas: embudo.ganadas,
+      perdidas: embudo.perdidasSinLlamada + embudo.perdidasConLlamada,
+      perdidasSinLlamada: embudo.perdidasSinLlamada,
+      perdidasConLlamada: embudo.perdidasConLlamada,
+      asistencia: embudo.tasaAsistencia,
+      asistenciaColor: semaforo(embudo.tasaAsistencia, 'asistencia', embudo.resueltosAsistencia),
+      cierre: embudo.tasaCierre,
+      cierreColor: semaforo(embudo.tasaCierre, 'cierre', embudo.asistieron),
+      llamadasHechas: embudo.asistieron,
+    }
   }, [ventas])
 
   const updateLead = (id, patch) => {
@@ -604,6 +599,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
             {activeTab === 'recontactar' && 'Personas a las que hay que volver a contactar'}
             {activeTab === 'calendario' && 'Llamadas agendadas, por mes o por semana'}
             {activeTab === 'resumen' && 'Cómo ha ido la semana: llamadas, cierres y dinero'}
+            {activeTab === 'embudo' && 'Dónde se pierde la venta: asistencia, cierre y seguimiento'}
           </div>
         </div>
         <div className="topbar-right">
@@ -643,6 +639,13 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
           >
             📈 Resumen semanal
           </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'embudo' ? 'tab-btn-active' : ''}`}
+            onClick={() => setActiveTab('embudo')}
+          >
+            🩺 Embudo
+          </button>
         </div>
 
         {activeTab === 'recontactar' && (
@@ -664,6 +667,13 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
 
         {activeTab === 'resumen' && (
           <ResumenSemanalVentas
+            ventas={ventas}
+            onAbrirLead={(leadId) => { setActiveTab('pipeline'); setActiveLeadId(leadId) }}
+          />
+        )}
+
+        {activeTab === 'embudo' && (
+          <EmbudoVentas
             ventas={ventas}
             onAbrirLead={(leadId) => { setActiveTab('pipeline'); setActiveLeadId(leadId) }}
           />
@@ -707,13 +717,23 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
               <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fee2e2, #fecaca)' }}>✖️</div>
             </div>
             <div className="kpi-card-value">{stats.perdidas}</div>
+            <div className="kpi-card-delta kpi-delta-nota">{stats.perdidasSinLlamada} sin llegar a la llamada · {stats.perdidasConLlamada} tras la llamada</div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-card-header">
+              <span className="kpi-card-label">Asistencia</span>
+              <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)' }}>🙋</div>
+            </div>
+            <div className="kpi-card-value"><span className={`embudo-texto-${stats.asistenciaColor}`}>{stats.asistencia === null ? '—' : `${stats.asistencia}%`}</span></div>
+            <div className="kpi-card-delta kpi-delta-nota">de los que agendan, vienen a la llamada</div>
           </div>
           <div className="kpi-card">
             <div className="kpi-card-header">
               <span className="kpi-card-label">Tasa de cierre</span>
               <div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)' }}>📈</div>
             </div>
-            <div className="kpi-card-value">{stats.tasa}%</div>
+            <div className="kpi-card-value"><span className={`embudo-texto-${stats.cierreColor}`}>{stats.cierre === null ? '—' : `${stats.cierre}%`}</span></div>
+            <div className="kpi-card-delta kpi-delta-nota">compran de {stats.llamadasHechas} llamadas hechas · <button type="button" className="tabla-link-btn" onClick={() => setActiveTab('embudo')}>ver embudo →</button></div>
           </div>
         </div>
 
@@ -732,48 +752,6 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
               </div>
             </div>
           ))}
-        </div>
-
-        <div className="table-card" style={{ marginTop: 20 }}>
-          <div className="card-header">
-            <div>
-              <div className="card-title">Tasa de cierre por closer</div>
-              <div className="card-subtitle">Rendimiento de cada persona del equipo de ventas</div>
-            </div>
-          </div>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Closer</th>
-                  <th>Leads</th>
-                  <th>En proceso</th>
-                  <th>Ganadas</th>
-                  <th>Perdidas</th>
-                  <th>Tasa de cierre</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cierrePorCloser.map((c) => (
-                  <tr key={c.closer}>
-                    <td style={{ fontWeight: 600 }}>{c.closer}</td>
-                    <td>{c.total}</td>
-                    <td>{c.activos}</td>
-                    <td>{c.ganadas}</td>
-                    <td>{c.perdidas}</td>
-                    <td>
-                      <span className="status-pill" style={{ background: c.tasa >= 50 ? '#d1fae5' : c.tasa > 0 ? '#fef3c7' : '#fee2e2', color: c.tasa >= 50 ? '#065f46' : c.tasa > 0 ? '#92400e' : '#991b1b' }}>
-                        {c.ganadas + c.perdidas > 0 ? `${c.tasa}%` : '—'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {cierrePorCloser.length === 0 && (
-                  <tr><td colSpan={6} className="lead-log-empty">Todavía no hay leads registrados.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
         </>
         )}

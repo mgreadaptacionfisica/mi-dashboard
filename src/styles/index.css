@@ -5630,3 +5630,234 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
   border-radius: 7px;
   background: #fff;
 }
+
+/* ==========================================================================
+   Embudo de ventas (components/EmbudoVentas.jsx, pestaña 🩺 Embudo)
+   Semáforo por paso: verde = en referencia, ámbar = mejorable, rojo = flojo,
+   gris = menos de 5 personas detrás (no se juzga). Los mismos colores se
+   usan en el aviso de diagnóstico, en las barras y en las tarjetas del
+   Pipeline, para que "rojo" signifique lo mismo en toda la sección.
+   ========================================================================== */
+.embudo-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.embudo-diagnostico {
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  border-left-width: 6px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  background: #fff;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.embudo-diagnostico p {
+  margin: 0 0 6px;
+}
+
+.embudo-diagnostico ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.embudo-diagnostico li {
+  margin-bottom: 3px;
+}
+
+.embudo-diagnostico-titulo {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.embudo-diagnostico-extra {
+  margin-top: 10px !important;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+}
+
+.embudo-diagnostico-rojo  { border-left-color: var(--color-danger); background: #fef2f2; }
+.embudo-diagnostico-ambar { border-left-color: var(--color-orange); background: #fffbeb; }
+.embudo-diagnostico-verde { border-left-color: var(--color-primary); background: #f0fdf4; }
+.embudo-diagnostico-gris  { border-left-color: #94a3b8; background: #f8fafc; }
+
+.embudo-huecos {
+  border-radius: 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.embudo-huecos .tabla-link-btn {
+  text-decoration: underline;
+}
+
+.embudo-huecos-motivo {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.embudo-card {
+  margin-bottom: 20px;
+}
+
+.embudo-paso {
+  padding: 12px 20px 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.embudo-paso-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.embudo-paso-numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.embudo-paso-pregunta {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.embudo-paso-pct .embudo-pill {
+  font-size: 15px;
+  padding: 4px 12px;
+}
+
+.embudo-barra {
+  height: 26px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+.embudo-barra-relleno {
+  height: 100%;
+  min-width: 28px;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: width 0.3s;
+}
+
+.embudo-barra-neutro { background: #64748b; }
+.embudo-barra-verde  { background: var(--color-primary); }
+.embudo-barra-ambar  { background: var(--color-orange); }
+.embudo-barra-rojo   { background: var(--color-danger); }
+.embudo-barra-gris   { background: #94a3b8; }
+
+.embudo-paso-detalle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.embudo-referencia {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.embudo-delta {
+  font-size: 11.5px;
+}
+
+.embudo-pill {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.embudo-pill-verde { background: #d1fae5; color: #065f46; }
+.embudo-pill-ambar { background: #fef3c7; color: #92400e; }
+.embudo-pill-rojo  { background: #fee2e2; color: #991b1b; }
+.embudo-pill-gris  { background: #f1f5f9; color: #64748b; }
+
+/* Mismo semáforo, pero solo el color del número (tarjetas del Pipeline). */
+.embudo-texto-verde { color: #047857; }
+.embudo-texto-ambar { color: #b45309; }
+.embudo-texto-rojo  { color: #b91c1c; }
+.embudo-texto-gris  { color: inherit; }
+
+.embudo-checklist-valor span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.embudo-perdidas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.embudo-perdidas .table-card {
+  margin: 0;
+}
+
+.embudo-perdidas .lead-log-empty {
+  padding: 0 20px 16px;
+}
+
+.embudo-motivos {
+  list-style: none;
+  margin: 0;
+  padding: 0 20px 14px;
+}
+
+.embudo-motivos li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.embudo-motivos li:last-child {
+  border-bottom: none;
+}
+
+@media (max-width: 768px) {
+  .embudo-paso {
+    padding: 12px 14px;
+  }
+
+  .embudo-paso-pregunta {
+    display: block;
+    margin: 2px 0 0 30px;
+  }
+}
