@@ -153,7 +153,7 @@ function PersonCard({ persona, assignedCount, comisionInfo, pagoInfo, pagoVencid
   )
 }
 
-export default function Equipo({ team, setTeam, clientes, ventas = [], seguimientos = [], setSeguimientos, gastosEmpresa = [], setGastosEmpresa, contactosSemanales = [], setContactosSemanales, valoraciones = [], objetivosClienteFase = [], revisionesSemanales = [], setRevisionesSemanales, miEmail }) {
+export default function Equipo({ team, setTeam, clientes, ventas = [], seguimientos = [], setSeguimientos, gastosEmpresa = [], setGastosEmpresa, contactosSemanales = [], setContactosSemanales, valoraciones = [], objetivosClienteFase = [], revisionesSemanales = [], setRevisionesSemanales, problemas = [], setProblemas, miEmail }) {
   const [showModal, setShowModal] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [detailCloser, setDetailCloser] = useState(null)
@@ -996,6 +996,8 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
           revisionesSemanales={revisionesSemanales}
           setRevisionesSemanales={setRevisionesSemanales}
           contactosSemanales={contactosSemanales}
+          problemas={problemas}
+          setProblemas={setProblemas}
           miEmail={miEmail}
           onClose={() => setSeguimientoClienteAbierto(null)}
         />

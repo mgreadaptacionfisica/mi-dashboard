@@ -18,7 +18,7 @@ const FILTROS = [
   { id: 'abiertas', label: 'Sin cerrar' },
 ]
 
-export default function ResumenesSemanales({ clientes = [], seguimientos = [], contactos = [], revisionesSemanales = [], trabajadoresDe, onAbrirSeguimiento }) {
+export default function ResumenesSemanales({ clientes = [], seguimientos = [], contactos = [], revisionesSemanales = [], problemas = [], trabajadoresDe, onAbrirSeguimiento }) {
   const [offset, setOffset] = useState(-1)
   const [filtro, setFiltro] = useState('todos')
 
@@ -36,15 +36,15 @@ export default function ResumenesSemanales({ clientes = [], seguimientos = [], c
     const cerrada = revisionesSemanales.find((r) => r.clienteNombre === cliente.Nombre && r.semana === semana && r.revisado)
     return {
       cliente,
-      resumen: resumenSemanaCliente({ seguimiento, contacto }),
-      faltan: motivosNoCierre({ seguimiento, contacto }).length,
+      resumen: resumenSemanaCliente({ seguimiento, contacto, problemas, clienteNombre: cliente.Nombre, semana }),
+      faltan: motivosNoCierre({ seguimiento, contacto, problemas, clienteNombre: cliente.Nombre, semana }).length,
       cerrada,
     }
   })
     // Primero los que tienen algo que leer; dentro, por nombre.
     .sort((a, b) => Number(b.resumen.tieneContenido) - Number(a.resumen.tieneContenido)
       || (a.cliente.Nombre || '').localeCompare(b.cliente.Nombre || '', 'es')),
-  [clientes, seguimientos, contactos, revisionesSemanales, semana])
+  [clientes, seguimientos, contactos, revisionesSemanales, problemas, semana])
 
   const visibles = filas.filter((f) => {
     if (filtro === 'comentario') return Boolean(f.resumen.comentario)
@@ -60,7 +60,7 @@ export default function ResumenesSemanales({ clientes = [], seguimientos = [], c
         <div>
           <div className="card-title">📝 Resúmenes de la semana</div>
           <div className="card-subtitle">
-            Lo que ha pasado con cada cliente: notas de las sesiones, cambios, contacto y el comentario del trabajador.
+            Lo que ha pasado con cada cliente: problemas y qué se ha hecho por ellos, notas de las sesiones, cambios, contacto y el comentario del trabajador.
           </div>
         </div>
       </div>

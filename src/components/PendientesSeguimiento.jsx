@@ -3,8 +3,9 @@ import { resumenPendientes } from '../utils/seguimientoHelpers'
 
 // Panel "Pendientes" de Seguimiento y Valoración (solo admin, a petición de
 // Raúl): la foto de golpe de todo lo que le falta al equipo por hacer con los
-// clientes —sesiones sin marcar, cambios sin hacer, semanas sin cerrar y
-// contacto semanal— sin tener que entrar cliente por cliente a comprobarlo.
+// clientes —sesiones sin marcar, cambios sin hacer, semanas sin cerrar,
+// contacto semanal y problemas abiertos que llevan días parados— sin tener
+// que entrar cliente por cliente a comprobarlo.
 //
 // No añade ningún dato nuevo ni deja editar nada aquí: es solo un ÍNDICE de
 // lo que ya vive en las otras dos pestañas y en el modal de Seguimiento. Cada
@@ -21,6 +22,7 @@ const ICONO_TIPO = {
   cambios: '📝',
   contacto: '🤝',
   'sin-registro': '📭',
+  problema: '🚨',
 }
 
 const AYUDA_TIPO = {
@@ -29,9 +31,10 @@ const AYUDA_TIPO = {
   cambios: 'Abre el seguimiento de esa semana, donde se marcan los cambios como hechos',
   contacto: 'Abre la pestaña de contacto semanal (si el contacto es de una semana pasada, retrocede allí con "← Semana anterior")',
   'sin-registro': 'Lleva la rejilla de registro a esa semana para añadir las sesiones',
+  problema: 'Abre la ficha de problemas del cliente para ver qué le pasa y apuntar qué habéis hecho',
 }
 
-export default function PendientesSeguimiento({ pendientes = [], totalClientes = 0, onAbrirSeguimiento, onIrRegistro, onIrContacto }) {
+export default function PendientesSeguimiento({ pendientes = [], totalClientes = 0, onAbrirSeguimiento, onAbrirProblemas, onIrRegistro, onIrContacto }) {
   // Por defecto se ve todo (también lo de la semana en curso, que es lo que
   // permite adelantarse); el interruptor deja quedarse solo con lo atrasado,
   // que es lo que hay que recuperar sí o sí.
@@ -51,6 +54,12 @@ export default function PendientesSeguimiento({ pendientes = [], totalClientes =
     }
     if (item.tipo === 'sesiones' || item.tipo === 'sin-registro') {
       onIrRegistro?.(item.semana)
+      return
+    }
+    // Un problema no cuelga de ninguna semana: se abre su ficha, que es donde
+    // se apunta qué se ha hecho por él.
+    if (item.tipo === 'problema') {
+      onAbrirProblemas?.(cliente)
       return
     }
     onAbrirSeguimiento?.(cliente, item.semana)
@@ -92,6 +101,10 @@ export default function PendientesSeguimiento({ pendientes = [], totalClientes =
         <div className="pendientes-kpi">
           <span className="pendientes-kpi-valor">{resumen.contactos}</span>
           <span className="pendientes-kpi-label">contactos por hacer</span>
+        </div>
+        <div className={`pendientes-kpi${resumen.problemas > 0 ? ' pendientes-kpi-alerta' : ''}`}>
+          <span className="pendientes-kpi-valor">{resumen.problemas}</span>
+          <span className="pendientes-kpi-label">problemas parados</span>
         </div>
       </div>
 

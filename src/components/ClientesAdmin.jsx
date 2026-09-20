@@ -148,7 +148,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function ClientesAdmin({ cuestionariosPrevios = [], setCuestionariosPrevios, clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, miEmail }) {
+export default function ClientesAdmin({ cuestionariosPrevios = [], setCuestionariosPrevios, clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, problemas = [], setProblemas, miEmail }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
   // Por defecto se ven los clientes en curso: ACTIVO y EN PAUSA (menos ruido
@@ -1014,6 +1014,8 @@ export default function ClientesAdmin({ cuestionariosPrevios = [], setCuestionar
           revisionesSemanales={revisionesSemanales}
           setRevisionesSemanales={setRevisionesSemanales}
           contactosSemanales={contactosSemanales}
+          problemas={problemas}
+          setProblemas={setProblemas}
           miEmail={miEmail}
           onClose={() => setSeguimientoCliente(null)}
         />

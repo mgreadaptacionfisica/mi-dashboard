@@ -3,6 +3,14 @@
 // Equipo.jsx (resumen por profesional).
 
 import { parseFechaFlexible } from './fechasEsp'
+import {
+  problemasDeCliente,
+  problemasDeSemana,
+  problemasSinAccionDeSemana,
+  entradasHistorialProblemas,
+  diasSinAccion,
+  DIAS_SIN_ACCION_AVISO,
+} from './problemasCliente'
 
 export const BLOQUES_SESION = ['DIA', 'A/1', 'B/2', 'C/3', 'D/4', 'E/5', 'F/6', 'Cardio', 'Entrenamiento', 'Evaluación', 'Semanal', 'Mensual', 'Otra']
 
@@ -175,7 +183,7 @@ export function semanasPreviasISO(semanaISO, n = SEMANAS_PENDIENTES_ATRAS) {
 // Todo lo pendiente de UN cliente. Devuelve { cliente, items, atrasado }.
 // Cada item es { tipo, nivel, semana, cantidad, texto }, y el tipo es lo que
 // decide a dónde te lleva al pulsarlo en el panel.
-export function pendientesDeCliente(cliente, { seguimientos = [], revisionesSemanales = [], contactos = [], semanaActual, semanasAtras = SEMANAS_PENDIENTES_ATRAS }) {
+export function pendientesDeCliente(cliente, { seguimientos = [], revisionesSemanales = [], contactos = [], problemas = [], semanaActual, semanasAtras = SEMANAS_PENDIENTES_ATRAS }) {
   const nombre = cliente.Nombre
   const items = []
 
@@ -246,13 +254,38 @@ export function pendientesDeCliente(cliente, { seguimientos = [], revisionesSema
     items.push({ tipo: 'contacto', nivel: 'semana', semana: semanaActual, cantidad: contactoActual.total - contactoActual.hechos, texto: `Contacto de esta semana ${contactoActual.hechos}/${contactoActual.total}` })
   }
 
+  // 4) Problemas abiertos parados. No se reclama "problema abierto" a secas
+  // —hay cosas que tardan semanas en resolverse y no es culpa de nadie—,
+  // sino el problema al que NO se le ha hecho nada en más de una semana:
+  // eso sí es que se ha quedado olvidado. Un problema nunca "caduca", así
+  // que no cuelga de una semana concreta; al pulsarlo se abre la pestaña
+  // 🚨 Problemas del cliente.
+  const { abiertos } = problemasDeCliente(problemas, nombre)
+  abiertos.forEach((p) => {
+    const parado = diasSinAccion(p)
+    if (parado < DIAS_SIN_ACCION_AVISO) return
+    const sinNada = (p.acciones || []).length === 0
+    items.push({
+      tipo: 'problema',
+      // Sin un solo cambio apuntado es lo grave (nadie ha hecho nada);
+      // si ya se probó algo y lleva tiempo parado, informa sin alarmar.
+      nivel: sinNada ? 'atrasado' : 'semana',
+      semana: null,
+      problemaId: p.id,
+      cantidad: 1,
+      texto: sinNada
+        ? `Problema sin ningún cambio hace ${parado} días: "${p.problema}"`
+        : `Problema abierto y parado hace ${parado} días: "${p.problema}"`,
+    })
+  })
+
   return { cliente, items, atrasado: items.some((i) => i.nivel === 'atrasado') }
 }
 
 // Totales del panel: lo de arriba del todo, para saber el tamaño del problema
 // antes de mirar cliente por cliente.
 export function resumenPendientes(pendientes = []) {
-  const total = { clientes: pendientes.length, clientesAtrasados: 0, semanasSinCerrar: 0, sesiones: 0, cambios: 0, contactos: 0 }
+  const total = { clientes: pendientes.length, clientesAtrasados: 0, semanasSinCerrar: 0, sesiones: 0, cambios: 0, contactos: 0, problemas: 0 }
   for (const p of pendientes) {
     if (p.atrasado) total.clientesAtrasados += 1
     for (const item of p.items) {
@@ -260,6 +293,7 @@ export function resumenPendientes(pendientes = []) {
       if (item.tipo === 'sesiones') total.sesiones += item.cantidad
       if (item.tipo === 'cambios') total.cambios += item.cantidad
       if (item.tipo === 'contacto') total.contactos += item.cantidad
+      if (item.tipo === 'problema') total.problemas += item.cantidad
     }
   }
   return total
@@ -310,7 +344,7 @@ function puntosContactoPendientes(contacto) {
 // = se puede cerrar. Cada motivo lleva `donde` para decir en qué pestaña se
 // arregla (el modal no deja editar sesiones ni contacto: solo cambios y
 // comentario).
-export function motivosNoCierre({ seguimiento, contacto }) {
+export function motivosNoCierre({ seguimiento, contacto, problemas = [], clienteNombre, semana }) {
   const motivos = []
   const progreso = progresoSemana(seguimiento)
   const comentario = (seguimiento?.comentarios || '').trim()
@@ -338,6 +372,22 @@ export function motivosNoCierre({ seguimiento, contacto }) {
     motivos.push({ donde: 'contacto', texto: `Contacto semanal ${3 - faltanContacto.length}/3: falta ${faltanContacto.join(', ')} (🤝 Contacto semanal).` })
   }
 
+  // Un problema detectado ESTA semana al que no se le ha hecho nada todavía
+  // impide cerrar: es justo lo que no puede perderse de vista (a petición de
+  // Raúl — si aparece un problema, tiene que quedar apuntado qué hemos hecho
+  // por él). Los problemas de semanas anteriores que siguen abiertos NO
+  // bloquean: hay cosas que tardan semanas en resolverse y bloquearían el
+  // cierre para siempre; esos se reclaman desde 🚨 Pendientes.
+  if (clienteNombre && semana) {
+    const sinAccion = problemasSinAccionDeSemana(problemas, clienteNombre, semana)
+    if (sinAccion.length > 0) {
+      motivos.push({
+        donde: 'problemas',
+        texto: `${plural(sinAccion.length, 'problema detectado', 'problemas detectados')} esta semana sin ningún cambio apuntado: di qué habéis hecho (🚨 Problemas).`,
+      })
+    }
+  }
+
   if (!comentario) {
     motivos.push({ donde: 'comentario', texto: 'Falta el comentario semanal para Raúl (aquí abajo).' })
   }
@@ -347,7 +397,7 @@ export function motivosNoCierre({ seguimiento, contacto }) {
 // Todo lo que ha pasado con un cliente en una semana, junto, para leerlo de
 // un tirón: sesiones, notas de sesión, cambios, contacto y el comentario del
 // trabajador. Lo usan el modal de Seguimiento y la pestaña 📝 Resúmenes.
-export function resumenSemanaCliente({ seguimiento, contacto }) {
+export function resumenSemanaCliente({ seguimiento, contacto, problemas = [], clienteNombre, semana }) {
   const sesiones = progresoSemana(seguimiento)
   const notas = []
   DIAS_SEMANA.forEach((d) => {
@@ -362,15 +412,23 @@ export function resumenSemanaCliente({ seguimiento, contacto }) {
   }))
   const cambios = seguimiento?.cambiosPendientes || []
   const comentario = (seguimiento?.comentarios || '').trim()
+  // Problemas: los que han aparecido o se han resuelto esta semana, más los
+  // que siguen abiertos de antes. Es lo primero que hay que leer de una
+  // semana, por delante de cuántas sesiones se han hecho.
+  const problemasSemana = (clienteNombre && semana)
+    ? problemasDeSemana(problemas, clienteNombre, semana)
+    : { nuevos: [], resueltos: [], acciones: [], abiertos: [] }
   return {
     sesiones,
     notas,
     cambios,
     contacto: { hechos: contactoPuntos.filter((p) => p.hecho).length, puntos: contactoPuntos },
     comentario,
+    problemas: problemasSemana,
     // ¿Hay algo que leer? Sirve para ordenar la pestaña de resúmenes y poner
     // arriba los clientes con novedades.
-    tieneContenido: notas.length > 0 || cambios.length > 0 || Boolean(comentario) || contactoPuntos.some((p) => p.comentario),
+    tieneContenido: notas.length > 0 || cambios.length > 0 || Boolean(comentario) || contactoPuntos.some((p) => p.comentario)
+      || problemasSemana.nuevos.length > 0 || problemasSemana.resueltos.length > 0 || problemasSemana.acciones.length > 0,
   }
 }
 
@@ -383,6 +441,14 @@ export function resumenSemanaCliente({ seguimiento, contacto }) {
 // `contactos_semanales` de siempre (nada se borra al cambiar de semana), solo
 // que juntas y ordenadas para poder buscar "¿cuándo le dolió?" o "¿cuándo se
 // le cambió tal ejercicio?".
+
+// Clave de semana (la misma que usan seguimientos y contactos) a partir de
+// una fecha suelta en ISO. Hace falta para colocar en su semana cosas que se
+// guardan con fecha propia y no por semana, como los problemas del cliente.
+export function semanaDeFechaISO(iso) {
+  if (!iso) return null
+  return toISO(mondayOf(new Date(`${iso}T00:00:00`)))
+}
 
 // Fecha real (Date local) de un día de una semana. Tiene en cuenta el desfase
 // de la clave de semana explicado en formatRangoSemana(): si la clave cae en
@@ -400,10 +466,19 @@ const fechaCorta = (d) => d.toLocaleDateString('es-ES', { weekday: 'short', day:
 // antigua: [{ semana, rango, cerrada, cerradaPor, entradas: [...] }]. Cada
 // entrada: { tipo: 'nota'|'cambio'|'contacto'|'comentario', fecha (texto),
 // titulo, texto, hecho? }.
-export function historialCliente({ clienteNombre, seguimientos = [], contactos = [], revisionesSemanales = [] }) {
+export function historialCliente({ clienteNombre, seguimientos = [], contactos = [], revisionesSemanales = [], problemas = [] }) {
+  // Los problemas (y sus acciones) llevan fecha propia, no semana: se
+  // reparten a la semana en la que cayó cada una, para que se lean junto a
+  // lo que pasó esos días. Una semana puede existir en el historial solo por
+  // un problema, sin ninguna sesión registrada.
+  const entradasProblemas = entradasHistorialProblemas(problemas, clienteNombre)
+    .map((e) => ({ ...e, semana: semanaDeFechaISO(e.fechaISO) }))
+    .filter((e) => e.semana)
+
   const semanas = new Set([
     ...seguimientos.filter((s) => s.clienteNombre === clienteNombre).map((s) => s.semana),
     ...contactos.filter((c) => c.clienteNombre === clienteNombre).map((c) => c.semana),
+    ...entradasProblemas.map((e) => e.semana),
   ])
   return [...semanas]
     .sort((a, b) => (a < b ? 1 : -1))
@@ -422,6 +497,16 @@ export function historialCliente({ clienteNombre, seguimientos = [], contactos =
         })
       })
       const inicioSemana = fechaDiaSemana(semana, 0).getTime()
+      entradasProblemas.filter((e) => e.semana === semana).forEach((e) => {
+        const dia = new Date(`${e.fechaISO}T00:00:00`)
+        entradas.push({
+          tipo: e.tipo,
+          ts: dia.getTime(),
+          fecha: fechaCorta(dia),
+          titulo: e.por ? `${e.titulo} · ${e.por}` : e.titulo,
+          texto: e.texto,
+        })
+      })
       ;(seg?.cambiosPendientes || []).forEach((c) => {
         entradas.push({
           tipo: 'cambio',

@@ -6,6 +6,9 @@
 // exactamente lo mismo que ve el trabajador.
 export default function ResumenSemanaCliente({ resumen, mostrarComentario = true }) {
   const { sesiones, notas, cambios, contacto, comentario } = resumen
+  // Los problemas van arriba del todo: de una semana, lo primero que hay que
+  // saber es si ha pasado algo y qué se ha hecho, no cuántas sesiones hubo.
+  const problemas = resumen.problemas || { nuevos: [], resueltos: [], acciones: [], abiertos: [] }
   return (
     <div className="resumen-semana">
       <div className="resumen-semana-cifras">
@@ -16,7 +19,27 @@ export default function ResumenSemanaCliente({ resumen, mostrarComentario = true
           🔧 Cambios {cambios.filter((c) => c.hecho).length}/{cambios.length}
         </span>
         <span className={contacto.hechos === 3 ? 'resumen-ok' : ''}>🤝 Contacto {contacto.hechos}/3</span>
+        {problemas.abiertos.length > 0 && (
+          <span className="resumen-alerta">🚨 {problemas.abiertos.length} problema{problemas.abiertos.length === 1 ? '' : 's'} abierto{problemas.abiertos.length === 1 ? '' : 's'}</span>
+        )}
       </div>
+
+      {(problemas.nuevos.length > 0 || problemas.acciones.length > 0 || problemas.resueltos.length > 0) && (
+        <div className="resumen-semana-bloque">
+          <span className="resumen-semana-etq">🚨 Problemas y soluciones</span>
+          <ul>
+            {problemas.nuevos.map((p) => (
+              <li key={`n-${p.id}`}><strong>Nuevo:</strong> {p.problema}{(p.acciones || []).length === 0 ? ' — sin ningún cambio apuntado todavía' : ''}</li>
+            ))}
+            {problemas.acciones.map((a, i) => (
+              <li key={`a-${i}`}>🔧 <strong>{a.problema}:</strong> {a.texto}</li>
+            ))}
+            {problemas.resueltos.map((p) => (
+              <li key={`r-${p.id}`}>✅ <strong>Resuelto:</strong> {p.problema}{p.resultado ? ` — ${p.resultado}` : ''}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {notas.length > 0 && (
         <div className="resumen-semana-bloque">
@@ -58,7 +81,7 @@ export default function ResumenSemanaCliente({ resumen, mostrarComentario = true
         </div>
       )}
 
-      {notas.length === 0 && cambios.length === 0 && !contacto.puntos.some((p) => p.comentario) && !mostrarComentario && (
+      {notas.length === 0 && cambios.length === 0 && problemas.nuevos.length === 0 && problemas.acciones.length === 0 && problemas.resueltos.length === 0 && !contacto.puntos.some((p) => p.comentario) && !mostrarComentario && (
         <p className="lead-log-empty">Sin notas ni cambios esta semana.</p>
       )}
     </div>

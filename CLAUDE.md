@@ -43,7 +43,7 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 59; la siguiente sería la 60). Deben ser **idempotentes**
+  (la última es la 60; la siguiente sería la 61). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -58,9 +58,9 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
 
 ## Trampas conocidas (IMPORTANTE)
 - **El historial de cada cliente se enlaza por NOMBRE** (`cliente_nombre`), no
-  por id, en 5 tablas: `seguimientos`, `contactos_semanales`,
+  por id, en 6 tablas: `seguimientos`, `contactos_semanales`,
   `valoraciones_clientes`, `objetivos_cliente_fase`,
-  `revisiones_semanales_cliente`. Al renombrar un cliente hay que arrastrar el
+  `revisiones_semanales_cliente`, `problemas_cliente`. Al renombrar un cliente hay que arrastrar el
   cambio a todas (ya existe `src/lib/queries/renombrarCliente.js`, llamado desde
   ClientesAdmin). Ojo con `unique (cliente_nombre, semana)` en algunas.
 - **Estados de cliente**: `ACTIVO`, `EN PAUSA` y `NO ACTIVO` (migración 53).
@@ -130,11 +130,42 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
     `seguimientos.comentarios`, que ya existía.
   - **El cierre de semana tiene condiciones** (`motivosNoCierre()` en
     `seguimientoHelpers`): todas las sesiones marcadas, cambios hechos,
-    contacto semanal 3/3 y comentario semanal escrito (una semana sin sesiones
+    contacto semanal 3/3, ningún problema nuevo de esa semana sin un cambio
+    apuntado, y comentario semanal escrito (una semana sin sesiones
     solo se cierra explicándolo en el comentario). Si falta algo, el check sale
     deshabilitado y se lista qué falta. Reabrir siempre se puede. Por eso el
     modal necesita `contactosSemanales` en los tres sitios donde se abre
     (ClientesEquipo, ClientesAdmin, Equipo).
+  - **🚨 Problemas y soluciones** (`ProblemasCliente.jsx` +
+    `utils/problemasCliente.js`, tabla `problemas_cliente`, migración 60):
+    qué le pasa al cliente y qué hemos hecho por ello. Es la única cosa del
+    seguimiento que **no vive dentro de una semana**, y esa es justo la
+    razón de existir: una nota de sesión y un "cambio de la semana"
+    desaparecen el lunes, pero una molestia aparece un martes, el cambio se
+    hace el jueves y hasta tres semanas después no sabes si funcionó. Un
+    problema se abre el día que aparece, va acumulando **acciones**
+    (`acciones` jsonb `[{ texto, fecha, por }]` — una lista, porque lo
+    normal es probar un cambio y que haga falta otro) y se cierra con
+    `resultado` (cómo acabó). Detalles que importan:
+    - El alta normal es desde el **💬 de la rejilla** de ⚡ Registro de
+      sesiones, marcando "🚨 Esto es un problema": ahí es donde está el
+      entrenador cuando lo ve. Se guarda `origenRef` `{ semana, dia,
+      indice, sesion }` como **foto** del origen, no como referencia viva
+      (si luego se borra esa sesión, el problema sigue entendiéndose). Una
+      sesión no puede abrir dos problemas: si ya tiene uno, el formulario
+      enlaza al suyo en vez de ofrecer el check.
+    - Se ve y se trabaja en la **pestaña 🚨 del modal de Seguimiento**, que
+      también deja apuntar a mano lo que no sale entrenando.
+    - **Bloquea el cierre de semana** solo si el problema se detectó ESA
+      semana y no tiene ninguna acción apuntada. Los de semanas anteriores
+      que siguen abiertos NO bloquean (hay cosas que tardan semanas); esos
+      se reclaman desde 🚨 Pendientes cuando llevan más de
+      `DIAS_SIN_ACCION_AVISO` (7) días parados.
+    - Sale también en el resumen semanal, en 📝 Resúmenes, en el 📜
+      Historial (cada acción en la semana en que cayó su fecha) y como
+      badge 🚨 junto al nombre en la rejilla.
+    - En **modo demo no se enseña ninguno** (texto libre sobre salud, sin
+      versión ficticia), igual que los cuestionarios previos.
   - **📝 Resúmenes** (`ResumenesSemanales.jsx`, solo admin): el resumen de
     cada cliente por semana (`resumenSemanaCliente()`), para leer el feedback
     del equipo. Solo lectura; por defecto abre la semana pasada.

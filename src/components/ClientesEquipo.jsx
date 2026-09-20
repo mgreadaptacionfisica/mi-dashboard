@@ -19,7 +19,9 @@ import {
   pendientesDeCliente,
 } from '../utils/seguimientoHelpers'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
+import { crearProblema, problemaDeSesion, contarAbiertos, esAbierto } from '../utils/problemasCliente'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
+import { upsertProblemaClienteRemote } from '../lib/queries/problemasCliente'
 import { seguimientoTecnico } from '../utils/equipoHelpers'
 
 function todayISO() {
@@ -83,7 +85,7 @@ function formatHora12(horaHHMM) {
 // eran datos de CONSULTA que el técnico tenía delante todos los días sin
 // usarlos, y ahora viven en la cabecera del modal de Seguimiento, que es
 // donde se miran cuando hacen falta.
-export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, onRefrescar, refrescando, onNavigate }) {
+export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, problemas = [], setProblemas, onRefrescar, refrescando, onNavigate }) {
   const [search, setSearch] = useState('')
   // Se entra directamente al registro de sesiones: es lo que el técnico
   // hace todos los días. El contacto semanal es la otra pestaña.
@@ -92,8 +94,13 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   // Con qué semana se abre el modal de Seguimiento: 0 = actual, -1 = la
   // anterior (para terminar de cerrar una semana pasada que quedó abierta).
   const [seguimientoOffset, setSeguimientoOffset] = useState(0)
-  const abrirSeguimiento = (cliente, offset = 0) => {
+  // Pestaña con la que se abre el modal: 'semana' normalmente, 'problemas'
+  // cuando se entra desde el badge 🚨 de un cliente (o desde Pendientes),
+  // para caer directamente en lo que se va a arreglar.
+  const [seguimientoVista, setSeguimientoVista] = useState('semana')
+  const abrirSeguimiento = (cliente, offset = 0, vista = 'semana') => {
     setSeguimientoOffset(offset)
+    setSeguimientoVista(vista)
     setSeguimientoCliente(cliente)
   }
   const [valoracionCliente, setValoracionCliente] = useState(null)
@@ -115,6 +122,11 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   // Nota de una sesión que se está editando: `${cliente}|${dia}|${índice}`.
   const [notaCell, setNotaCell] = useState(null)
   const [notaTexto, setNotaTexto] = useState('')
+  // "Esto es un problema": marcándolo, la nota deja de ser un apunte suelto
+  // de la semana y abre una ficha de problema del cliente, que sigue viva
+  // hasta que se resuelve (ver utils/problemasCliente.js). Es la vía normal
+  // de dar de alta un problema: aquí es donde el entrenador está cuando lo ve.
+  const [notaEsProblema, setNotaEsProblema] = useState(false)
 
   // Admin: acceso a Seguimiento/Valoración de TODOS los clientes (no solo
   // los suyos), porque necesita poder supervisar el trabajo de cualquier
@@ -360,13 +372,47 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   const abrirNota = (clienteNombre, diaId, index, notaActual) => {
     setNotaCell(`${clienteNombre}|${diaId}|${index}`)
     setNotaTexto(notaActual || '')
+    // El check empieza siempre desmarcado: la mayoría de notas no son
+    // problemas, y si esta sesión ya tiene uno abierto no se enseña el check
+    // sino un enlace a su ficha (no se abren dos problemas por la misma cosa).
+    setNotaEsProblema(false)
     setAddCell(null)
   }
 
   const cerrarNota = () => {
     setNotaCell(null)
     setNotaTexto('')
+    setNotaEsProblema(false)
   }
+
+  // Quién firma lo que se apunta: el nombre real del técnico si lo tenemos,
+  // y si no el email (mismo criterio que "Registrar última revisión").
+  const miIdentidad = miPersona?.nombre || miNombreAdmin || miEmail || ''
+
+  // Abre un problema a partir de una sesión. Se guarda una foto del origen
+  // (semana, día y texto de la sesión) para poder decir después "salió en la
+  // sesión del martes": es una copia, no una referencia viva, así que si esa
+  // sesión se borra o se renombra el problema sigue entendiéndose.
+  const abrirProblemaDesdeSesion = (clienteNombre, diaId, index, textoSesion, texto) => {
+    if (typeof setProblemas !== 'function') return
+    const limpio = (texto || '').trim()
+    if (!limpio) return
+    // Si esa sesión ya tiene un problema, no se duplica: se entiende que se
+    // está corrigiendo la nota, no abriendo otro.
+    if (problemaDeSesion(problemas, clienteNombre, semanaRegistro, diaId, index)) return
+    const nuevo = crearProblema({
+      clienteNombre,
+      problema: limpio,
+      por: miIdentidad,
+      origen: 'sesion',
+      origenRef: { semana: semanaRegistro, dia: diaId, indice: index, sesion: textoSesion || '' },
+    })
+    setProblemas((prev) => [...prev, nuevo])
+    upsertProblemaClienteRemote(nuevo)
+  }
+
+  // Problemas abiertos por cliente, para el badge 🚨 de la rejilla.
+  const abiertosDe = (clienteNombre) => contarAbiertos(problemas, clienteNombre)
 
   const cerrarAddCell = () => {
     setAddCell(null)
@@ -423,7 +469,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
     if (!esAdmin) return []
     return misClientes
       .map((c) => ({
-        ...pendientesDeCliente(c, { seguimientos, revisionesSemanales, contactos: contactosSemanales, semanaActual }),
+        ...pendientesDeCliente(c, { seguimientos, revisionesSemanales, contactos: contactosSemanales, problemas, semanaActual }),
         responsables: trabajadoresDe(c),
       }))
       .filter((p) => p.items.length > 0)
@@ -434,7 +480,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
         if (a.items.length !== b.items.length) return b.items.length - a.items.length
         return (a.cliente.Nombre || '').localeCompare(b.cliente.Nombre || '')
       })
-  }, [esAdmin, misClientes, seguimientos, revisionesSemanales, contactosSemanales, semanaActual])
+  }, [esAdmin, misClientes, seguimientos, revisionesSemanales, contactosSemanales, problemas, semanaActual])
 
   // El badge de la pestaña solo cuenta lo ATRASADO (semanas ya terminadas):
   // si contara también lo de la semana en curso marcaría a casi todo el mundo
@@ -714,7 +760,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
               <div className="registro-rapido-leyenda">
                 <span><span className="registro-rapido-chip registro-rapido-chip-hecho" style={{ pointerEvents: 'none' }}>✅ Hecho</span></span>
                 <span><span className="registro-rapido-chip" style={{ pointerEvents: 'none' }}>⬜ Pendiente</span></span>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Clic en una sesión para marcarla / desmarcarla · 💬 para apuntar un cambio, una molestia o lo que diga el cliente · ✕ para quitarla</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Clic en una sesión para marcarla / desmarcarla · 💬 para apuntar un cambio, una molestia o lo que diga el cliente (y marcarlo como 🚨 problema si hay que resolverlo) · ✕ para quitarla</span>
               </div>
 
               <div className="table-wrapper">
@@ -756,6 +802,16 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                             </button>
                             {!semanaCerrada && (
                               <span className="semana-pendiente-badge" title="Semana sin revisar y cerrar todavía">⏳</span>
+                            )}
+                            {abiertosDe(cliente.Nombre) > 0 && (
+                              <button
+                                type="button"
+                                className="problemas-abiertos-badge"
+                                title="Problemas abiertos de este cliente — pulsa para ver qué le pasa y qué hemos hecho"
+                                onClick={() => abrirSeguimiento(cliente, registroOffset, 'problemas')}
+                              >
+                                🚨 {abiertosDe(cliente.Nombre)}
+                              </button>
                             )}
                             {semPend && (
                               <button
@@ -812,6 +868,8 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                 <div className="registro-rapido-celda-inner">
                                   {tareas.map((t, i) => {
                                     const notaKey = `${cliente.Nombre}|${d.id}|${i}`
+                                    const problemaSesion = problemaDeSesion(problemas, cliente.Nombre, semanaRegistro, d.id, i)
+                                    const problemaVivo = problemaSesion && esAbierto(problemaSesion)
                                     return (
                                     <div key={i} className="registro-rapido-sesion">
                                       {/* Chip + 💬 + ✕ como botones hermanos (no anidados:
@@ -827,11 +885,13 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                         </button>
                                         <button
                                           type="button"
-                                          className={`registro-rapido-chip-nota ${t.nota ? 'registro-rapido-chip-nota-llena' : ''}`}
+                                          className={`registro-rapido-chip-nota ${t.nota ? 'registro-rapido-chip-nota-llena' : ''}${problemaVivo ? ' registro-rapido-chip-nota-problema' : ''}`}
                                           onClick={() => abrirNota(cliente.Nombre, d.id, i, t.nota)}
-                                          title={t.nota ? 'Editar la nota de esta sesión' : 'Añadir nota: cambio de ejercicio, molestia, comentario del cliente…'}
+                                          title={problemaVivo
+                                            ? `Esta sesión tiene un problema abierto: ${problemaSesion.problema}`
+                                            : (t.nota ? 'Editar la nota de esta sesión' : 'Añadir nota: cambio de ejercicio, molestia, comentario del cliente…')}
                                         >
-                                          💬
+                                          {problemaVivo ? '🚨' : '💬'}
                                         </button>
                                         <button
                                           type="button"
@@ -848,6 +908,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                           onSubmit={(e) => {
                                             e.preventDefault()
                                             setNotaTareaRapida(cliente.Nombre, d.id, i, notaTexto)
+                                            if (notaEsProblema) abrirProblemaDesdeSesion(cliente.Nombre, d.id, i, t.texto, notaTexto)
                                             cerrarNota()
                                           }}
                                         >
@@ -863,6 +924,29 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                               if (e.key === 'Escape') cerrarNota()
                                             }}
                                           />
+                                          {/* El salto de "nota suelta" a "problema del cliente":
+                                              marcándolo, esto deja de morir con la semana y pasa a
+                                              tener ficha propia, donde se apunta qué hemos hecho
+                                              para resolverlo. Si ya la tiene, se enlaza en vez de
+                                              ofrecer abrir otra. */}
+                                          {problemaSesion ? (
+                                            <button
+                                              type="button"
+                                              className="registro-rapido-nota-problema-link"
+                                              onClick={() => { cerrarNota(); abrirSeguimiento(cliente, registroOffset, 'problemas') }}
+                                            >
+                                              {problemaVivo ? '🚨 Problema abierto' : '✅ Problema resuelto'} — ver y apuntar qué hemos hecho →
+                                            </button>
+                                          ) : (
+                                            <label className="registro-rapido-nota-problema">
+                                              <input
+                                                type="checkbox"
+                                                checked={notaEsProblema}
+                                                onChange={(e) => setNotaEsProblema(e.target.checked)}
+                                              />
+                                              🚨 Esto es un problema (se le abre ficha hasta que se resuelva)
+                                            </label>
+                                          )}
                                           <div className="registro-rapido-addform-btns">
                                             <button type="submit" className="registro-rapido-add-ok" title="Guardar nota">✓</button>
                                             <button type="button" className="registro-rapido-add-cancel" onClick={cerrarNota} title="Cancelar">✕</button>
@@ -941,6 +1025,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
             pendientes={pendientes}
             totalClientes={misClientes.length}
             onAbrirSeguimiento={abrirSeguimientoEnSemana}
+            onAbrirProblemas={(cliente) => abrirSeguimiento(cliente, 0, 'problemas')}
             onIrRegistro={irARegistroSemana}
             onIrContacto={irAContactoSemanal}
           />
@@ -951,6 +1036,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
             clientes={misClientes}
             seguimientos={seguimientos}
             contactos={contactosSemanales}
+            problemas={problemas}
             revisionesSemanales={revisionesSemanales}
             trabajadoresDe={trabajadoresDe}
             onAbrirSeguimiento={abrirSeguimientoEnSemana}
@@ -992,9 +1078,13 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
           revisionesSemanales={revisionesSemanales}
           setRevisionesSemanales={setRevisionesSemanales}
           contactosSemanales={contactosSemanales}
+          problemas={problemas}
+          setProblemas={setProblemas}
           miEmail={miEmail}
+          miNombre={miIdentidad}
           weekOffsetInicial={seguimientoOffset}
-          onClose={() => { setSeguimientoCliente(null); setSeguimientoOffset(0) }}
+          vistaInicial={seguimientoVista}
+          onClose={() => { setSeguimientoCliente(null); setSeguimientoOffset(0); setSeguimientoVista('semana') }}
         />
       )}
 

@@ -7,13 +7,16 @@ import { avisaErrorGuardado } from '../avisosGuardado'
 // ese cambio a todas las tablas que dependen de él — si no, el historial se
 // queda colgando del nombre viejo y "desaparece" (es justo lo que pasó con
 // Hilde Nieto/Niego). Esto lo automatiza: al cambiar el nombre de un
-// cliente se actualiza cliente_nombre en las 5 tablas de una vez.
+// cliente se actualiza cliente_nombre en las 6 tablas de una vez.
 const TABLAS_HISTORIAL = [
   'seguimientos',
   'contactos_semanales',
   'valoraciones_clientes',
   'objetivos_cliente_fase',
   'revisiones_semanales_cliente',
+  // Problemas del cliente (qué le pasa y qué hemos hecho): sin esto, al
+  // renombrar se perderían de vista justo los problemas que siguen abiertos.
+  'problemas_cliente',
 ]
 
 export async function renombrarClienteEnHistorial(nombreViejo, nombreNuevo) {

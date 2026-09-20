@@ -14,6 +14,8 @@ import {
 } from '../utils/seguimientoHelpers'
 import ResumenSemanaCliente from './ResumenSemanaCliente'
 import HistorialCliente from './HistorialCliente'
+import ProblemasCliente from './ProblemasCliente'
+import { contarAbiertos } from '../utils/problemasCliente'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { upsertRevisionSemanalRemote } from '../lib/queries/revisionesSemanales'
@@ -30,14 +32,19 @@ function formatDate(value) {
   return iso ? formatFechaISO(iso) : value
 }
 
-export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], miEmail, weekOffsetInicial = 0, onClose }) {
+export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], problemas = [], setProblemas, miEmail, miNombre = '', weekOffsetInicial = 0, vistaInicial = 'semana', onClose }) {
   // weekOffsetInicial: 0 = semana actual (por defecto), -1 = abre en la
   // semana anterior (cuando se entra desde el aviso "semana pasada sin
   // cerrar" para terminarla tal cual quedó).
   const [weekOffset, setWeekOffset] = useState(weekOffsetInicial)
   const [cambioDraft, setCambioDraft] = useState('')
-  // 'semana' = trabajar la semana; 'historial' = todo lo apuntado del cliente.
-  const [vistaModal, setVistaModal] = useState('semana')
+  // 'semana' = trabajar la semana; 'problemas' = los problemas del cliente y
+  // qué hemos hecho por ellos; 'historial' = todo lo apuntado, día a día.
+  const [vistaModal, setVistaModal] = useState(vistaInicial)
+  // Quién firma lo que se apunte en los problemas: el nombre real si se
+  // conoce (el técnico logueado), y si no el email, como en el resto del panel.
+  const miIdentidad = miNombre || miEmail || ''
+  const problemasAbiertos = contarAbiertos(problemas, cliente.Nombre)
 
   // Desde el historial se salta a una semana concreta: offset en semanas
   // respecto a la actual (las dos claves salen de la misma función, así que
@@ -124,8 +131,8 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
   // comentario (no con el guardado) para que, al escribirlo, el bloqueo
   // desaparezca sin tener que salir antes del cuadro de texto.
   const semanaConBorrador = { ...(registro || {}), comentarios: comentarioDraft }
-  const motivos = motivosNoCierre({ seguimiento: semanaConBorrador, contacto })
-  const resumen = resumenSemanaCliente({ seguimiento: semanaConBorrador, contacto })
+  const motivos = motivosNoCierre({ seguimiento: semanaConBorrador, contacto, problemas, clienteNombre: cliente.Nombre, semana: mondayISO })
+  const resumen = resumenSemanaCliente({ seguimiento: semanaConBorrador, contacto, problemas, clienteNombre: cliente.Nombre, semana: mondayISO })
 
   const faseActual = useMemo(() => {
     const spadiTope = faseTopeSpadi(ultimoSpadiCliente(valoraciones, cliente.Nombre))
@@ -220,15 +227,28 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
 
         <div className="tabs-bar seguimiento-modal-tabs">
           <button type="button" className={`tab-btn ${vistaModal === 'semana' ? 'tab-btn-active' : ''}`} onClick={() => setVistaModal('semana')}>📅 Semana</button>
+          <button type="button" className={`tab-btn ${vistaModal === 'problemas' ? 'tab-btn-active' : ''}`} onClick={() => setVistaModal('problemas')}>
+            🚨 Problemas
+            {problemasAbiertos > 0 && <span className="tab-btn-badge">{problemasAbiertos}</span>}
+          </button>
           <button type="button" className={`tab-btn ${vistaModal === 'historial' ? 'tab-btn-active' : ''}`} onClick={() => setVistaModal('historial')}>📜 Historial</button>
         </div>
 
-        {vistaModal === 'historial' ? (
+        {vistaModal === 'problemas' ? (
+          <ProblemasCliente
+            clienteNombre={cliente.Nombre}
+            problemas={problemas}
+            setProblemas={setProblemas}
+            miIdentidad={miIdentidad}
+            soloLectura={typeof setProblemas !== 'function'}
+          />
+        ) : vistaModal === 'historial' ? (
           <HistorialCliente
             clienteNombre={cliente.Nombre}
             seguimientos={seguimientos}
             contactos={contactosSemanales}
             revisionesSemanales={revisionesSemanales}
+            problemas={problemas}
             onIrSemana={irASemana}
           />
         ) : (
@@ -331,7 +351,14 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
           <div className="seguimiento-cierre-bloqueado">
             <strong>🔒 Todavía no se puede cerrar esta semana. Falta:</strong>
             <ul>
-              {motivos.map((m, i) => <li key={i}>{m.texto}</li>)}
+              {motivos.map((m, i) => (
+                <li key={i}>
+                  {m.texto}
+                  {m.donde === 'problemas' && (
+                    <button type="button" className="tabla-link-btn" onClick={() => setVistaModal('problemas')}>Ir a Problemas →</button>
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
         )}

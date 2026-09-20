@@ -2,23 +2,23 @@ import { useMemo, useState } from 'react'
 import { historialCliente } from '../utils/seguimientoHelpers'
 
 // Historial del cliente (vista 📜 del modal de Seguimiento): todo lo apuntado
-// semana a semana y con fecha — notas de sesión, cambios, contacto y
-// comentario semanal — con un buscador para encontrar cuándo pasó algo
-// ("dolor", "press", "hombro"…). Solo lectura; los datos son los de siempre
-// (ver historialCliente() en utils/seguimientoHelpers.js).
+// semana a semana y con fecha — problemas y lo que hicimos por ellos, notas
+// de sesión, cambios, contacto y comentario semanal — con un buscador para
+// encontrar cuándo pasó algo ("dolor", "press", "hombro"…). Solo lectura; los
+// datos son los de siempre (ver historialCliente() en utils/seguimientoHelpers.js).
 
-const ICONO = { nota: '💬', cambio: '🔧', contacto: '🤝', comentario: '📝' }
+const ICONO = { nota: '💬', cambio: '🔧', contacto: '🤝', comentario: '📝', problema: '🚨', accion: '🔧', resuelto: '✅' }
 
 // Sin tildes ni mayúsculas, para que "dolor" encuentre "Dolor" y "rotacion"
 // encuentre "rotación".
 const normalizar = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-export default function HistorialCliente({ clienteNombre, seguimientos, contactos, revisionesSemanales, onIrSemana }) {
+export default function HistorialCliente({ clienteNombre, seguimientos, contactos, revisionesSemanales, problemas = [], onIrSemana }) {
   const [busqueda, setBusqueda] = useState('')
 
   const semanas = useMemo(
-    () => historialCliente({ clienteNombre, seguimientos, contactos, revisionesSemanales }),
-    [clienteNombre, seguimientos, contactos, revisionesSemanales]
+    () => historialCliente({ clienteNombre, seguimientos, contactos, revisionesSemanales, problemas }),
+    [clienteNombre, seguimientos, contactos, revisionesSemanales, problemas]
   )
 
   const q = normalizar(busqueda.trim())
@@ -42,7 +42,7 @@ export default function HistorialCliente({ clienteNombre, seguimientos, contacto
       </div>
 
       {semanas.length === 0 && (
-        <p className="lead-log-empty">Todavía no hay nada apuntado: aquí irán apareciendo las notas de sesión, los cambios, el contacto y los comentarios semanales.</p>
+        <p className="lead-log-empty">Todavía no hay nada apuntado: aquí irán apareciendo los problemas y lo que hicimos por ellos, las notas de sesión, los cambios, el contacto y los comentarios semanales.</p>
       )}
       {semanas.length > 0 && visibles.length === 0 && (
         <p className="lead-log-empty">Nada coincide con «{busqueda}».</p>
