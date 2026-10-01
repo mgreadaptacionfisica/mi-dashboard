@@ -9,8 +9,150 @@ import {
   mesLabel,
 } from '../utils/equipoHelpers'
 import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, resumenRevisionesSemana } from '../utils/seguimientoHelpers'
+import { tieneTramos, resumenTramos, comisionMesEnCursoCloser, actividadCloser, importeMesCloser } from '../utils/comisionesCloser'
 
 const SEGUIMIENTO_HELPERS = { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente }
+
+const eur = (n) => `${(Number(n) || 0).toLocaleString('es-ES', { maximumFractionDigits: 2 })}€`
+
+// Mi Ficha del closer: lo mismo que Raúl ve en Equipo → 📊 Ver actividad,
+// pero en solo lectura y sin el botón de pagar. Los números salen de
+// comisionesCloser (el mismo cálculo que Equipo), así que closer y admin ven
+// siempre la misma cifra. Ojo: el mes de cada venta es el de `fechaCierre`.
+function FichaCloser({ persona, ventas, gastosEmpresa }) {
+  const enCurso = useMemo(() => comisionMesEnCursoCloser(persona, ventas), [persona, ventas])
+  const act = useMemo(() => actividadCloser(persona, ventas), [persona, ventas])
+
+  // A mes vencido, igual que en Equipo: ahora se cobra el mes ya cerrado.
+  const mesKey = mesAPagarISO()
+  const importeAPagar = importeMesCloser(persona, act, mesKey)
+  const pagoBuscado = (mes) =>
+    gastosEmpresa.find((g) => g.origen === 'equipo' && g.personaNombre === persona.nombre && g.mes === mes)
+  const pagoRegistrado = pagoBuscado(mesKey)
+
+  return (
+    <>
+      <div className="team-grid" style={{ marginBottom: 20 }}>
+        <div className="team-card">
+          <div className="team-card-header">
+            <div>
+              <h3>{persona.nombre}</h3>
+              <p className="team-role">{persona.rol}</p>
+            </div>
+          </div>
+          <div className="team-card-body">
+            <p><strong>Email:</strong> {persona.email}</p>
+            <p><strong>Teléfono:</strong> {persona.telefono}</p>
+            <p>
+              <strong>Comisión:</strong>{' '}
+              {tieneTramos(persona)
+                ? `por tramos — ${resumenTramos(persona)}`
+                : (persona.comision != null ? `${persona.comision}%` : 'Sin definir')}
+            </p>
+            <p><strong>Fijo mensual:</strong> {persona.fijo ? `${persona.fijo}€` : 'Sin definir'}</p>
+            {persona.carpetaDrive && (
+              <p><strong>Carpeta Drive:</strong> <a href={persona.carpetaDrive} target="_blank" rel="noopener noreferrer">Abrir 📁</a></p>
+            )}
+          </div>
+        </div>
+
+        {/* Desglose del mes en curso: de dónde sale la comisión (con tramos,
+            cuántas ventas van a cada %), que si no parece un número mágico. */}
+        <div className="team-card">
+          <div className="team-card-header">
+            <div>
+              <h3>Este mes · {mesLabel(mesActualISO())}</h3>
+              <p className="team-role">Se cobra el mes que viene</p>
+            </div>
+          </div>
+          <div className="team-commission-box">
+            <div className="team-commission-row"><span>Ventas este mes</span><strong>{enCurso.ventasMes}</strong></div>
+            <div className="team-commission-row"><span>Facturado este mes</span><strong>{eur(enCurso.facturadoMes)}</strong></div>
+            {enCurso.porTramo.map((t) => (
+              <div className="team-commission-row team-commission-tramo" key={t.desde}>
+                <span>
+                  Ventas {t.hasta ? `${t.desde}-${t.hasta}` : `${t.desde}+`} · {t.porcentaje}%
+                  {' '}({t.ventas} · {eur(t.facturado)})
+                </span>
+                <strong>{eur(t.comision)}</strong>
+              </div>
+            ))}
+            <div className="team-commission-row"><span>Comisión</span><strong>{eur(enCurso.comisionMes)}</strong></div>
+            <div className="team-commission-row"><span>Fijo mensual</span><strong>{eur(enCurso.fijo)}</strong></div>
+            {tieneTramos(persona) && (
+              <div className="team-commission-row team-commission-tramo">
+                <span>La siguiente venta ya va al</span>
+                <strong>{enCurso.porcentajeActual}%</strong>
+              </div>
+            )}
+            <div className="team-commission-row team-commission-highlight"><span>Acumulado del mes</span><strong>{eur(enCurso.totalMes)}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="kpi-grid">
+        <div className="kpi-card">
+          <div className="kpi-card-header"><span className="kpi-card-label">Leads asignados</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)' }}>👥</div></div>
+          <div className="kpi-card-value">{act.totalLeads}</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-card-header"><span className="kpi-card-label">Llamadas realizadas</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>📞</div></div>
+          <div className="kpi-card-value">{act.llamadasRealizadas}</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-card-header"><span className="kpi-card-label">Ventas ganadas</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)' }}>✅</div></div>
+          <div className="kpi-card-value">{act.ganadas}</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-card-header"><span className="kpi-card-label">Tasa de conversión</span><div className="kpi-icon" style={{ background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)' }}>🎯</div></div>
+          <div className="kpi-card-value">{act.tasaConversion}%</div>
+        </div>
+      </div>
+
+      <div className="team-payment-box" style={{ marginTop: 20 }}>
+        <div>
+          <p className="team-payment-label">Pago de {mesLabel(mesKey)} · a mes vencido</p>
+          <p className="team-payment-amount">{eur(importeAPagar)}</p>
+          <p className="team-activity-hint" style={{ margin: 0 }}>
+            Se cobra en {mesLabel(mesActualISO())}. Lo que llevas este mes ({eur(enCurso.totalMes)}) se paga el mes que viene.
+          </p>
+        </div>
+        {pagoRegistrado ? (
+          <span className="status-pill status-activo">✅ Pagado el {pagoRegistrado.fecha}</span>
+        ) : (
+          <span className="status-pill status-pendiente">⏳ Pendiente de pago</span>
+        )}
+      </div>
+
+      <div className="table-card" style={{ marginTop: 20 }}>
+        <div className="card-header">
+          <div><div className="card-title">Historial mensual (comisión + fijo)</div></div>
+        </div>
+        <div className="team-history-table">
+          <div className="team-history-row team-history-header">
+            <span>Mes</span><span>Leads</span><span>Llamadas</span><span>Ventas</span>
+            <span>Facturado</span><span>Comisión</span><span>Fijo</span><span>Total</span>
+          </div>
+          {act.historial.length === 0 && <p className="lead-log-empty">Sin historial todavía.</p>}
+          {act.historial.map((row) => (
+            <div className="team-history-row" key={row.mes}>
+              <span title={pagoBuscado(row.mes) ? 'Pagado' : 'Sin pagar'}>
+                {row.mes}{pagoBuscado(row.mes) ? ' ✅' : ''}
+              </span>
+              <span>{row.leads}</span>
+              <span>{row.llamadas}</span>
+              <span>{row.ventas}</span>
+              <span>{eur(row.facturado)}</span>
+              <span>{eur(row.comision)}</span>
+              <span>{eur(row.fijo)}</span>
+              <strong>{eur(row.total)}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
 
 // Vista de auto-servicio del equipo técnico — a petición de Raúl, esta
 // página ya NO tiene operatividad (nada de marcar tareas, contacto,
@@ -20,7 +162,7 @@ const SEGUIMIENTO_HELPERS = { semanaActualISO, progresoSemana, progresoContacto,
 // lo que le falta por hacer esta semana, con un botón para ir a hacer el
 // trabajo real. Se identifica quién ha iniciado sesión cruzando su email
 // con su ficha en Equipo, mismo patrón que ClientesEquipo/MuroEquipo.
-export default function MiFicha({ team, clientes = [], seguimientos = [], contactosSemanales = [], gastosEmpresa = [], tareas = [], revisionesSemanales = [], miEmail, onNavigate }) {
+export default function MiFicha({ team, clientes = [], ventas = [], seguimientos = [], contactosSemanales = [], gastosEmpresa = [], tareas = [], revisionesSemanales = [], miEmail, onNavigate }) {
   const [vista, setVista] = useState('resumen')
 
   const misTareasConFecha = useMemo(
@@ -68,6 +210,28 @@ export default function MiFicha({ team, clientes = [], seguimientos = [], contac
   const pagoBuscado = (mes) =>
     miPersona && gastosEmpresa.find((g) => g.origen === 'equipo' && g.personaNombre === miPersona.nombre && g.mes === mes)
   const pagoRegistrado = pagoBuscado(mesKey)
+
+  // Un closer no tiene ficha técnica: se le busca en el equipo de ventas y,
+  // si está ahí, se le enseña su ficha comercial (comisiones y pagos).
+  const miCloser = useMemo(
+    () => (miPersona ? null : (team?.ventas || []).find((p) => p.email && miEmail && p.email.toLowerCase() === miEmail.toLowerCase())),
+    [miPersona, team, miEmail]
+  )
+  if (miCloser) {
+    return (
+      <>
+        <header className="topbar">
+          <div>
+            <div className="topbar-title">Mi Ficha</div>
+            <div className="topbar-subtitle">Tus datos, tus comisiones y tus pagos</div>
+          </div>
+        </header>
+        <main className="page-content">
+          <FichaCloser persona={miCloser} ventas={ventas} gastosEmpresa={gastosEmpresa} />
+        </main>
+      </>
+    )
+  }
 
   return (
     <>

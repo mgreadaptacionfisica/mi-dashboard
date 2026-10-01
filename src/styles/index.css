@@ -2068,6 +2068,17 @@ tbody td {
   color: #6d28d9;
 }
 
+/* Canal de origen del lead (Instagram / WhatsApp) en la tarjeta del pipeline */
+.lead-tag-instagram {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.lead-tag-whatsapp {
+  background: #dcfce7;
+  color: #15803d;
+}
+
 .lead-tag-low {
   background: #e0f2fe;
   color: #0369a1;
@@ -2110,6 +2121,12 @@ tbody td {
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   align-items: end;
+}
+
+/* Fila de closer + agenda + canal de origen: 4 columnas. Va antes del
+   @media de móvil para que allí siga cayendo a una columna. */
+.lead-detail-row-4 {
+  grid-template-columns: repeat(4, 1fr);
 }
 
 .lead-detail-label {

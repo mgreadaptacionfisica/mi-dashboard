@@ -113,3 +113,89 @@ export function calcularComisionMes(ventasDelMes, persona) {
     porcentajeActual: porcentajeParaVenta(persona, lista.length + 1),
   }
 }
+
+// Comisión + fijo que lleva el closer en el MES EN CURSO (lo que se le pagará
+// el mes que viene, porque se paga a mes vencido). Manda `venta.fechaCierre`,
+// no la fecha de inicio del cliente. Lo usan la tarjeta de Equipo (admin) y
+// Mi Ficha (el propio closer), para que los dos vean la misma cifra.
+export function comisionMesEnCursoCloser(persona, ventas) {
+  const mesActual = new Date().toISOString().slice(0, 7) // YYYY-MM
+  const ventasDelMes = (ventas || []).filter((lead) =>
+    lead.closer === persona.nombre &&
+    lead.etapa === 'ganada' &&
+    lead.venta?.fechaCierre?.startsWith(mesActual)
+  )
+  const calculo = calcularComisionMes(ventasDelMes, persona)
+  const fijo = Number(persona.fijo) || 0
+  return {
+    ventasMes: ventasDelMes.length,
+    facturadoMes: calculo.facturado,
+    comisionMes: calculo.comision,
+    porTramo: calculo.porTramo,
+    porcentajeActual: calculo.porcentajeActual,
+    fijo,
+    totalMes: calculo.comision + fijo,
+  }
+}
+
+// Actividad completa del closer: leads asignados, llamadas, conversión,
+// cumplimiento de checklist e historial mensual de comisión + fijo. Sacado de
+// Equipo.jsx para reutilizarlo en Mi Ficha sin duplicar el cálculo.
+export function actividadCloser(persona, ventas) {
+  const leads = (ventas || []).filter((lead) => lead.closer === persona.nombre)
+  const llamadasRealizadas = leads.filter((lead) => lead.resultadoLlamada === 'realizada')
+  const ganadas = leads.filter((lead) => lead.etapa === 'ganada')
+  const perdidas = leads.filter((lead) => lead.etapa === 'perdida')
+  const checklistCompleto = leads.filter((lead) =>
+    lead.preLlamada?.whatsapp && lead.preLlamada?.prellamada && lead.preLlamada?.recordatorio
+  )
+  const tasaConversion = llamadasRealizadas.length > 0
+    ? Math.round((ganadas.length / llamadasRealizadas.length) * 100)
+    : 0
+
+  const meses = {}
+  leads.forEach((lead) => {
+    const mesAgenda = (lead.fechaAgenda || lead.creadoEn || '').slice(0, 7)
+    if (mesAgenda) {
+      meses[mesAgenda] = meses[mesAgenda] || { leads: 0, llamadas: 0, ventas: 0, facturado: 0, ganadas: [] }
+      meses[mesAgenda].leads += 1
+      if (lead.resultadoLlamada === 'realizada') meses[mesAgenda].llamadas += 1
+    }
+    if (lead.etapa === 'ganada' && lead.venta?.fechaCierre) {
+      const mesCierre = lead.venta.fechaCierre.slice(0, 7)
+      meses[mesCierre] = meses[mesCierre] || { leads: 0, llamadas: 0, ventas: 0, facturado: 0, ganadas: [] }
+      meses[mesCierre].ventas += 1
+      meses[mesCierre].facturado += Number(lead.venta.importe) || 0
+      // Se guardan los leads ganados del mes porque con tramos no basta
+      // con el total facturado: hay que numerar las ventas una a una.
+      meses[mesCierre].ganadas.push(lead)
+    }
+  })
+
+  const historial = Object.keys(meses)
+    .sort((a, b) => b.localeCompare(a))
+    .map((mes) => {
+      const datos = meses[mes]
+      const comision = calcularComisionMes(datos.ganadas, persona).comision
+      const fijo = Number(persona.fijo) || 0
+      return { mes, ...datos, comision, fijo, total: comision + fijo }
+    })
+
+  return {
+    leads,
+    totalLeads: leads.length,
+    llamadasRealizadas: llamadasRealizadas.length,
+    ganadas: ganadas.length,
+    perdidas: perdidas.length,
+    tasaConversion,
+    checklistCompleto: checklistCompleto.length,
+    historial,
+  }
+}
+
+// Importe de un mes ya cerrado para un closer. Si no tuvo movimiento ese mes
+// no hay fila en el historial, pero el fijo se le paga igual.
+export function importeMesCloser(persona, actividad, mesKey) {
+  const fila = actividad?.historial.find((h) => h.mes === mesKey)
+  return fila ? fila.total : (Number(persona.fijo) || 0)
+}

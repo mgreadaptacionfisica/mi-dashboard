@@ -6,7 +6,7 @@ import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionClient
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { insertFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
 import { actividadTecnico, seguimientoTecnico, contactoTecnico, mesActualISO, mesAPagarISO, mesLabel } from '../utils/equipoHelpers'
-import { calcularComisionMes, tieneTramos, resumenTramos } from '../utils/comisionesCloser'
+import { tieneTramos, resumenTramos, comisionMesEnCursoCloser, actividadCloser, importeMesCloser } from '../utils/comisionesCloser'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -219,86 +219,19 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
     deleteFinanzaRemote('gastos_empresa', `gasto-equipo-${persona.nombre}-${mesKey}`)
   }
 
+  // Comisión del mes en curso y actividad completa por closer. El cálculo
+  // vive en comisionesCloser (compartido con Mi Ficha, que es donde el propio
+  // closer ve lo mismo): % plano o por tramos según su ficha.
   const comisionPorCloser = useMemo(() => {
-    const mesActual = new Date().toISOString().slice(0, 7) // YYYY-MM
     return team.ventas.reduce((acc, persona) => {
-      if (!esCloser(persona)) return acc
-      const ventasDelMes = ventas.filter((lead) =>
-        lead.closer === persona.nombre &&
-        lead.etapa === 'ganada' &&
-        lead.venta?.fechaCierre?.startsWith(mesActual)
-      )
-      // El cálculo vive en comisionesCloser: % plano o por tramos según lo
-      // que tenga configurado el closer en su ficha.
-      const calculo = calcularComisionMes(ventasDelMes, persona)
-      const fijo = Number(persona.fijo) || 0
-      acc[persona.nombre] = {
-        ventasMes: ventasDelMes.length,
-        facturadoMes: calculo.facturado,
-        comisionMes: calculo.comision,
-        porTramo: calculo.porTramo,
-        porcentajeActual: calculo.porcentajeActual,
-        fijo,
-        totalMes: calculo.comision + fijo,
-      }
+      if (esCloser(persona)) acc[persona.nombre] = comisionMesEnCursoCloser(persona, ventas)
       return acc
     }, {})
   }, [team, ventas])
 
-  // Actividad completa por closer: leads asignados, llamadas, conversión,
-  // cumplimiento de checklist e historial mensual de comisión + fijo.
   const actividadPorCloser = useMemo(() => {
     return team.ventas.reduce((acc, persona) => {
-      if (!esCloser(persona)) return acc
-      const leads = ventas.filter((lead) => lead.closer === persona.nombre)
-      const llamadasRealizadas = leads.filter((lead) => lead.resultadoLlamada === 'realizada')
-      const ganadas = leads.filter((lead) => lead.etapa === 'ganada')
-      const perdidas = leads.filter((lead) => lead.etapa === 'perdida')
-      const checklistCompleto = leads.filter((lead) =>
-        lead.preLlamada?.whatsapp && lead.preLlamada?.prellamada && lead.preLlamada?.recordatorio
-      )
-      const tasaConversion = llamadasRealizadas.length > 0
-        ? Math.round((ganadas.length / llamadasRealizadas.length) * 100)
-        : 0
-
-      const meses = {}
-      leads.forEach((lead) => {
-        const mesAgenda = (lead.fechaAgenda || lead.creadoEn || '').slice(0, 7)
-        if (mesAgenda) {
-          meses[mesAgenda] = meses[mesAgenda] || { leads: 0, llamadas: 0, ventas: 0, facturado: 0, ganadas: [] }
-          meses[mesAgenda].leads += 1
-          if (lead.resultadoLlamada === 'realizada') meses[mesAgenda].llamadas += 1
-        }
-        if (lead.etapa === 'ganada' && lead.venta?.fechaCierre) {
-          const mesCierre = lead.venta.fechaCierre.slice(0, 7)
-          meses[mesCierre] = meses[mesCierre] || { leads: 0, llamadas: 0, ventas: 0, facturado: 0, ganadas: [] }
-          meses[mesCierre].ventas += 1
-          meses[mesCierre].facturado += Number(lead.venta.importe) || 0
-          // Se guardan los leads ganados del mes porque con tramos no basta
-          // con el total facturado: hay que numerar las ventas una a una.
-          meses[mesCierre].ganadas.push(lead)
-        }
-      })
-
-      const historial = Object.keys(meses)
-        .sort((a, b) => b.localeCompare(a))
-        .map((mes) => {
-          const datos = meses[mes]
-          const comision = calcularComisionMes(datos.ganadas, persona).comision
-          const fijo = Number(persona.fijo) || 0
-          return { mes, ...datos, comision, fijo, total: comision + fijo }
-        })
-
-      acc[persona.nombre] = {
-        leads,
-        totalLeads: leads.length,
-        llamadasRealizadas: llamadasRealizadas.length,
-        ganadas: ganadas.length,
-        perdidas: perdidas.length,
-        tasaConversion,
-        checklistCompleto: checklistCompleto.length,
-        historial,
-      }
+      if (esCloser(persona)) acc[persona.nombre] = actividadCloser(persona, ventas)
       return acc
     }, {})
   }, [team, ventas])
@@ -324,10 +257,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
   // otra cifra distinta. Si un closer no tuvo movimiento no hay fila en el
   // historial, pero el fijo se le paga igual.
   const importeDelMes = (persona, mesKey) => {
-    if (esCloser(persona)) {
-      const fila = actividadPorCloser[persona.nombre]?.historial.find((h) => h.mes === mesKey)
-      return fila ? fila.total : (Number(persona.fijo) || 0)
-    }
+    if (esCloser(persona)) return importeMesCloser(persona, actividadPorCloser[persona.nombre], mesKey)
     const fila = actividadPorTecnico[persona.nombre]?.historial.find((h) => h.mes === mesKey)
     return fila ? fila.total : 0
   }

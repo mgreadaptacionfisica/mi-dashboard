@@ -43,7 +43,7 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 60; la siguiente sería la 61). Deben ser **idempotentes**
+  (la última es la 61; la siguiente sería la 62). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -95,7 +95,9 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
   del acumulado del mes en curso (son dos cifras distintas y se enseñan las
   dos). En el gasto de `gastos_empresa`, `mes` = mes trabajado y `fecha` = día
   real del pago; no coinciden a propósito, para que Finanzas impute el gasto al
-  mes en que sale el dinero. Mi Ficha enseña lo mismo en solo lectura.
+  mes en que sale el dinero. Mi Ficha enseña lo mismo en solo lectura (técnicos y closers: el closer
+  ve su comisión, tramos e historial; el cálculo vive en
+  `utils/comisionesCloser.js` y lo comparten Equipo y Mi Ficha).
 - **Hotmart/seQura**: una venta financiada se registra como UN cobro (Hotmart
   adelanta el grueso y libera el resto), no como plazos mensuales.
 - **Seguimiento y Valoración** (`ClientesEquipo.jsx`, sección `clientes-equipo`)

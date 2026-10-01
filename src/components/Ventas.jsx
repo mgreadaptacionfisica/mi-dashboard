@@ -32,7 +32,14 @@ const initialLeadForm = {
   closer: '',
   fechaAgenda: '',
   horaAgenda: '',
+  canalOrigen: '',
 }
+
+// De dónde llega el lead. Se guarda en `ventas.canal_origen` (migración 61).
+const CANALES_ORIGEN = [
+  { id: 'instagram', label: '📸 Instagram' },
+  { id: 'whatsapp', label: '💬 WhatsApp' },
+]
 
 const initialVentaForm = {
   servicioId: SERVICIOS[0]?.id ?? '',
@@ -75,6 +82,11 @@ function LeadCard({ lead, onOpen }) {
     <button type="button" className="lead-card" onClick={onOpen}>
       <div className="lead-card-top">
         {lead.fechaAgenda && <span className="lead-date">{lead.fechaAgenda}{lead.horaAgenda ? ` · ${lead.horaAgenda}` : ''}</span>}
+        {lead.canalOrigen && (
+          <span className={`lead-tag lead-tag-${lead.canalOrigen}`}>
+            {lead.canalOrigen === 'instagram' ? 'Instagram' : 'WhatsApp'}
+          </span>
+        )}
       </div>
       <p className="lead-name">{lead.nombre}</p>
       <p className="lead-closer">👤 {lead.closer || 'Sin closer'}</p>
@@ -223,6 +235,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
       closer: leadForm.closer,
       fechaAgenda: leadForm.fechaAgenda,
       horaAgenda: leadForm.horaAgenda,
+      canalOrigen: leadForm.canalOrigen || null,
       preLlamada: { whatsapp: false, prellamada: false, recordatorio: false },
       resultadoLlamada: null,
       compraEnLlamada: null,
@@ -784,6 +797,18 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
                 <input type="time" value={leadForm.horaAgenda}
                   onChange={(e) => setLeadForm({ ...leadForm, horaAgenda: e.target.value })} />
               </div>
+              <div>
+                <label className="lead-detail-label">¿De dónde viene?</label>
+                <div className="lead-detail-actions">
+                  {CANALES_ORIGEN.map((c) => (
+                    <button key={c.id} type="button"
+                      className={leadForm.canalOrigen === c.id ? 'primary-action' : 'secondary-action'}
+                      onClick={() => setLeadForm({ ...leadForm, canalOrigen: leadForm.canalOrigen === c.id ? '' : c.id })}>
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="modal-actions">
                 <button type="button" className="secondary-action" onClick={() => setShowNewLead(false)}>Cancelar</button>
                 <button type="submit" className="primary-action">Crear lead</button>
@@ -810,7 +835,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
             </div>
 
             <div className="lead-detail-body">
-              <div className="lead-detail-row">
+              <div className="lead-detail-row lead-detail-row-4">
                 <div>
                   <label className="lead-detail-label">Closer</label>
                   <select value={activeLead.closer} onChange={(e) => updateLead(activeLead.id, { closer: e.target.value })}>
@@ -827,6 +852,14 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
                   <label className="lead-detail-label">Hora de agenda</label>
                   <input type="time" value={activeLead.horaAgenda || ''}
                     onChange={(e) => updateLead(activeLead.id, { horaAgenda: e.target.value })} />
+                </div>
+                <div>
+                  <label className="lead-detail-label">Viene de</label>
+                  <select value={activeLead.canalOrigen || ''}
+                    onChange={(e) => updateLead(activeLead.id, { canalOrigen: e.target.value || null })}>
+                    <option value="">Sin indicar</option>
+                    {CANALES_ORIGEN.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
                 </div>
               </div>
 

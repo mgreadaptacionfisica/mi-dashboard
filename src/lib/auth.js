@@ -26,7 +26,7 @@ import { supabase } from './supabaseClient'
 // (y la RLS de supabase-sql/50_enlaces_interes.sql lo refuerza en el servidor).
 export const SECCIONES_POR_ROL = {
   admin: ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'mi-ficha', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales', 'enlaces'],
-  closer: ['ventas', 'comunicacion', 'manuales'],
+  closer: ['ventas', 'mi-ficha', 'comunicacion', 'manuales'],
   tecnico: ['clientes-equipo', 'mi-ficha', 'operaciones', 'tareas', 'comunicacion', 'manuales'],
   contenido: ['operaciones', 'comunicacion', 'manuales'],
 }

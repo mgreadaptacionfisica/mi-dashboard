@@ -22,6 +22,9 @@ function fromRow(row) {
     // cancelada/no-show (en vez del seguimiento normal post-llamada, cuando
     // no compró en el momento) — ver 51_origen_seguimiento_ventas.sql.
     origenSeguimiento: row.origen_seguimiento || null,
+    // De dónde llegó el lead: 'instagram' | 'whatsapp' | null (sin indicar,
+    // p. ej. los leads anteriores a 61_canal_origen_ventas.sql).
+    canalOrigen: row.canal_origen || null,
     notasSeguimiento: row.notas_seguimiento || [],
     grabacionUrl: row.grabacion_url || '',
     // Lista de intentos de llamada (ver 54_historial_llamadas_ventas.sql):
@@ -53,6 +56,7 @@ const CAMPO_A_COLUMNA = {
   objeciones: 'objeciones',
   seguimiento: 'seguimiento',
   origenSeguimiento: 'origen_seguimiento',
+  canalOrigen: 'canal_origen',
   notasSeguimiento: 'notas_seguimiento',
   grabacionUrl: 'grabacion_url',
   historialLlamadas: 'historial_llamadas',
