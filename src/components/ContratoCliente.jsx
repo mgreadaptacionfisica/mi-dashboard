@@ -162,7 +162,10 @@ export default function ContratoCliente({ origen = 'suelto', onFirmado }) {
   }, [firmado, onFirmado])
 
   const set = (campo) => (valor) => setDatos((prev) => ({ ...prev, [campo]: valor }))
-  const bloq = (campo) => Boolean(delEnlace[campo])
+  // Un enlace viejo puede traer una duración que ya no existe: entonces no se
+  // bloquea, o el cliente se quedaría sin poder elegir ninguna.
+  const bloq = (campo) => Boolean(delEnlace[campo]) &&
+    (campo !== 'duracion' || DURACIONES.some((x) => x.id === delEnlace.duracion))
   const faltas = faltasContrato(datos, Boolean(firma))
   const clausulas = clausulasContrato(datos)
 
@@ -291,7 +294,7 @@ export default function ContratoCliente({ origen = 'suelto', onFirmado }) {
       <div className="contrato-texto">
         <p className="contrato-texto-cab">
           <strong>Contrato de prestación de servicios de readaptación física y deportiva</strong><br />
-          En Málaga, a {fechaLarga()}
+          Firmado electrónicamente el {fechaLarga()}
         </p>
         {clausulas.map((c) => (
           <div key={c.titulo}>

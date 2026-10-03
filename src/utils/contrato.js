@@ -8,14 +8,16 @@
 // (migración 62) y el PDF se genera desde esa foto. Sube VERSION_CONTRATO
 // cuando cambie algo de fondo, para poder saber qué firmó cada uno.
 
-export const VERSION_CONTRATO = 'v1 · oct 2026'
+export const VERSION_CONTRATO = 'v3 · oct 2026'
 
-// Datos fijos de EL PROFESIONAL (los del contrato en PDF de siempre).
+// Datos fijos de EL PROFESIONAL. Sin domicilio a propósito (Raúl ya no vive
+// en Alcaucín y no quiere poner la dirección de la LLC): el contacto es el
+// email. Si algún día se añade una dirección, va aquí y en "Reunidos".
 export const PROFESIONAL = {
   nombre: 'Raúl Morales García',
   dni: '26807134-J',
-  domicilio: 'Urbanización Era del Capitán, 2B, 29711 Alcaucín (Málaga)',
-  titulo: 'Graduado en Ciencias de la Actividad Física y del Deporte, colegiado nº 66708',
+  email: 'mgreadaptacionfisica@gmail.com',
+  titulo: 'Graduado en Ciencias de la Actividad Física y del Deporte',
   marca: 'MG Readaptación Física',
 }
 
@@ -23,9 +25,11 @@ export const PROFESIONAL = {
 // lo negociaba y el cliente no sabía qué poner.
 export const PREAVISO_DIAS = 7
 
+// Solo los dos programas que se venden. Si se quita una duración, los
+// contratos ya firmados con ella siguen saliendo bien en el PDF (usan su foto
+// de cláusulas); solo la lista de Clientes la enseñaría como "—".
 export const DURACIONES = [
-  { id: 'mensual', label: 'Mensual', detalle: '1 mes' },
-  { id: 'trimestral', label: 'Trimestral', detalle: '3 meses' },
+  { id: 'cuatrimestral', label: 'Cuatrimestral', detalle: '4 meses' },
   { id: 'semestral', label: 'Semestral', detalle: '6 meses' },
 ]
 
@@ -72,7 +76,7 @@ export function clausulasContrato(d = {}) {
     {
       titulo: 'Reunidos',
       parrafos: [
-        `De una parte, D. ${PROFESIONAL.nombre}, con DNI nº ${PROFESIONAL.dni}, domicilio fiscal en ${PROFESIONAL.domicilio}, ${PROFESIONAL.titulo}, que actúa bajo el nombre comercial ${PROFESIONAL.marca} (en adelante, «EL PROFESIONAL»).`,
+        `De una parte, D. ${PROFESIONAL.nombre}, con DNI nº ${PROFESIONAL.dni}, ${PROFESIONAL.titulo}, con email de contacto ${PROFESIONAL.email}, que actúa bajo el nombre comercial ${PROFESIONAL.marca} (en adelante, «EL PROFESIONAL»).`,
         `Y de otra parte, D./Dña. ${d.nombre || '—'}, con DNI nº ${d.dni || '—'}, domicilio en ${d.domicilio || '—'} y email ${d.email || '—'} (en adelante, «EL CLIENTE»).`,
         'Ambas partes, reconociéndose plena capacidad para contratar, acuerdan suscribir el presente Contrato de Prestación de Servicios, que se regirá por las siguientes cláusulas.',
       ],
@@ -132,7 +136,7 @@ export function clausulasContrato(d = {}) {
       parrafos: [
         'Los datos personales de EL CLIENTE serán tratados conforme al RGPD y a la LOPDGDD, con la única finalidad de prestar y gestionar el servicio contratado.',
         'Entre ellos hay datos de salud, que EL CLIENTE consiente expresamente que se traten para ese fin. Solo tendrán acceso los profesionales del equipo que intervienen en su programa y los proveedores imprescindibles para prestarlo (como la app de entrenamiento), y no se cederán a terceros salvo obligación legal.',
-        'EL CLIENTE podrá ejercer sus derechos de acceso, rectificación, supresión, oposición, limitación y portabilidad a través del domicilio de EL PROFESIONAL.',
+        `EL CLIENTE podrá ejercer sus derechos de acceso, rectificación, supresión, oposición, limitación y portabilidad escribiendo a ${PROFESIONAL.email}.`,
       ],
     },
     {
@@ -262,9 +266,9 @@ export function imprimirContrato(contrato) {
   .pie { margin-top: 22px; font-size: 8.5pt; color: #777; border-top: 1px solid #ddd; padding-top: 8px; }
 </style></head><body>
   <h1>CONTRATO DE PRESTACIÓN DE SERVICIOS DE READAPTACIÓN FÍSICA Y DEPORTIVA</h1>
-  <div class="sub">En Málaga, a ${esc(fechaLarga(contrato.firmadoEn))}</div>
+  <div class="sub">Firmado electrónicamente el ${esc(fechaLarga(contrato.firmadoEn))}</div>
   ${cuerpo}
-  <p style="margin-top:14px">Y en prueba de conformidad, firman el presente contrato en el lugar y fecha indicados.</p>
+  <p style="margin-top:14px">Y en prueba de conformidad, firman el presente contrato en la fecha indicada.</p>
   <div class="firmas">
     <div class="firma">
       <strong>EL PROFESIONAL</strong>
