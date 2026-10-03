@@ -8,7 +8,7 @@
 // (migración 62) y el PDF se genera desde esa foto. Sube VERSION_CONTRATO
 // cuando cambie algo de fondo, para poder saber qué firmó cada uno.
 
-export const VERSION_CONTRATO = 'v3 · oct 2026'
+export const VERSION_CONTRATO = 'v4 · oct 2026'
 
 // Datos fijos de EL PROFESIONAL. Sin domicilio a propósito (Raúl ya no vive
 // en Alcaucín y no quiere poner la dirección de la LLC): el contacto es el
@@ -38,10 +38,14 @@ export const FORMAS_PAGO = [
   { id: 'plazos', label: 'Pago a plazos' },
 ]
 
+// seQura va aparte de Hotmart porque cambia el contrato: con seQura el
+// cliente financia con ellos, a nosotros nos llega el importe entero y los
+// plazos son cosa suya (ver cláusula 3). Se registra como pago completo.
 export const METODOS_PAGO = [
-  { id: 'aplicacion', label: 'Aplicación (Hotmart / pasarela)' },
+  { id: 'stripe', label: 'Tarjeta (Stripe)' },
+  { id: 'hotmart', label: 'Hotmart' },
+  { id: 'sequra', label: 'Hotmart financiado con seQura' },
   { id: 'transferencia', label: 'Transferencia bancaria' },
-  { id: 'bizum', label: 'Bizum' },
 ]
 
 export const OPCIONES_IMAGEN = [
@@ -101,6 +105,12 @@ export function clausulasContrato(d = {}) {
         `El importe total de los servicios contratados asciende a ${formatoEuros(d.importe)}.`,
         pago,
         `Método de pago: ${etiqueta(METODOS_PAGO, d.metodoPago)}.`,
+        // El matiz final no es adorno: con un crédito vinculado la ley le
+        // deja al consumidor reclamar también a la financiera si el servicio
+        // falla, y eso no se puede quitar por contrato.
+        ...(d.metodoPago === 'sequra'
+          ? ['Al financiar con seQura, EL PROFESIONAL recibe el importe total y el pago aplazado se rige por el contrato de financiación que EL CLIENTE suscribe directamente con seQura. Las cuotas, sus vencimientos, intereses y posibles impagos son responsabilidad de esa relación entre EL CLIENTE y seQura, no de EL PROFESIONAL, sin perjuicio de los derechos que la ley reconoce a EL CLIENTE como consumidor.']
+          : []),
       ],
     },
     {
