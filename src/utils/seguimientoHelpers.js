@@ -359,7 +359,16 @@ export function motivosNoCierre({ seguimiento, contacto, problemas = [], cliente
     }
   } else if (progreso.revisadas < progreso.total) {
     const faltan = progreso.total - progreso.revisadas
-    motivos.push({ donde: 'registro', texto: `${plural(faltan, 'sesión', 'sesiones')} sin marcar como hecha (⚡ Registro de sesiones).` })
+    // Se dice CUÁLES son (día + sesión): con solo el número, cuando el
+    // trabajador ve todo en verde en la rejilla no hay forma de encontrar
+    // la que falta (p. ej. si mira otra semana o su pantalla está desfasada).
+    const cuales = []
+    DIAS_SEMANA.forEach((d) => {
+      ;(seguimiento?.dias?.[d.id]?.tareas || []).forEach((t) => {
+        if (!t.revisado) cuales.push(`${d.label}${(t.texto || '').trim() ? ` «${t.texto.trim()}»` : ' (sesión sin nombre)'}`)
+      })
+    })
+    motivos.push({ donde: 'registro', texto: `${plural(faltan, 'sesión', 'sesiones')} sin marcar como hecha: ${cuales.join(', ')} (⚡ Registro de sesiones).` })
   }
 
   const cambiosSinHacer = (seguimiento?.cambiosPendientes || []).filter((c) => !c.hecho).length
