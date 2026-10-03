@@ -24,6 +24,19 @@ import { enviarCuestionarioPublico } from '../lib/queries/cuestionariosPrevios'
 
 const CLAVE_BORRADOR = 'mg-cuestionario-previo'
 
+// De qué onboarding viene (?o=/onboarding-premium?c=…), para ofrecerle
+// volver al terminar. Solo se acepta una ruta de onboarding de este mismo
+// dominio: si no, cualquiera podría usar el enlace para redirigir fuera.
+// Sin él es el enlace suelto y no hay a dónde volver.
+function onboardingDeOrigen() {
+  try {
+    const o = new URLSearchParams(window.location.search).get('o') || ''
+    return /^\/onboarding(-premium)?(\?|$)/.test(o) ? o : ''
+  } catch (e) {
+    return ''
+  }
+}
+
 function nombreDelEnlace() {
   try {
     return new URLSearchParams(window.location.search).get('c') || ''
@@ -112,6 +125,7 @@ function Campo({ pregunta, valor, onChange }) {
 
 export default function CuestionarioPrevio() {
   const nombreEnlace = useMemo(nombreDelEnlace, [])
+  const origen = useMemo(onboardingDeOrigen, [])
   const [clienteNombre, setClienteNombre] = useState(nombreEnlace)
   const [email, setEmail] = useState('')
   const [respuestas, setRespuestas] = useState({})
@@ -184,12 +198,25 @@ export default function CuestionarioPrevio() {
       <div className="cp-pagina">
         <div className="cp-hoja cp-gracias">
           <img src={Logo} alt="MG Readaptación Física" className="cp-logo" />
-          <h1>Recibido, {clienteNombre.split(' ')[0]}</h1>
+          <span className="cp-gracias-check">✅</span>
+          <h1>¡Gracias, {clienteNombre.split(' ')[0]}!</h1>
           <p>
-            Ya tenemos tus respuestas. Tu equipo las revisa antes de montarte el programa, así que no hace
-            falta que nos mandes nada más. Si has llegado desde tu onboarding, puedes volver a esa pestaña y
-            seguir con el siguiente paso.
+            Hemos recibido tus respuestas. Tu equipo las revisa antes de montarte el programa, así que no
+            hace falta que nos mandes nada más.
           </p>
+          {origen ? (
+            <>
+              <p>Ya puedes seguir con el siguiente paso de tu bienvenida.</p>
+              <a
+                className="primary-action cp-boton cp-gracias-boton"
+                href={origen}
+              >
+                Seguir con mi onboarding →
+              </a>
+            </>
+          ) : (
+            <p>Ya está, no tienes que hacer nada más.</p>
+          )}
           <p className="cp-gracias-nota">
             Si te has dejado algo importante o quieres matizar una respuesta, díselo a tu entrenador por WhatsApp
             y lo añadimos a mano.

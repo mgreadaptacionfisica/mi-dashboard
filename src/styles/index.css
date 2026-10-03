@@ -6808,3 +6808,7 @@ button.onb-chip { cursor: pointer; }
 .cq-alertas .cq-subtitulo { margin-top: 0; color: #b91c1c; }
 .cq-generales { margin-bottom: 10px; }
 .cq-general-bloque { border-left: 3px solid var(--color-border); padding-left: 8px; margin-bottom: 8px; }
+
+/* Pantalla de gracias del cuestionario. */
+.cp-gracias-check { display: block; font-size: 44px; margin-bottom: 8px; }
+.cp-gracias-boton { display: inline-block; margin: 6px 0 14px; text-decoration: none; }

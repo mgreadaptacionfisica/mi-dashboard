@@ -185,7 +185,13 @@ export default function Onboarding({ variante = 'low' }) {
   const steps = useMemo(
     () => config.pasos.map((id, i) => {
       const paso = { id, number: String(i + 1).padStart(2, '0'), ...PASOS[id] }
-      if (id === 'cuestionario' && clienteNombre) paso.href = `/cuestionario?c=${encodeURIComponent(clienteNombre)}`
+      // `o` es el enlace EXACTO de este onboarding (con sus condiciones del
+      // contrato), para que al terminar el cuestionario le ofrezca volver a
+      // él tal cual y no a uno sin parámetros.
+      if (id === 'cuestionario') {
+        const vuelta = encodeURIComponent(window.location.pathname + window.location.search)
+        paso.href = `/cuestionario?${clienteNombre ? `c=${encodeURIComponent(clienteNombre)}&` : ''}o=${vuelta}`
+      }
       return paso
     }),
     [config, clienteNombre]

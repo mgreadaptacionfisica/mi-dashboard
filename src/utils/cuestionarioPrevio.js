@@ -41,15 +41,17 @@ export const BLOQUES_CUESTIONARIO = [
     preguntas: [
       {
         id: 'zona',
-        texto: '¿Qué zona es la que te molesta?',
-        pista: 'Si es más de una, elige la que más te limita y cuéntanos el resto en la siguiente.',
-        tipo: 'opciones',
+        texto: '¿Qué zona o zonas te molestan?',
+        pista: 'Marca todas las que te molesten.',
+        // 'varias' desde el principio de la versión general; las respuestas
+        // de antes (si alguna llegó como texto) se siguen leyendo igual.
+        tipo: 'varias',
         opciones: ['Hombro', 'Codo, muñeca o mano', 'Cuello', 'Espalda', 'Cadera', 'Rodilla', 'Tobillo o pie', 'Otra'],
       },
       {
         id: 'zonaDetalle',
         texto: '¿Dónde exactamente, y de qué lado?',
-        pista: 'Ej: "parte delantera del hombro derecho", "por dentro de la rodilla izquierda".',
+        pista: 'Ej: "parte delantera del hombro derecho". Si has marcado más de una zona, dinos también cuál te limita más.',
         tipo: 'corto',
       },
       {
@@ -445,12 +447,17 @@ const ZONA_EN_FRASE = {
   Otra: 'esa zona',
 }
 
-// Enunciado con la zona del cliente dentro. Sin zona contestada (o en
-// cuestionarios viejos, que eran todos de hombro) se cae a "la zona que te
-// molesta", que se entiende siempre.
+// Enunciado con la zona del cliente dentro. Puede marcar varias: se juntan
+// ("el hombro y la rodilla"), y a partir de tres se dice "esas zonas" para
+// que la frase no se haga eterna. Sin zona contestada (o en cuestionarios
+// viejos, que eran todos de hombro) se cae a "la zona que te molesta".
 export function textoPregunta(pregunta, respuestas) {
   if (!pregunta?.texto) return ''
-  const zona = ZONA_EN_FRASE[(respuestas || {}).zona] || 'la zona que te molesta'
+  const elegidas = [].concat((respuestas || {}).zona || []).map((z) => ZONA_EN_FRASE[z]).filter(Boolean)
+  let zona = 'la zona que te molesta'
+  if (elegidas.length === 1) zona = elegidas[0]
+  else if (elegidas.length === 2) zona = `${elegidas[0]} y ${elegidas[1]}`
+  else if (elegidas.length > 2) zona = 'esas zonas'
   return pregunta.texto.replace('{zona}', zona)
 }
 
