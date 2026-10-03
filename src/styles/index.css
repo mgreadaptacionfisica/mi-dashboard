@@ -6812,3 +6812,17 @@ button.onb-chip { cursor: pointer; }
 /* Pantalla de gracias del cuestionario. */
 .cp-gracias-check { display: block; font-size: 44px; margin-bottom: 8px; }
 .cp-gracias-boton { display: inline-block; margin: 6px 0 14px; text-decoration: none; }
+
+/* Botón "Rellenar desde el cuestionario" de la red (RedDeterminantes.jsx). */
+.rd-desde-cuestionario {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--color-primary-tint);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.rd-desde-cuestionario span { flex: 1 1 260px; font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }

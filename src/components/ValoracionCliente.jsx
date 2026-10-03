@@ -34,6 +34,7 @@ import {
 import EditorRedDeterminantes, { VistaRedDeterminantes } from './RedDeterminantes'
 import RespuestasCuestionario, { EnlaceCuestionario } from './RespuestasCuestionario'
 import { cuestionarioDeCliente } from '../utils/cuestionarioPrevio'
+import { marcarCuestionarioRevisado } from '../lib/queries/cuestionariosPrevios'
 import { gravedadesSugeridas, nodosDe } from '../utils/redDeterminantes'
 import { insertValoracionRemote, updateValoracionRemote, deleteValoracionRemote } from '../lib/queries/valoracionesClientes'
 
@@ -259,7 +260,12 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
   // Cuestionario previo de este cliente. Se enlaza por NOMBRE, como todo el
   // historial del panel. El más reciente es el que vale: si lo mandó dos
   // veces, la segunda corrige a la primera.
-  const cuestionarioDelCliente = cuestionarioDeCliente(cuestionariosPrevios, cliente.Nombre)
+  // `pasadoALaRed` adelanta en pantalla la marca de "ya pasado a la red"
+  // cuando se usa el botón de rellenar la red desde el cuestionario (en la
+  // base de datos ya se guarda; esto es para no tener que recargar).
+  const [pasadoALaRed, setPasadoALaRed] = useState(false)
+  const cuestionarioBase = cuestionarioDeCliente(cuestionariosPrevios, cliente.Nombre)
+  const cuestionarioDelCliente = cuestionarioBase && pasadoALaRed ? { ...cuestionarioBase, revisado: true } : cuestionarioBase
 
   // La fase ya no se gestiona aquí (se movió a "Fases y objetivos", propia
   // de cada cliente) — se calcula sola a partir de sus objetivos, y aquí
@@ -548,7 +554,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
               )
             })()}
 
-            {cuestionarioDelCliente && <RespuestasCuestionario cuestionario={cuestionarioDelCliente} />}
+            {cuestionarioDelCliente && <RespuestasCuestionario key={`${cuestionarioDelCliente.id}-${cuestionarioDelCliente.revisado}`} cuestionario={cuestionarioDelCliente} />}
 
             {/* Red de determinantes de la valoración más reciente que tenga
                 una. Va junto al diagnóstico diferencial porque las dos
@@ -712,7 +718,7 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                         {v.notasMovilidad && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🤸 Movilidad: {v.notasMovilidad}</p>}
                         {v.notasFuerza && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>💪 Fuerza: {v.notasFuerza}</p>}
                         {v.notasDolor && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🩹 Dolor: {v.notasDolor}</p>}
-                        {v.notasEvaluacionInicial && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>📝 Evaluación inicial: {v.notasEvaluacionInicial}</p>}
+                        {v.notasEvaluacionInicial && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>📝 Observaciones: {v.notasEvaluacionInicial}</p>}
                         {v.notasPreferenciasEntrenamiento && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🗓️ Preferencias: {v.notasPreferenciasEntrenamiento}</p>}
                       </div>
                     )}
@@ -914,35 +920,47 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
               <p className="valoracion-total-live">Total TAMPA: <strong>{tampaTotalForm != null ? `${tampaTotalForm} / 44` : 'Sin datos'}</strong></p>
               <p className="valoracion-interpretacion">{TAMPA_INTERPRETACION}</p>
 
-              <label className="valoracion-campo" style={{ marginTop: 8 }}>
-                <span>Notas de evaluación del dolor</span>
-                <textarea
-                  rows={3}
-                  value={formData.notasDolor}
-                  onChange={(e) => setFormData({ ...formData, notasDolor: e.target.value })}
-                  placeholder="Pega aquí lo relevante del formulario externo de dolor..."
-                />
-              </label>
+              {/* "Notas del dolor" (era para pegar el formulario de dolor de
+                  Harbiz) y "Preferencias de entrenamiento" (días, material,
+                  gustos) los cubre ya el cuestionario inicial: si el cliente
+                  lo tiene, no se piden. Solo se enseñan si no hay cuestionario
+                  (clientes de antes) o si esta valoración ya traía texto en
+                  ellos, para no esconder nada escrito. */}
+              {(!cuestionarioDelCliente || formData.notasDolor) && (
+                <label className="valoracion-campo" style={{ marginTop: 8 }}>
+                  <span>Notas de evaluación del dolor</span>
+                  <textarea
+                    rows={3}
+                    value={formData.notasDolor}
+                    onChange={(e) => setFormData({ ...formData, notasDolor: e.target.value })}
+                    placeholder="Lo relevante de cómo describe su dolor..."
+                  />
+                </label>
+              )}
 
+              {/* Esta sí se queda siempre: es lo que observa el fisio en la
+                  valoración, que no sale de ningún cuestionario. */}
               <label className="valoracion-campo">
-                <span>Notas de evaluación inicial</span>
+                <span>Observaciones de la valoración</span>
                 <textarea
                   rows={3}
                   value={formData.notasEvaluacionInicial}
                   onChange={(e) => setFormData({ ...formData, notasEvaluacionInicial: e.target.value })}
-                  placeholder="Observaciones de la evaluación inicial..."
+                  placeholder="Lo que ves tú en la valoración: cómo se mueve, compensaciones, qué le reproduce el dolor, impresión general..."
                 />
               </label>
 
-              <label className="valoracion-campo">
-                <span>Preferencias de entrenamiento</span>
-                <textarea
-                  rows={3}
-                  value={formData.notasPreferenciasEntrenamiento}
-                  onChange={(e) => setFormData({ ...formData, notasPreferenciasEntrenamiento: e.target.value })}
-                  placeholder="Días disponibles, material del que dispone, gustos con los ejercicios..."
-                />
-              </label>
+              {(!cuestionarioDelCliente || formData.notasPreferenciasEntrenamiento) && (
+                <label className="valoracion-campo">
+                  <span>Preferencias de entrenamiento</span>
+                  <textarea
+                    rows={3}
+                    value={formData.notasPreferenciasEntrenamiento}
+                    onChange={(e) => setFormData({ ...formData, notasPreferenciasEntrenamiento: e.target.value })}
+                    placeholder="Días disponibles, material del que dispone, gustos con los ejercicios..."
+                  />
+                </label>
+              )}
 
               {/* Red de determinantes: va la última a propósito. Es la
                   síntesis de todo lo anterior, y al estar aquí el SPADI y el
@@ -950,12 +968,17 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                   la kinesiofobia en vez de pedirlas a ciegas. */}
               <h4 className="team-activity-subtitle">Red de determinantes (bio · psico · social)</h4>
               {cuestionarioDelCliente
-                ? <RespuestasCuestionario cuestionario={cuestionarioDelCliente} />
+                ? <RespuestasCuestionario key={`${cuestionarioDelCliente.id}-${cuestionarioDelCliente.revisado}`} cuestionario={cuestionarioDelCliente} />
                 : <EnlaceCuestionario clienteNombre={cliente.Nombre} />}
               <EditorRedDeterminantes
                 red={formData.redDeterminantes}
                 sugeridas={gravedadesSugeridas(formData)}
                 onChange={(red) => setFormData((prev) => ({ ...prev, redDeterminantes: red }))}
+                cuestionario={cuestionarioDelCliente}
+                onCuestionarioAplicado={(c) => {
+                  marcarCuestionarioRevisado(c.id, true)
+                  setPasadoALaRed(true)
+                }}
               />
 
               {errorGuardado && (

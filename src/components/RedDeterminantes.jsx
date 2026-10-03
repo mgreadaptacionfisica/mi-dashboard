@@ -1,4 +1,5 @@
 import { useId, useMemo, useState } from 'react'
+import { aplicarCuestionarioARed, gravedadesDesdeCuestionario } from '../utils/redDesdeCuestionario'
 import {
   EJES,
   MIN_NODOS,
@@ -428,7 +429,7 @@ function PasoGravedad({ red, onChange, sugeridas }) {
               <button
                 type="button"
                 className="rd-sugerida"
-                title={`Valor calculado a partir del cuestionario de esta misma valoración (${n.id === 'dolor' ? 'SPADI' : 'TAMPA'})`}
+                title="Valor propuesto a partir del SPADI/TAMPA de esta valoración o del cuestionario inicial del cliente"
                 onClick={() => onChange(fijarGravedad(red, n.id, sugerida))}
               >
                 usar {sugerida}
@@ -515,9 +516,26 @@ function PasoCausas({ red, onChange }) {
   )
 }
 
-export default function EditorRedDeterminantes({ red, onChange, sugeridas = {} }) {
+// `cuestionario`: el cuestionario inicial del cliente, si lo hay. Con él sale
+// el botón "Rellenar desde el cuestionario" (ver utils/redDesdeCuestionario.js)
+// y sus gravedades se ofrecen también como "usar X" en el paso 2.
+// `onCuestionarioAplicado` avisa al padre para marcarlo como pasado a la red.
+export default function EditorRedDeterminantes({ red, onChange, sugeridas = {}, cuestionario = null, onCuestionarioAplicado }) {
   const actual = red && typeof red === 'object' ? red : { nodos: [], causas: {}, notas: '' }
   const nodos = nodosDe(actual)
+  const [aplicado, setAplicado] = useState(null)
+  // SPADI/TAMPA mandan sobre el cuestionario: se miden en la propia valoración.
+  const sugeridasTodas = useMemo(
+    () => ({ ...(cuestionario ? gravedadesDesdeCuestionario(cuestionario.respuestas) : {}), ...sugeridas }),
+    [cuestionario, sugeridas]
+  )
+
+  const aplicarCuestionario = () => {
+    const { red: nueva, anadidos } = aplicarCuestionarioARed(actual, cuestionario.respuestas, sugeridas)
+    onChange(nueva)
+    setAplicado(anadidos)
+    if (onCuestionarioAplicado) onCuestionarioAplicado(cuestionario)
+  }
   const avisos = useMemo(() => validarRed(actual), [actual])
   const sinDiana = nodos.length > 0 && dianasDe(actual).length === 0
 
@@ -534,6 +552,20 @@ export default function EditorRedDeterminantes({ red, onChange, sugeridas = {} }
             <em> · recomendado entre {MIN_NODOS} y {MAX_NODOS}</em>
           </span>
         </div>
+        {cuestionario && (
+          <div className="rd-desde-cuestionario">
+            <button type="button" className="primary-action" onClick={aplicarCuestionario}>
+              ✨ Rellenar desde el cuestionario
+            </button>
+            <span>
+              {aplicado === null
+                ? 'Añade los factores que salen de sus respuestas puntuables (sueño, estrés, ánimo, irritabilidad…) con una gravedad propuesta. No toca lo que ya hayas puesto ni las flechas. Los de texto libre (creencias, trabajo…) los decides tú leyendo sus respuestas.'
+                : aplicado > 0
+                  ? `✓ ${aplicado} factor${aplicado === 1 ? '' : 'es'} añadido${aplicado === 1 ? '' : 's'}. Revisa las gravedades y añade lo que salga de sus respuestas de texto.`
+                  : '✓ No había nada nuevo que añadir: los factores que salen del cuestionario ya están en la red.'}
+            </span>
+          </div>
+        )}
         <PasoFactores red={actual} onChange={onChange} />
       </div>
 
@@ -549,7 +581,7 @@ export default function EditorRedDeterminantes({ red, onChange, sugeridas = {} }
               botón de la izquierda. Sin él no se puede calcular qué le afecta ni por qué camino.
             </p>
           )}
-          <PasoGravedad red={actual} onChange={onChange} sugeridas={sugeridas} />
+          <PasoGravedad red={actual} onChange={onChange} sugeridas={sugeridasTodas} />
         </div>
       )}
 

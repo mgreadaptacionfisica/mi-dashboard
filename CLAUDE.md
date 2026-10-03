@@ -217,6 +217,14 @@ las páginas del cliente son públicas), Operaciones
   - El **problema diana** es una marca del nodo (`diana: true`), no un eje. Un
     nodo diana conserva su eje bio/psico/social, que es lo que le da columna
     en el grafo.
+  **Desde el cuestionario** (`utils/redDesdeCuestionario.js`): el botón
+  "✨ Rellenar desde el cuestionario" del editor añade los factores que
+  salen de respuestas PUNTUABLES (escalas/opciones) con gravedad propuesta
+  si pasan el umbral (30), sin pisar lo que ya haya ni tocar las flechas
+  (eso es juicio clínico). SPADI/TAMPA mandan sobre el cuestionario. Al
+  usarlo marca el cuestionario como `revisado`. En la valoración, si el
+  cliente tiene cuestionario, ya no se piden "Notas del dolor" ni
+  "Preferencias de entrenamiento" (salen solo si traían texto).
   Los factores del catálogo llevan id plano y los de texto libre el prefijo
   `otro:`. Añadir factores nuevos a `FACTORES` es seguro y no necesita
   migración; renombrar o quitar ids ya guardados no lo es (hay fallback en
