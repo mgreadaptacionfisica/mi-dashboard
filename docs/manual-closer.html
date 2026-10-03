@@ -133,7 +133,7 @@
     </div></div>
     <div class="paso"><div class="paso-n">7</div><div>
       <div class="paso-t">Pago y siguiente paso <span>5 min</span></div>
-      <p>Pago o reserva <b>durante la llamada</b>, enlace de onboarding, avisar a Raúl y marcarlo en el panel.</p>
+      <p>Pago o reserva <b>durante la llamada</b>, enlace de onboarding (low o high ticket) desde el panel, avisar a Raúl y marcarlo en el panel.</p>
     </div></div>
   </div>
 
@@ -360,7 +360,8 @@
   <h3>⑦ Pago y siguiente paso (5 min)</h3>
   <ul>
     <li><b>El pago o la reserva, en la misma llamada.</b> «Te paso el enlace por WhatsApp y lo hacemos juntos ahora; así, si hay cualquier problema, lo resolvemos al momento.»</li>
-    <li>Nada más comprar, envía el onboarding: <a href="https://mi-dashboard-red.vercel.app/onboarding">https://mi-dashboard-red.vercel.app/onboarding</a> y explícale que ahí tiene todo lo que necesita para empezar.</li>
+    <li>Nada más comprar, envía <b>su</b> onboarding, sacado del panel (<b>✨ Onboarding</b>): el de <b>high ticket</b> si compró el cuatrimestre o el semestre (lleva el contrato), el de <b>low ticket</b> si compró el de 397 €. Cómo se hace, en la página «Después de la venta».</li>
+    <li>Explícale que ahí tiene todo lo que necesita para empezar y que <b>no tiene que escribir a nadie</b>: Raúl le escribe por WhatsApp.</li>
     <li>Avisa a Raúl para que le contacte por otro número.</li>
     <li>Márcalo en el panel: <i>Llamada realizada → Sí, compró</i>, con la fecha de cierre real.</li>
   </ul>
@@ -430,6 +431,52 @@
     </tbody>
   </table>
   <p class="nota">Si la financiación no está disponible para ese cliente → ofrece pago único o reserva.</p>
+</section>
+
+<!-- ============================================================ 6b. ONBOARDING Y CONTRATO -->
+<section class="nueva-pagina">
+  <h2 class="verde">Después de la venta — onboarding y contrato</h2>
+  <p class="sub">Eres tú quien manda el onboarding, y el enlace <b>siempre sale del panel</b>: sección <b>✨ Onboarding</b>. No copies un enlace viejo de un chat: el del panel lleva el nombre del cliente y las condiciones que habéis cerrado.</p>
+
+  <table>
+    <thead><tr><th style="width:22%">Compró…</th><th style="width:26%">Onboarding</th><th>Qué le sale</th></tr></thead>
+    <tbody>
+      <tr><td><b>Cuatrimestre (697 €) o semestre (997 €)</b></td><td><b>High ticket</b> + contrato</td><td>Firma del contrato, registro en Harbiz y tutoriales. Al final se le explica que Raúl le escribe por WhatsApp, crea un grupo con su fisioterapeuta y entre ellos acuerdan la <b>primera valoración por videollamada</b> (por eso no tiene el tutorial de grabarse la movilidad).</td></tr>
+      <tr><td><b>Low ticket (397 €)</b></td><td><b>Low ticket</b>, sin contrato</td><td>Registro en Harbiz y tutoriales, incluido el de grabarse la valoración de movilidad. Raúl le escribe por WhatsApp.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Cómo sacar el enlace (1 minuto)</h3>
+  <ol>
+    <li>Panel → <b>✨ Onboarding</b>.</li>
+    <li><b>Nombre y apellidos</b> del cliente, <b>exactamente</b> como va a estar en su ficha (con tildes). El contrato se une a su ficha por el nombre: si pones «Jose» y la ficha dice «José», el contrato queda suelto.</li>
+    <li>Si es high ticket, rellena las <b>condiciones del contrato</b> (tabla de abajo). Lo que rellenes le sale ya puesto y <b>bloqueado</b>: así no tiene que adivinar el precio ni puede cambiarlo. Lo que dejes vacío lo rellena él.</li>
+    <li><b>📋 Copiar enlace</b> de la tarjeta que toque y pégaselo por WhatsApp. Con <b>Abrir ↗</b> ves lo mismo que verá él.</li>
+  </ol>
+
+  <h3>Qué poner en las condiciones según cómo pagó</h3>
+  <table>
+    <thead><tr><th style="width:30%">Cómo pagó</th><th style="width:16%">Duración</th><th style="width:14%">Importe total</th><th>Forma y método de pago</th></tr></thead>
+    <tbody>
+      <tr><td>Pago único (Stripe)</td><td>La que compró</td><td class="num">697 / 997</td><td>Pago completo · Aplicación</td></tr>
+      <tr><td>2 plazos (Stripe)</td><td>La que compró</td><td class="num">700 / 1000</td><td>Pago a plazos: primer pago 350 / 500 · <b>1</b> plazo · de 350 / 500 · Aplicación</td></tr>
+      <tr><td>Hotmart a plazos (seQura)</td><td>La que compró</td><td class="num">697 / 997</td><td><b>Pago completo</b> · Aplicación (a nosotros nos llega como un solo cobro; los plazos son con seQura)</td></tr>
+      <tr><td>Transferencia</td><td>La que compró</td><td class="num">697 / 997</td><td>Pago completo · Transferencia bancaria</td></tr>
+      <tr><td>Solo reserva</td><td>La que compró</td><td class="num">697 / 997</td><td>Pago a plazos: primer pago = la reserva (70 / 100) · 1 plazo · del resto · el método del resto</td></tr>
+    </tbody>
+  </table>
+
+  <div class="dos">
+    <div class="caja-verde">
+      <span class="etq">Qué le dices al mandarlo</span>
+      <p>«Te paso tu enlace de bienvenida. Lo primero es firmar el contrato, es un minuto y se firma con el dedo en el móvil. Luego te registras en la app y ves los vídeos. En cuanto lo tengas, Raúl te escribe y te presenta a tu fisio para la primera valoración.»</p>
+    </div>
+    <div class="caja-ambar">
+      <span class="etq">Si algo no cuadra</span>
+      <p>¿Te equivocaste en el importe o el nombre? Saca un enlace nuevo y mándaselo: el nuevo manda sobre el viejo. Si <b>ya firmó</b> con un dato mal, avisa a Raúl; no le pidas que firme otra vez por tu cuenta.</p>
+    </div>
+  </div>
+  <p class="nota">Raúl ve los contratos firmados en Clientes (y los puede descargar en PDF). El cliente también se descarga su copia al firmar.</p>
 </section>
 
 <!-- ============================================================ 7. OBJECIONES -->
