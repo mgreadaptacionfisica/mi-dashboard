@@ -6734,3 +6734,63 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
   .contrato-seccion, .onboarding-siguiente { padding: 18px 16px; border-radius: 18px; }
   .contrato-grid, .contrato-grid-3 { grid-template-columns: 1fr; }
 }
+
+/* Botón del onboarding en la venta ganada (Ventas.jsx, BotonOnboardingVenta). */
+.lead-onboarding {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #9adfba;
+  background: #f3fbf6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0 12px;
+}
+
+.lead-onboarding strong { display: block; font-size: 13.5px; }
+.lead-onboarding span { font-size: 12px; color: var(--color-text-secondary); }
+.lead-onboarding-botones { display: flex; gap: 8px; }
+
+/* Onboarding de clientes nuevos, arriba de Clientes (OnboardingClientes.jsx). */
+.onb-clientes { margin-bottom: 16px; padding: 0; overflow: hidden; }
+.onb-badge-listo { font-size: 12px; font-weight: 600; color: #fff; background: #008A41; border-radius: 999px; padding: 2px 10px; }
+.onb-badge { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); background: var(--color-bg); border-radius: 999px; padding: 2px 9px; }
+.onb-lista { padding: 0 18px 14px; display: flex; flex-direction: column; gap: 8px; }
+.onb-vacio { font-size: 13px; color: var(--color-text-secondary); }
+
+.onb-fila {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.2fr) 140px 2fr auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.onb-fila-lista { border-color: #9adfba; background: #f3fbf6; }
+.onb-fila-nombre { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.onb-fila-nombre .ob-tag { margin-bottom: 0; }
+.onb-fila-progreso { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-secondary); }
+.onb-fila-progreso .cp-progreso-barra { flex: 1; }
+.onb-fila-detalle { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+.onb-chip {
+  font-size: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  border-radius: 999px;
+  padding: 2px 9px;
+  color: var(--color-text-secondary);
+}
+
+button.onb-chip { cursor: pointer; }
+.onb-chip-ok { border-color: #9adfba; background: #e6f6ec; color: #008A41; }
+.onb-falta { font-size: 12px; color: var(--color-text-secondary); }
+.onb-ver-todos { align-self: flex-start; background: none; border: none; padding: 0; font-size: 12.5px; color: var(--color-text-secondary); text-decoration: underline; cursor: pointer; }
+
+@media (max-width: 900px) {
+  .onb-fila { grid-template-columns: 1fr; gap: 8px; }
+}

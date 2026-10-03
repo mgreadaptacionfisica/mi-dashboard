@@ -314,7 +314,7 @@ export default function ContratoCliente({ origen = 'suelto', onFirmado }) {
 
       <h4 className="contrato-subtitulo">Tu firma</h4>
       <PadFirma onCambio={setFirma} />
-      <p className="contrato-nota">Firma por EL PROFESIONAL: {PROFESIONAL.nombre} · DNI {PROFESIONAL.dni}</p>
+      <p className="contrato-nota">Firma por EL PROFESIONAL: {PROFESIONAL.nombre} · DNI {PROFESIONAL.dni}, en representación de {PROFESIONAL.empresa}</p>
 
       {intentado && faltas.length > 0 && (
         <div className="cp-error" role="alert">

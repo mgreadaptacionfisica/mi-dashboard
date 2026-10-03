@@ -7,6 +7,8 @@ import { CuestionariosHuerfanos } from './RespuestasCuestionario'
 import { reasignarCuestionario } from '../lib/queries/cuestionariosPrevios'
 import FasesObjetivos from './FasesObjetivos'
 import ContratosFirmados from './ContratosFirmados'
+import OnboardingClientes from './OnboardingClientes'
+import { estadoOnboarding } from '../utils/onboardingEstado'
 import { contratoDeCliente, imprimirContrato } from '../utils/contrato'
 import { normalizaNombre } from '../utils/cuestionarioPrevio'
 import CobrosPendientes from './CobrosPendientes'
@@ -151,7 +153,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function ClientesAdmin({ contratos = [], cuestionariosPrevios = [], setCuestionariosPrevios, clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, problemas = [], setProblemas, miEmail }) {
+export default function ClientesAdmin({ contratos = [], onboardingProgreso = [], setOnboardingProgreso, cuestionariosPrevios = [], setCuestionariosPrevios, clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, problemas = [], setProblemas, miEmail }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
   // Por defecto se ven los clientes en curso: ACTIVO y EN PAUSA (menos ruido
@@ -453,6 +455,13 @@ export default function ClientesAdmin({ contratos = [], cuestionariosPrevios = [
           }}
         />
 
+        {/* Quién va por dónde en el onboarding y a quién toca escribir. */}
+        <OnboardingClientes
+          estados={estadoOnboarding(onboardingProgreso, contratos)}
+          cuestionarios={cuestionariosPrevios}
+          setOnboardingProgreso={setOnboardingProgreso}
+          miEmail={miEmail}
+        />
         <ContratosFirmados contratos={contratos} clientes={clientes} />
 
         <div className="tabs-bar">

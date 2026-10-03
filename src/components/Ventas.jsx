@@ -10,6 +10,7 @@ import { insertFinanzaRemote } from '../lib/queries/finanzas'
 import { construirComisionCobro } from '../utils/comisionesHelpers'
 import { generarPlazosPorNumero, generarPlazosDesdeFecha } from '../lib/plazos'
 import { calcularEmbudo, semaforo } from '../utils/embudoVentas'
+import { enlaceOnboarding, onboardingDesdeVenta } from '../utils/contrato'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -102,6 +103,36 @@ function LeadCard({ lead, onOpen }) {
         <p className="lead-checks">🎥 Grabación disponible</p>
       )}
     </button>
+  )
+}
+
+// Enlace del onboarding sacado de la propia venta: la closer lo copia y lo
+// pega por WhatsApp sin volver a teclear nada. Si el plan no es de 4 o 6
+// meses (p. ej. el anual), la duración va vacía y la elige el cliente.
+function BotonOnboardingVenta({ lead }) {
+  const [copiado, setCopiado] = useState(false)
+  const { ruta, variante, datos } = onboardingDesdeVenta(lead)
+  const url = enlaceOnboarding(ruta, datos)
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 1800)
+    } catch (e) {
+      window.prompt('Copia el enlace:', url)
+    }
+  }
+  return (
+    <div className="lead-onboarding">
+      <div>
+        <strong>Onboarding {variante === 'premium' ? 'high ticket + contrato' : 'low ticket'}</strong>
+        <span>Con su nombre{variante === 'premium' ? ' y las condiciones de esta venta' : ''} ya puestos. Revísalo con «Abrir» antes de mandarlo.</span>
+      </div>
+      <div className="lead-onboarding-botones">
+        <button type="button" className="primary-action" onClick={copiar}>{copiado ? '✓ Copiado' : '📋 Copiar enlace'}</button>
+        <a className="secondary-action" href={url} target="_blank" rel="noopener noreferrer">Abrir ↗</a>
+      </div>
+    </div>
   )
 }
 
@@ -571,6 +602,11 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
         planFinanciado: ventaForm.tipoPago === 'financiado' ? ventaForm.planFinanciado.trim() : null,
         formaPago: ventaForm.formaPago,
         fechaCierre,
+        // Para sacar el enlace del onboarding con las condiciones ya puestas
+        // (onboardingDesdeVenta en utils/contrato.js).
+        servicioId: ventaForm.servicioId,
+        tipoCliente: ventaForm.tipoCliente,
+        importeReserva: ventaForm.conReserva ? (Number(ventaForm.importeReserva) || 0) : 0,
       },
     })
 
@@ -1128,6 +1164,9 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
                 <div className="lead-venta-summary">
                   ✅ Vendido: {activeLead.venta.servicio} · {activeLead.venta.importe}€ · {activeLead.venta.tipoPago === 'unico' ? 'pago único' : activeLead.venta.tipoPago === 'financiado' ? `financiado (Hotmart)${activeLead.venta.planFinanciado ? ' — ' + activeLead.venta.planFinanciado : ''}` : `${activeLead.venta.numPlazos} plazos`} · cerrado el {activeLead.venta.fechaCierre}
                 </div>
+              )}
+              {activeLead.etapa === 'ganada' && activeLead.venta && (
+                <BotonOnboardingVenta lead={activeLead} />
               )}
               {activeLead.etapa === 'perdida' && (
                 <div className="lead-venta-summary lead-venta-summary-lost">

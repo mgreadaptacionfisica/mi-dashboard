@@ -44,7 +44,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 62; la siguiente sería la 63). Deben ser **idempotentes**
+  (la última es la 63; la siguiente sería la 64). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -236,7 +236,23 @@ las páginas del cliente son públicas), Operaciones
     `VERSION_CONTRATO`). El "PDF" es la ventana de impresión del navegador
     (`imprimirContrato()`), sin librería. Se ve en Clientes (📄 en la fila,
     enlazado por nombre, y la lista plegable "Contratos firmados"); en modo
-    demo no se enseña ninguno.
+    demo no se enseña ninguno. EL PROFESIONAL es Raúl "en nombre y
+    representación de" la LLC (`PROFESIONAL.empresa`), sin domicilio: si
+    cambia la empresa (Andorra), se toca ahí y se sube la versión.
+  - **Enlace desde la venta**: en la venta ganada del pipeline sale
+    "📋 Copiar enlace" (`onboardingDesdeVenta()` en `utils/contrato.js`), que
+    traduce la venta a parámetros del contrato. Por eso la venta guarda
+    también `servicioId`, `tipoCliente` e `importeReserva`. Las ventas
+    viejas sin esos campos se deducen del nombre del servicio o se dejan en
+    blanco (nunca se inventa un dato del contrato).
+  - **Progreso** (tabla `onboarding_progreso`, migración 63): cada "Marcar
+    como hecho" del cliente inserta un evento (anon solo inserta) si el
+    enlace trae `?c=Nombre`; el estado de un paso es su último evento y el
+    del contrato sale de `contratos_clientes`. `estadoOnboarding()`
+    (`utils/onboardingEstado.js`, donde viven también las
+    `VARIANTES_ONBOARDING`) lo junta. Quien termina sale en 🚀 arriba de
+    Clientes y en el Dashboard hasta que Raúl marca `contactado` (grupo de
+    WhatsApp creado / ya le ha escrito).
 - **Supabase (plan free) se pausa** tras días sin uso: si todo aparece a 0, hay
   que reactivar el proyecto en supabase.com. No es un bug del código.
 

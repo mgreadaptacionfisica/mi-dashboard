@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Logo from '../assets/mg-logo.png'
 import ContratoCliente from './ContratoCliente'
+import { VARIANTES_ONBOARDING } from '../utils/onboardingEstado'
+import { registrarPasoOnboarding } from '../lib/queries/onboardingProgreso'
 
 // Onboarding del cliente — RUTAS PÚBLICAS, sin login. Hay dos variantes y
 // las manda la closer al cerrar la venta (los enlaces salen de la sección
@@ -76,23 +78,6 @@ const PASOS = {
     description: '¿Has leído toda la guía? Escríbeme por WhatsApp: "¿Cuál es la capital de España?"',
     cta: 'Responder por WhatsApp',
     href: 'https://wa.me/34685635028',
-  },
-}
-
-export const VARIANTES_ONBOARDING = {
-  low: {
-    // Se mantiene la clave de siempre para no perder el progreso de quien
-    // ya lo tenía a medias.
-    storageKey: 'mg-onboarding-progress',
-    pasos: ['harbiz', 'tut-app', 'tut-forms', 'tut-movilidad', 'tut-rutina', 'tut-entrenamiento', 'verificacion'],
-    final: 'verificacion',
-    tiempo: 'Menos de 10 minutos',
-  },
-  premium: {
-    storageKey: 'mg-onboarding-premium-progress',
-    pasos: ['contrato', 'harbiz', 'tut-app', 'tut-forms', 'tut-rutina', 'tut-entrenamiento'],
-    final: null,
-    tiempo: 'Unos 15 minutos',
   },
 }
 
@@ -198,10 +183,19 @@ export default function Onboarding({ variante = 'low' }) {
     try { localStorage.setItem(config.storageKey, JSON.stringify(completed)) } catch (e) { /* noop */ }
   }, [completed, loaded, config])
 
+  // Nombre del cliente que viene en el enlace (?c=). Con él, cada paso que
+  // marca queda registrado en el panel (onboarding_progreso) para que Raúl
+  // sepa cuándo ha terminado. Sin él solo se guarda en este navegador.
+  const clienteNombre = useMemo(() => {
+    try { return new URLSearchParams(window.location.search).get('c') || '' } catch (e) { return '' }
+  }, [])
+
   const toggleStep = (id) => {
+    const hecho = !completed.includes(id)
     setCompleted((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     )
+    registrarPasoOnboarding({ clienteNombre, variante, paso: id, hecho })
   }
 
   // useCallback porque ContratoCliente lo llama desde un efecto.

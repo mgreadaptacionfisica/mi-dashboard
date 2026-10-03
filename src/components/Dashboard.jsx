@@ -3,6 +3,7 @@ import KPICard from './KPICard'
 import CalendarioAvisos from './CalendarioAvisos'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { calcularEmbudo, filtrarPorPeriodo, rangoPeriodo, semaforo } from '../utils/embudoVentas'
+import { estadoOnboarding, pendientesDeContactar } from '../utils/onboardingEstado'
 import {
   semanaActualISO, mondayOf, toISO, pendientesDeCliente, progresoContacto, progresoSemana,
 } from '../utils/seguimientoHelpers'
@@ -62,7 +63,7 @@ function inicioDeSemanaISO() {
 }
 
 export default function Dashboard({
-  clientes = [], ventas = [], recontactos = [], tareasPersonales = [],
+  clientes = [], ventas = [], recontactos = [], tareasPersonales = [], onboardingProgreso = [], contratos = [],
   seguimientos = [], contactosSemanales = [], revisionesSemanales = [], onNavigate,
 }) {
   const hoy = todayISO()
@@ -179,11 +180,19 @@ export default function Dashboard({
     .filter((t) => !t.hecha && t.fecha && t.fecha <= hoy)
     .sort((a, b) => a.fecha.localeCompare(b.fecha)), [tareasPersonales, hoy])
 
+  // Clientes que han terminado el onboarding y esperan a que Raúl les
+  // escriba / cree el grupo de WhatsApp (se quita al marcarlo en Clientes).
+  const onboardingListos = useMemo(
+    () => pendientesDeContactar(estadoOnboarding(onboardingProgreso, contratos)),
+    [onboardingProgreso, contratos]
+  )
+
   // ————— Lo que requiere acción hoy —————
   // Una sola lista, ordenada por gravedad: es lo primero que se lee al entrar
   // y cada línea lleva a la sección donde se arregla.
   const acciones = useMemo(() => {
     const items = []
+    if (onboardingListos.length > 0) items.push({ icono: '🚀', texto: `${onboardingListos.length} cliente${onboardingListos.length === 1 ? ' ha' : 's han'} terminado el onboarding y espera${onboardingListos.length === 1 ? '' : 'n'} tu WhatsApp: ${onboardingListos.slice(0, 3).map((e) => e.clienteNombre).join(', ')}`, seccion: 'clientes', tono: 'alerta' })
     if (llamadas.hoy > 0) items.push({ icono: '📞', texto: `${llamadas.hoy} llamada${llamadas.hoy === 1 ? '' : 's'} agendada${llamadas.hoy === 1 ? '' : 's'} para hoy`, seccion: 'ventas', tono: 'info' })
     if (llamadas.sinMarcar > 0) items.push({ icono: '❓', texto: `${llamadas.sinMarcar} llamada${llamadas.sinMarcar === 1 ? '' : 's'} ya pasada${llamadas.sinMarcar === 1 ? '' : 's'} sin marcar el resultado`, seccion: 'ventas', tono: 'alerta' })
     if (recontactosVencidos > 0) items.push({ icono: '🔁', texto: `${recontactosVencidos} recontacto${recontactosVencidos === 1 ? '' : 's'} con la fecha cumplida`, seccion: 'ventas', tono: 'alerta' })
@@ -194,7 +203,7 @@ export default function Dashboard({
     if (pausasAviso.length > 0) items.push({ icono: '⏸️', texto: `${pausasAviso.length} cliente${pausasAviso.length === 1 ? '' : 's'} en pausa a los que ya toca retomar: ${pausasAviso.slice(0, 3).map((p) => `${p.nombre} (${formatFechaISO(p.fecha)})`).join(', ')}`, seccion: 'clientes', tono: 'alerta' })
     if (tareasAviso.length > 0) items.push({ icono: '🔔', texto: `${tareasAviso.length} tarea${tareasAviso.length === 1 ? '' : 's'} tuya${tareasAviso.length === 1 ? '' : 's'} para hoy o vencida${tareasAviso.length === 1 ? '' : 's'}: ${tareasAviso.slice(0, 2).map((t) => t.texto).join(' · ')}`, seccion: 'tareas', tono: 'info' })
     return items.sort((a, b) => (a.tono === 'alerta' ? 0 : 1) - (b.tono === 'alerta' ? 0 : 1))
-  }, [llamadas, recontactosVencidos, seguimiento, cobrosVencidos, renuevanPronto, pausasAviso, tareasAviso])
+  }, [onboardingListos, llamadas, recontactosVencidos, seguimiento, cobrosVencidos, renuevanPronto, pausasAviso, tareasAviso])
 
   const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',

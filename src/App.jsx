@@ -157,6 +157,15 @@ const contratosClientesDataPromise = async () => {
   return import('./data/contratosClientes')
 }
 
+// Progreso del onboarding (eventos que deja el cliente al marcar pasos en la
+// ruta pública). Solo lectura aquí, salvo el "ya le he escrito" de admin.
+const onboardingProgresoDataPromise = async () => {
+  const { fetchOnboardingProgreso } = await import('./lib/queries/onboardingProgreso')
+  const remoto = await fetchOnboardingProgreso()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/onboardingProgreso')
+}
+
 // Objetivos por fase DE CADA CLIENTE ("Fases y objetivos", separado de
 // Valoración): mismo patrón fallback.
 const objetivosClienteFaseDataPromise = async () => {
@@ -296,6 +305,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [valoracionesClientes, setValoracionesClientes] = useState([])
   const [cuestionariosPrevios, setCuestionariosPrevios] = useState([])
   const [contratosClientes, setContratosClientes] = useState([])
+  const [onboardingProgreso, setOnboardingProgreso] = useState([])
   const [objetivosClienteFase, setObjetivosClienteFase] = useState([])
   const [revisionesSemanales, setRevisionesSemanales] = useState([])
   const [problemasCliente, setProblemasCliente] = useState([])
@@ -340,8 +350,8 @@ function InternalApp({ session, rol, onLogout }) {
       tareasPersonalesDataPromise(), manualesDataPromise(),
       reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(), objetivosClienteFaseDataPromise(),
       revisionesSemanalesDataPromise(), enlacesInteresDataPromise(), cuestionariosPreviosDataPromise(),
-      problemasClienteDataPromise(), contratosClientesDataPromise(),
-    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq, pc, cc]) => {
+      problemasClienteDataPromise(), contratosClientesDataPromise(), onboardingProgresoDataPromise(),
+    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq, pc, cc, op]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -355,6 +365,7 @@ function InternalApp({ session, rol, onLogout }) {
       setValoracionesClientes(vc.default)
       setCuestionariosPrevios(cq.default)
       setContratosClientes(cc.default)
+      setOnboardingProgreso(op.default)
       setTareasPersonales(ta.default)
       setManuales(ma.default)
       setEnlacesInteres(ei.default)
@@ -449,7 +460,7 @@ function InternalApp({ session, rol, onLogout }) {
     const _src = datosDemo || {
       clientes, team, ventas, seguimientos, contactosSemanales, valoraciones: valoracionesClientes,
       objetivosClienteFase, revisionesSemanales, recontactos, ingresosEmpresa, gastosEmpresa, mensajesEquipo,
-      cuestionariosPrevios, problemasCliente, contratosClientes,
+      cuestionariosPrevios, problemasCliente, contratosClientes, onboardingProgreso,
     }
     const {
       clientes: dClientes, team: dTeam, ventas: dVentas, seguimientos: dSeguimientos,
@@ -466,12 +477,14 @@ function InternalApp({ session, rol, onLogout }) {
       // Los contratos llevan DNI, domicilio y firma: tampoco tienen versión
       // ficticia, así que en modo demo no se enseña ninguno.
       contratosClientes: dContratos = [],
+      // Nombres de clientes reales: igual, fuera en modo demo.
+      onboardingProgreso: dOnboarding = [],
     } = _src
 
     switch (vista) {
-      case 'dashboard':    return <Dashboard clientes={dClientes} ventas={dVentas} recontactos={dRecontactos} tareasPersonales={tareasPersonales} seguimientos={dSeguimientos} contactosSemanales={dContactos} revisionesSemanales={dRevisiones} onNavigate={irVistaPermitida} />
+      case 'dashboard':    return <Dashboard clientes={dClientes} onboardingProgreso={dOnboarding} contratos={dContratos} ventas={dVentas} recontactos={dRecontactos} tareasPersonales={tareasPersonales} seguimientos={dSeguimientos} contactosSemanales={dContactos} revisionesSemanales={dRevisiones} onNavigate={irVistaPermitida} />
       case 'ventas':       return <Ventas ventas={dVentas} setVentas={setVentas} team={dTeam} setClientes={setClientes} setIngresosEmpresa={setIngresosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} recontactos={dRecontactos} setRecontactos={setRecontactos} />
-      case 'clientes':     return <ClientesAdmin clientes={dClientes} contratos={dContratos} cuestionariosPrevios={dCuestionarios} setCuestionariosPrevios={setCuestionariosPrevios} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} miEmail={session?.user?.email} />
+      case 'clientes':     return <ClientesAdmin clientes={dClientes} contratos={dContratos} onboardingProgreso={dOnboarding} setOnboardingProgreso={setOnboardingProgreso} cuestionariosPrevios={dCuestionarios} setCuestionariosPrevios={setCuestionariosPrevios} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} miEmail={session?.user?.email} />
       case 'clientes-equipo': return <ClientesEquipo clientes={dClientes} cuestionariosPrevios={dCuestionarios} team={dTeam} miEmail={session?.user?.email} rol={rol} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
       case 'equipo':       return <Equipo team={dTeam} setTeam={setTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} valoraciones={dValoraciones} objetivosClienteFase={dObjetivos} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} miEmail={session?.user?.email} />
       case 'mi-ficha':     return <MiFicha team={dTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} contactosSemanales={dContactos} gastosEmpresa={dGastosEmpresa} tareas={tareasPersonales} revisionesSemanales={dRevisiones} miEmail={session?.user?.email} onNavigate={irVistaPermitida} />

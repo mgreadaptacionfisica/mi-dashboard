@@ -8,7 +8,7 @@
 // (migración 62) y el PDF se genera desde esa foto. Sube VERSION_CONTRATO
 // cuando cambie algo de fondo, para poder saber qué firmó cada uno.
 
-export const VERSION_CONTRATO = 'v4 · oct 2026'
+export const VERSION_CONTRATO = 'v5 · oct 2026'
 
 // Datos fijos de EL PROFESIONAL. Sin domicilio a propósito (Raúl ya no vive
 // en Alcaucín y no quiere poner la dirección de la LLC): el contacto es el
@@ -19,6 +19,12 @@ export const PROFESIONAL = {
   email: 'mgreadaptacionfisica@gmail.com',
   titulo: 'Graduado en Ciencias de la Actividad Física y del Deporte',
   marca: 'MG Readaptación Física',
+  // Quién presta el servicio de verdad (a quien llegan Stripe y las
+  // transferencias). Va detrás del nombre de Raúl, "en representación de",
+  // para que el contrato cuadre con lo que el cliente ve al pagar sin que la
+  // LLC sea lo primero que lee. Cuando exista la empresa de Andorra, se cambia
+  // aquí y sube VERSION_CONTRATO.
+  empresa: 'EMGEE MOMENTUM LLC',
 }
 
 // Antes era un hueco a rellenar en cada contrato. Se fija aquí porque nadie
@@ -46,6 +52,8 @@ export const METODOS_PAGO = [
   { id: 'hotmart', label: 'Hotmart' },
   { id: 'sequra', label: 'Hotmart financiado con seQura' },
   { id: 'transferencia', label: 'Transferencia bancaria' },
+  { id: 'bizum', label: 'Bizum' },
+  { id: 'otro', label: 'Otro (acordado con MG Readaptación Física)' },
 ]
 
 export const OPCIONES_IMAGEN = [
@@ -80,7 +88,7 @@ export function clausulasContrato(d = {}) {
     {
       titulo: 'Reunidos',
       parrafos: [
-        `De una parte, D. ${PROFESIONAL.nombre}, con DNI nº ${PROFESIONAL.dni}, ${PROFESIONAL.titulo}, con email de contacto ${PROFESIONAL.email}, que actúa bajo el nombre comercial ${PROFESIONAL.marca} (en adelante, «EL PROFESIONAL»).`,
+        `De una parte, D. ${PROFESIONAL.nombre}, con DNI nº ${PROFESIONAL.dni}, ${PROFESIONAL.titulo}, en nombre y representación de ${PROFESIONAL.empresa}, titular de la marca ${PROFESIONAL.marca}, con email de contacto ${PROFESIONAL.email} (en adelante, «EL PROFESIONAL»).`,
         `Y de otra parte, D./Dña. ${d.nombre || '—'}, con DNI nº ${d.dni || '—'}, domicilio en ${d.domicilio || '—'} y email ${d.email || '—'} (en adelante, «EL CLIENTE»).`,
         'Ambas partes, reconociéndose plena capacidad para contratar, acuerdan suscribir el presente Contrato de Prestación de Servicios, que se regirá por las siguientes cláusulas.',
       ],
@@ -283,7 +291,7 @@ export function imprimirContrato(contrato) {
     <div class="firma">
       <strong>EL PROFESIONAL</strong>
       <div class="firma-caja"></div>
-      <small>${esc(PROFESIONAL.nombre)} · DNI ${esc(PROFESIONAL.dni)}</small>
+      <small>${esc(PROFESIONAL.nombre)} · DNI ${esc(PROFESIONAL.dni)}<br>en representación de ${esc(PROFESIONAL.empresa)}</small>
     </div>
     <div class="firma">
       <strong>EL CLIENTE</strong>
@@ -298,4 +306,62 @@ export function imprimirContrato(contrato) {
   <script>window.onload = function () { setTimeout(function () { window.print() }, 250) }</script>
 </body></html>`)
   w.document.close()
+}
+
+// Venta ganada del pipeline → qué onboarding le toca y con qué condiciones.
+// Así la closer copia el enlace desde la propia venta sin volver a teclear
+// nombre, plan e importe (que es donde salen los "Jose" vs "José" y los
+// importes mal puestos).
+//
+// Ventas antiguas no guardaban servicioId, tipoCliente ni la reserva: se
+// deduce del nombre del servicio y, si no se puede, ese dato se deja vacío
+// para que lo rellene el cliente (nunca se inventa).
+const METODO_DESDE_VENTA = { Stripe: 'stripe', Transferencia: 'transferencia', Bizum: 'bizum' }
+
+export function onboardingDesdeVenta(lead) {
+  const v = lead?.venta || {}
+  const servicio = `${v.servicioId || ''} ${v.servicio || ''}`.toUpperCase()
+  const esLow = v.tipoCliente === 'LOW TICKET' || servicio.includes('PREVIENE')
+  if (esLow) {
+    return { ruta: '/onboarding', variante: 'low', datos: { nombre: lead?.nombre || '' } }
+  }
+
+  const duracion = servicio.includes('CUATRIMESTR') ? 'cuatrimestral'
+    : servicio.includes('SEMESTR') ? 'semestral' : ''
+  const importe = Number(v.importe) || 0
+  const reserva = Number(v.importeReserva) || 0
+  const resto = importe - reserva
+
+  const metodoPago = v.formaPago === 'HOTMART'
+    ? (v.tipoPago === 'financiado' ? 'sequra' : 'hotmart')
+    : (METODO_DESDE_VENTA[v.formaPago] || '')
+
+  const redondea = (n) => String(Math.round(n * 100) / 100)
+  let pago
+  if (v.tipoPago === 'plazos') {
+    const n = Number(v.numPlazos) || 0
+    const porPlazo = n > 0 ? resto / n : resto
+    // Con reserva: primer pago = reserva y luego los N plazos del resto.
+    // Sin reserva: el primero de los N es el "primer pago" y quedan N-1.
+    pago = reserva > 0
+      ? { formaPago: 'plazos', primerPago: redondea(reserva), numPlazos: String(n), importePlazo: redondea(porPlazo) }
+      : { formaPago: 'plazos', primerPago: redondea(porPlazo), numPlazos: String(Math.max(n - 1, 1)), importePlazo: redondea(porPlazo) }
+  } else if (reserva > 0) {
+    pago = { formaPago: 'plazos', primerPago: redondea(reserva), numPlazos: '1', importePlazo: redondea(resto) }
+  } else {
+    // Pago único y financiado (Hotmart/seQura): a nosotros nos llega entero.
+    pago = { formaPago: 'completo' }
+  }
+
+  return {
+    ruta: '/onboarding-premium',
+    variante: 'premium',
+    datos: {
+      nombre: lead?.nombre || '',
+      duracion,
+      importe: importe ? redondea(importe) : '',
+      metodoPago,
+      ...pago,
+    },
+  }
 }
