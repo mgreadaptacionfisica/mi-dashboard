@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import Onboarding from './components/Onboarding'
 import CuestionarioPrevio from './components/CuestionarioPrevio'
+import { ContratoPublico } from './components/ContratoCliente'
 import PanelLogin from './components/PanelLogin'
 import AvisoErrores from './components/AvisoErrores'
 import { getSession, onAuthChange, signOut, getRole, seccionesDelRol } from './lib/auth'
@@ -10,7 +11,12 @@ import { enmascararTodo } from './utils/modoDemo'
 // Rutas públicas: se sirven solas, sin sidebar ni el resto del panel interno,
 // y sin cargar los módulos que contienen datos de clientes.
 const PUBLIC_PATHS = {
+  // Dos onboardings que manda la closer: low ticket y high ticket (este con
+  // el contrato para firmar). Ver Onboarding.jsx.
   '/onboarding': 'onboarding',
+  '/onboarding-premium': 'onboarding-premium',
+  // El contrato suelto, por si hace falta fuera del onboarding.
+  '/contrato': 'contrato',
   // Cuestionario previo del cliente, que alimenta la red de determinantes.
   // Le llega por enlace con su nombre dentro: /cuestionario?c=Nombre.
   '/cuestionario': 'cuestionario',
@@ -28,6 +34,7 @@ const Equipo = lazy(() => import('./components/Equipo'))
 const MiFicha = lazy(() => import('./components/MiFicha'))
 const Ventas = lazy(() => import('./components/Ventas'))
 const Finanzas = lazy(() => import('./components/Finanzas'))
+const OnboardingEnlaces = lazy(() => import('./components/OnboardingEnlaces'))
 const Operaciones = lazy(() => import('./components/Operaciones'))
 const MuroEquipo = lazy(() => import('./components/MuroEquipo'))
 const MisTareas = lazy(() => import('./components/MisTareas'))
@@ -141,6 +148,15 @@ const cuestionariosPreviosDataPromise = async () => {
   return import('./data/cuestionariosPrevios')
 }
 
+// Contratos firmados online desde el onboarding premium o /contrato. Igual
+// que los cuestionarios: aquí solo se leen, la firma la hace la ruta pública.
+const contratosClientesDataPromise = async () => {
+  const { fetchContratosClientes } = await import('./lib/queries/contratosClientes')
+  const remoto = await fetchContratosClientes()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/contratosClientes')
+}
+
 // Objetivos por fase DE CADA CLIENTE ("Fases y objetivos", separado de
 // Valoración): mismo patrón fallback.
 const objetivosClienteFaseDataPromise = async () => {
@@ -230,7 +246,10 @@ function PublicPage() {
   return (
     <div className="app-layout app-layout-public">
       <div className="main-content main-content-public">
-        {ruta === 'cuestionario' ? <CuestionarioPrevio /> : <Onboarding />}
+        {ruta === 'cuestionario' && <CuestionarioPrevio />}
+        {ruta === 'contrato' && <ContratoPublico />}
+        {ruta === 'onboarding' && <Onboarding variante="low" />}
+        {ruta === 'onboarding-premium' && <Onboarding variante="premium" />}
       </div>
     </div>
   )
@@ -276,6 +295,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [mensajesEquipo, setMensajesEquipo] = useState([])
   const [valoracionesClientes, setValoracionesClientes] = useState([])
   const [cuestionariosPrevios, setCuestionariosPrevios] = useState([])
+  const [contratosClientes, setContratosClientes] = useState([])
   const [objetivosClienteFase, setObjetivosClienteFase] = useState([])
   const [revisionesSemanales, setRevisionesSemanales] = useState([])
   const [problemasCliente, setProblemasCliente] = useState([])
@@ -320,8 +340,8 @@ function InternalApp({ session, rol, onLogout }) {
       tareasPersonalesDataPromise(), manualesDataPromise(),
       reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(), objetivosClienteFaseDataPromise(),
       revisionesSemanalesDataPromise(), enlacesInteresDataPromise(), cuestionariosPreviosDataPromise(),
-      problemasClienteDataPromise(),
-    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq, pc]) => {
+      problemasClienteDataPromise(), contratosClientesDataPromise(),
+    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq, pc, cc]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -334,6 +354,7 @@ function InternalApp({ session, rol, onLogout }) {
       setMensajesEquipo(me.default)
       setValoracionesClientes(vc.default)
       setCuestionariosPrevios(cq.default)
+      setContratosClientes(cc.default)
       setTareasPersonales(ta.default)
       setManuales(ma.default)
       setEnlacesInteres(ei.default)
@@ -428,7 +449,7 @@ function InternalApp({ session, rol, onLogout }) {
     const _src = datosDemo || {
       clientes, team, ventas, seguimientos, contactosSemanales, valoraciones: valoracionesClientes,
       objetivosClienteFase, revisionesSemanales, recontactos, ingresosEmpresa, gastosEmpresa, mensajesEquipo,
-      cuestionariosPrevios, problemasCliente,
+      cuestionariosPrevios, problemasCliente, contratosClientes,
     }
     const {
       clientes: dClientes, team: dTeam, ventas: dVentas, seguimientos: dSeguimientos,
@@ -442,12 +463,15 @@ function InternalApp({ session, rol, onLogout }) {
       // Igual con los problemas del cliente: son texto libre sobre molestias
       // y lesiones, así que en modo demo no se enseña ninguno.
       problemasCliente: dProblemas = [],
+      // Los contratos llevan DNI, domicilio y firma: tampoco tienen versión
+      // ficticia, así que en modo demo no se enseña ninguno.
+      contratosClientes: dContratos = [],
     } = _src
 
     switch (vista) {
       case 'dashboard':    return <Dashboard clientes={dClientes} ventas={dVentas} recontactos={dRecontactos} tareasPersonales={tareasPersonales} seguimientos={dSeguimientos} contactosSemanales={dContactos} revisionesSemanales={dRevisiones} onNavigate={irVistaPermitida} />
       case 'ventas':       return <Ventas ventas={dVentas} setVentas={setVentas} team={dTeam} setClientes={setClientes} setIngresosEmpresa={setIngresosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} recontactos={dRecontactos} setRecontactos={setRecontactos} />
-      case 'clientes':     return <ClientesAdmin clientes={dClientes} cuestionariosPrevios={dCuestionarios} setCuestionariosPrevios={setCuestionariosPrevios} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} miEmail={session?.user?.email} />
+      case 'clientes':     return <ClientesAdmin clientes={dClientes} contratos={dContratos} cuestionariosPrevios={dCuestionarios} setCuestionariosPrevios={setCuestionariosPrevios} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} miEmail={session?.user?.email} />
       case 'clientes-equipo': return <ClientesEquipo clientes={dClientes} cuestionariosPrevios={dCuestionarios} team={dTeam} miEmail={session?.user?.email} rol={rol} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
       case 'equipo':       return <Equipo team={dTeam} setTeam={setTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} valoraciones={dValoraciones} objetivosClienteFase={dObjetivos} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} miEmail={session?.user?.email} />
       case 'mi-ficha':     return <MiFicha team={dTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} contactosSemanales={dContactos} gastosEmpresa={dGastosEmpresa} tareas={tareasPersonales} revisionesSemanales={dRevisiones} miEmail={session?.user?.email} onNavigate={irVistaPermitida} />
@@ -467,7 +491,7 @@ function InternalApp({ session, rol, onLogout }) {
           tarifasPasarela={tarifasPasarela} setTarifasPasarela={setTarifasPasarela}
         />
       )
-      case 'onboarding':   return <Onboarding />
+      case 'onboarding':   return <OnboardingEnlaces />
       case 'operaciones':  return <Operaciones contenidoIdeas={contenidoIdeas} setContenidoIdeas={setContenidoIdeas} team={dTeam} sops={sops} setSops={setSops} miEmail={session?.user?.email} rol={rol} />
       case 'tareas':       return <MisTareas tareas={tareasPersonales} setTareas={setTareasPersonales} miEmail={session?.user?.email} />
       case 'manuales':     return <Manuales manuales={manuales} setManuales={setManuales} rol={rol} />
@@ -532,7 +556,7 @@ function AuthGate() {
 
 export default function App() {
   if (isPublicRoute) {
-    // Rutas públicas (/onboarding y /cuestionario). Sin Sidebar, sin login y
+    // Rutas públicas (onboardings, contrato y cuestionario). Sin Sidebar, sin login y
     // sin datos de clientes cargados — no forman parte del panel interno.
     return (
       <Suspense fallback={null}>

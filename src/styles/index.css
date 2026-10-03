@@ -6515,3 +6515,222 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
 .historial-entrada-problema { border-left-color: var(--color-danger); }
 .historial-entrada-accion { border-left-color: var(--color-orange); }
 .historial-entrada-resuelto { border-left-color: var(--color-success); }
+
+/* ===================================================================
+   Onboarding premium: contrato para firmar online + "y ahora qué".
+   La página del onboarding es oscura (#363636); el contrato va en una
+   tarjeta blanca para que se lea como un documento.
+   =================================================================== */
+.contrato-seccion {
+  background: var(--color-card);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  scroll-margin-top: 16px;
+}
+
+.contrato-seccion > h2 { font-size: 22px; margin-bottom: 8px; }
+
+.contrato-intro { font-size: 14px; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 8px; }
+
+.contrato-subtitulo {
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin: 22px 0 10px;
+}
+
+.contrato-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.contrato-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.contrato-ancho { grid-column: 1 / -1; }
+
+.contrato-bloque { margin-bottom: 14px; }
+
+.contrato-etiqueta {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.contrato-form .cp-opciones label[aria-disabled='true'] { opacity: .45; cursor: not-allowed; }
+
+.contrato-texto {
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--color-bg);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.contrato-texto-cab { margin-bottom: 8px; }
+.contrato-texto h5 { font-size: 13px; margin: 12px 0 4px; }
+.contrato-texto p { margin-bottom: 5px; color: var(--color-text-secondary); }
+
+.contrato-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 14px 0 4px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.contrato-check input { margin-top: 3px; width: 18px; height: 18px; flex-shrink: 0; accent-color: #008A41; }
+
+.contrato-firma { position: relative; }
+
+.contrato-firma-lienzo {
+  display: block;
+  width: 100%;
+  height: 160px;
+  border: 2px dashed var(--color-border);
+  border-radius: 12px;
+  background: #fff;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.contrato-firma-guia {
+  position: absolute;
+  inset: 0 0 34px;
+  display: grid;
+  place-items: center;
+  color: #9ca3af;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.contrato-firma-borrar {
+  margin-top: 6px;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.contrato-firma-borrar:disabled { opacity: .4; cursor: default; }
+
+.contrato-nota { font-size: 12px; color: var(--color-text-secondary); margin: 8px 0 16px; }
+
+.contrato-form .cp-boton { width: 100%; }
+
+.contrato-hecho {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: #e6f6ec;
+  border: 1px solid #9adfba;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.contrato-hecho-icono { font-size: 26px; }
+.contrato-hecho h3 { font-size: 16px; margin-bottom: 4px; }
+.contrato-hecho p { font-size: 13.5px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 8px; }
+
+.contrato-link-btn { background: none; border: none; padding: 0; cursor: pointer; }
+
+.onboarding-siguiente {
+  background: linear-gradient(135deg, #0b3d22 0%, #11502e 100%);
+  color: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.onboarding-siguiente h2 { font-size: 22px; margin: 6px 0 10px; }
+.onboarding-siguiente p { color: rgba(255, 255, 255, .85); line-height: 1.7; margin-bottom: 8px; max-width: 680px; }
+.onboarding-siguiente strong { color: #fff; }
+
+/* Sección Onboarding del panel: generador de enlaces (OnboardingEnlaces.jsx). */
+.ob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; align-items: start; }
+.ob-card h3 { font-size: 16px; margin-bottom: 8px; }
+.ob-desc { font-size: 13px; color: var(--color-text-secondary); line-height: 1.55; margin-bottom: 10px; }
+
+.ob-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 3px 10px;
+  margin-bottom: 8px;
+}
+
+.ob-tag-low { background: #eef2ff; color: #4338ca; }
+.ob-tag-high { background: #e6f6ec; color: #008A41; }
+
+.ob-campo { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--color-text-secondary); }
+
+.ob-campo input,
+.ob-campo select {
+  padding: 9px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  background: var(--color-card);
+}
+
+.ob-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+.ob-enlace { display: flex; flex-direction: column; gap: 8px; }
+
+.ob-enlace-url {
+  display: block;
+  font-size: 12px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  word-break: break-all;
+}
+
+.ob-enlace-botones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Contratos firmados, arriba de Clientes (ContratosFirmados.jsx). */
+.contratos-firmados { margin-bottom: 16px; padding: 0; overflow: hidden; }
+
+.contratos-firmados-cab {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 14px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.contratos-flecha { margin-left: auto; font-size: 11px; color: var(--color-text-secondary); }
+.contratos-aviso { font-size: 12px; font-weight: 500; color: #b45309; background: #fef3c7; border-radius: 999px; padding: 2px 9px; }
+.contratos-aviso-fila { font-size: 11px; font-weight: 400; color: #b45309; margin-top: 2px; }
+
+@media (max-width: 760px) {
+  .ob-grid, .ob-form { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .contrato-seccion, .onboarding-siguiente { padding: 18px 16px; border-radius: 18px; }
+  .contrato-grid, .contrato-grid-3 { grid-template-columns: 1fr; }
+}

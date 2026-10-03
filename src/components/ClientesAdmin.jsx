@@ -6,6 +6,9 @@ import ValoracionCliente from './ValoracionCliente'
 import { CuestionariosHuerfanos } from './RespuestasCuestionario'
 import { reasignarCuestionario } from '../lib/queries/cuestionariosPrevios'
 import FasesObjetivos from './FasesObjetivos'
+import ContratosFirmados from './ContratosFirmados'
+import { contratoDeCliente, imprimirContrato } from '../utils/contrato'
+import { normalizaNombre } from '../utils/cuestionarioPrevio'
 import CobrosPendientes from './CobrosPendientes'
 import { insertClienteRemote, updateClienteRemote, deleteClienteRemote } from '../lib/queries/clientes'
 import { renombrarClienteEnHistorial } from '../lib/queries/renombrarCliente'
@@ -148,7 +151,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function ClientesAdmin({ cuestionariosPrevios = [], setCuestionariosPrevios, clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, problemas = [], setProblemas, miEmail }) {
+export default function ClientesAdmin({ contratos = [], cuestionariosPrevios = [], setCuestionariosPrevios, clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, problemas = [], setProblemas, miEmail }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
   // Por defecto se ven los clientes en curso: ACTIVO y EN PAUSA (menos ruido
@@ -450,6 +453,8 @@ export default function ClientesAdmin({ cuestionariosPrevios = [], setCuestionar
           }}
         />
 
+        <ContratosFirmados contratos={contratos} clientes={clientes} />
+
         <div className="tabs-bar">
           <button
             type="button"
@@ -748,6 +753,21 @@ export default function ClientesAdmin({ cuestionariosPrevios = [], setCuestionar
                       >
                         🎯 Fases y objetivos
                       </button>
+                      {/* Contrato firmado online (onboarding premium). Se
+                          enlaza por nombre, como todo el historial. */}
+                      {(() => {
+                        const contrato = contratoDeCliente(contratos, cliente.Nombre, normalizaNombre)
+                        return contrato ? (
+                          <button
+                            type="button"
+                            className="row-action-btn"
+                            title={`Firmado el ${new Date(contrato.firmadoEn).toLocaleDateString('es-ES')}`}
+                            onClick={() => imprimirContrato(contrato)}
+                          >
+                            📄 Contrato
+                          </button>
+                        ) : null
+                      })()}
                     </td>
                   </tr>
                 ))}

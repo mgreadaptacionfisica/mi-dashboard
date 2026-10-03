@@ -11,7 +11,8 @@ entrenamiento / salud). Lo usa el equipo por roles: **admin** (Raúl), **closer*
 (ventas), **tecnico** (entrenadores/fisios) y **contenido** (editores).
 Secciones: Dashboard, Ventas (pipeline + recontactar + calendario +
 resumen semanal), Clientes (contabilidad/cobros), Seguimiento y Valoración, Equipo,
-Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
+Mi Ficha, Comunicación (muro), Finanzas, Onboarding (generador de enlaces;
+las páginas del cliente son públicas), Operaciones
 (SOPs + contenido), Mis tareas, Manuales y Enlaces de interés (solo admin).
 
 ## Stack y despliegue
@@ -43,7 +44,7 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 61; la siguiente sería la 62). Deben ser **idempotentes**
+  (la última es la 62; la siguiente sería la 63). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -214,6 +215,28 @@ Mi Ficha, Comunicación (muro), Finanzas, Onboarding (público), Operaciones
   `otro:`. Añadir factores nuevos a `FACTORES` es seguro y no necesita
   migración; renombrar o quitar ids ya guardados no lo es (hay fallback en
   `etiquetaNodo()`, pero se degrada).
+- **Onboarding: dos variantes y contrato** (`Onboarding.jsx`,
+  `VARIANTES_ONBOARDING`). Lo manda la **closer** al cerrar la venta, con
+  enlaces que genera en la sección ✨ Onboarding (`OnboardingEnlaces.jsx`; por
+  eso el rol `closer` tiene esa sección):
+  - `/onboarding` = **low ticket**: Harbiz + tutoriales + verificación. Ya no
+    tiene "Entra al WhatsApp" (Raúl escribe él al cliente).
+  - `/onboarding-premium` = **high ticket**: contrato + Harbiz + tutoriales
+    SIN el de grabar movilidad (esa valoración la hace el fisio por
+    videollamada) y cierra explicando que se crea el grupo de WhatsApp.
+  - Los pasos viven una vez en `PASOS` y cada variante lista los suyos; el
+    número se calcula por posición.
+  - **Contrato** (`ContratoCliente.jsx` + `utils/contrato.js`, tabla
+    `contratos_clientes`, migración 62; suelto también en `/contrato`). Mismo
+    patrón que el cuestionario: `anon` solo inserta, nunca `.select()`. Las
+    condiciones cerradas por la closer viajan en el enlace (`PARAMS_ENLACE`:
+    `c`, `d`, `i`, `p`…) y salen bloqueadas. Al firmar se guarda una **foto
+    de las cláusulas** en `texto`: el PDF sale de esa foto, así que cambiar
+    la redacción en `clausulasContrato()` no altera los ya firmados (sube
+    `VERSION_CONTRATO`). El "PDF" es la ventana de impresión del navegador
+    (`imprimirContrato()`), sin librería. Se ve en Clientes (📄 en la fila,
+    enlazado por nombre, y la lista plegable "Contratos firmados"); en modo
+    demo no se enseña ninguno.
 - **Supabase (plan free) se pausa** tras días sin uso: si todo aparece a 0, hay
   que reactivar el proyecto en supabase.com. No es un bug del código.
 
