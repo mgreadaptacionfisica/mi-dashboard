@@ -8,11 +8,19 @@
 // (migración 62) y el PDF se genera desde esa foto. Sube VERSION_CONTRATO
 // cuando cambie algo de fondo, para poder saber qué firmó cada uno.
 
+// Firma de Raúl (foto limpiada, fondo transparente). Sale en la casilla de
+// EL PROFESIONAL del PDF y en el formulario. Va en el bundle público a
+// propósito: el cliente se descarga su copia con ella, como en cualquier
+// contrato firmado.
+import FirmaProfesional from '../assets/firma-profesional.png'
+
 export const VERSION_CONTRATO = 'v5 · oct 2026'
 
 // Datos fijos de EL PROFESIONAL. Sin domicilio a propósito (Raúl ya no vive
 // en Alcaucín y no quiere poner la dirección de la LLC): el contacto es el
 // email. Si algún día se añade una dirección, va aquí y en "Reunidos".
+export const FIRMA_PROFESIONAL = FirmaProfesional
+
 export const PROFESIONAL = {
   nombre: 'Raúl Morales García',
   dni: '26807134-J',
@@ -290,7 +298,7 @@ export function imprimirContrato(contrato) {
   <div class="firmas">
     <div class="firma">
       <strong>EL PROFESIONAL</strong>
-      <div class="firma-caja"></div>
+      <div class="firma-caja"><img src="${esc(new URL(FirmaProfesional, window.location.origin).href)}" alt="Firma de EL PROFESIONAL"></div>
       <small>${esc(PROFESIONAL.nombre)} · DNI ${esc(PROFESIONAL.dni)}<br>en representación de ${esc(PROFESIONAL.empresa)}</small>
     </div>
     <div class="firma">

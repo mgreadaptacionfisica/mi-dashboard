@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Logo from '../assets/mg-logo.png'
 import {
-  DURACIONES, FORMAS_PAGO, METODOS_PAGO, OPCIONES_IMAGEN, PROFESIONAL, VERSION_CONTRATO,
+  DURACIONES, FIRMA_PROFESIONAL, FORMAS_PAGO, METODOS_PAGO, OPCIONES_IMAGEN, PROFESIONAL, VERSION_CONTRATO,
   clausulasContrato, datosDelEnlace, faltasContrato, fechaLarga, imprimirContrato,
 } from '../utils/contrato'
 import { firmarContratoPublico } from '../lib/queries/contratosClientes'
@@ -314,7 +314,10 @@ export default function ContratoCliente({ origen = 'suelto', onFirmado }) {
 
       <h4 className="contrato-subtitulo">Tu firma</h4>
       <PadFirma onCambio={setFirma} />
-      <p className="contrato-nota">Firma por EL PROFESIONAL: {PROFESIONAL.nombre} · DNI {PROFESIONAL.dni}, en representación de {PROFESIONAL.empresa}</p>
+      <div className="contrato-firma-profesional">
+        <img src={FIRMA_PROFESIONAL} alt="Firma de EL PROFESIONAL" />
+        <p className="contrato-nota">Ya firmado por EL PROFESIONAL: {PROFESIONAL.nombre} · DNI {PROFESIONAL.dni}, en representación de {PROFESIONAL.empresa}</p>
+      </div>
 
       {intentado && faltas.length > 0 && (
         <div className="cp-error" role="alert">

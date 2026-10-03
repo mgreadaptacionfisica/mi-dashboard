@@ -6826,3 +6826,8 @@ button.onb-chip { cursor: pointer; }
 }
 
 .rd-desde-cuestionario span { flex: 1 1 260px; font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }
+
+/* Firma de EL PROFESIONAL bajo el lienzo del cliente (ContratoCliente.jsx). */
+.contrato-firma-profesional { display: flex; align-items: center; gap: 12px; margin: 10px 0 16px; }
+.contrato-firma-profesional img { height: 56px; width: auto; }
+.contrato-firma-profesional .contrato-nota { margin: 0; }
