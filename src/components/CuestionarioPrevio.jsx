@@ -153,6 +153,12 @@ export default function CuestionarioPrevio() {
     }
     // Solo se borra el borrador cuando el envío ha ido bien de verdad.
     try { localStorage.removeItem(CLAVE_BORRADOR) } catch (err) { /* da igual */ }
+    // Aviso para el onboarding de high ticket, abierto en otra pestaña del
+    // mismo navegador: escucha esta clave y marca el paso solo (ver
+    // CLAVE_CUESTIONARIO_ENVIADO en Onboarding.jsx).
+    try {
+      localStorage.setItem('mg-cuestionario-enviado', JSON.stringify({ nombre: clienteNombre.trim(), en: new Date().toISOString() }))
+    } catch (err) { /* sin aviso: el cliente lo marca a mano */ }
     setEnviado(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }

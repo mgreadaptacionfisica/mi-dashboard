@@ -30,6 +30,14 @@ const PASOS = {
     cta: 'Ir al contrato',
     href: '#contrato',
   },
+  cuestionario: {
+    icon: '📝',
+    title: 'Rellena tu cuestionario previo',
+    description: 'Unas preguntas sobre tu caso para que tu fisioterapeuta llegue a la valoración sabiendo de dónde partimos. Son 12-15 minutos y se marca solo al enviarlo.',
+    cta: 'Abrir cuestionario',
+    // El enlace real (con su nombre) se monta en el componente: ver hrefPaso.
+    href: '/cuestionario',
+  },
   harbiz: {
     icon: '🚀',
     title: 'Regístrate en Harbiz',
@@ -82,6 +90,12 @@ const PASOS = {
 }
 
 const esExterno = (href) => !href.startsWith('#')
+
+// Lo deja CuestionarioPrevio.jsx al enviar. El cuestionario se abre en otra
+// pestaña y el onboarding no puede leer la tabla (anon solo inserta), así que
+// se enteran el uno del otro por localStorage, que comparten al ser el mismo
+// dominio.
+const CLAVE_CUESTIONARIO_ENVIADO = 'mg-cuestionario-enviado'
 
 const fases = [
   {
@@ -159,9 +173,20 @@ function PasoCard({ step, done, onToggle, className = '' }) {
 
 export default function Onboarding({ variante = 'low' }) {
   const config = VARIANTES_ONBOARDING[variante] || VARIANTES_ONBOARDING.low
+  // Nombre del cliente que viene en el enlace (?c=). Con él, cada paso que
+  // marca queda registrado en el panel (onboarding_progreso) para que Raúl
+  // sepa cuándo ha terminado, y el cuestionario le llega ya con su nombre.
+  // Sin él solo se guarda en este navegador.
+  const clienteNombre = useMemo(() => {
+    try { return new URLSearchParams(window.location.search).get('c') || '' } catch (e) { return '' }
+  }, [])
   const steps = useMemo(
-    () => config.pasos.map((id, i) => ({ id, number: String(i + 1).padStart(2, '0'), ...PASOS[id] })),
-    [config]
+    () => config.pasos.map((id, i) => {
+      const paso = { id, number: String(i + 1).padStart(2, '0'), ...PASOS[id] }
+      if (id === 'cuestionario' && clienteNombre) paso.href = `/cuestionario?c=${encodeURIComponent(clienteNombre)}`
+      return paso
+    }),
+    [config, clienteNombre]
   )
   const [completed, setCompleted] = useState([])
   const [loaded, setLoaded] = useState(false)
@@ -183,13 +208,6 @@ export default function Onboarding({ variante = 'low' }) {
     try { localStorage.setItem(config.storageKey, JSON.stringify(completed)) } catch (e) { /* noop */ }
   }, [completed, loaded, config])
 
-  // Nombre del cliente que viene en el enlace (?c=). Con él, cada paso que
-  // marca queda registrado en el panel (onboarding_progreso) para que Raúl
-  // sepa cuándo ha terminado. Sin él solo se guarda en este navegador.
-  const clienteNombre = useMemo(() => {
-    try { return new URLSearchParams(window.location.search).get('c') || '' } catch (e) { return '' }
-  }, [])
-
   const toggleStep = (id) => {
     const hecho = !completed.includes(id)
     setCompleted((prev) =>
@@ -197,6 +215,32 @@ export default function Onboarding({ variante = 'low' }) {
     )
     registrarPasoOnboarding({ clienteNombre, variante, paso: id, hecho })
   }
+
+  // El cuestionario se marca solo cuando se envía (desde la otra pestaña).
+  // 'storage' salta cuando otra pestaña escribe la clave; 'focus' cubre el
+  // caso de que lo enviara antes de abrir esta página o en la misma pestaña.
+  // En el panel cuenta igualmente el cuestionario recibido, así que esto es
+  // solo para que el cliente vea su progreso al día.
+  useEffect(() => {
+    if (!loaded || !config.pasos.includes('cuestionario')) return
+    const comprobar = () => {
+      try {
+        const enviado = JSON.parse(localStorage.getItem(CLAVE_CUESTIONARIO_ENVIADO) || 'null')
+        if (!enviado) return
+        // Si el enlace trae nombre, tiene que ser el mismo (un móvil
+        // compartido no debe marcarle el cuestionario de otro).
+        if (clienteNombre && enviado.nombre && enviado.nombre !== clienteNombre) return
+      } catch (e) { return }
+      setCompleted((prev) => (prev.includes('cuestionario') ? prev : [...prev, 'cuestionario']))
+    }
+    comprobar()
+    window.addEventListener('storage', comprobar)
+    window.addEventListener('focus', comprobar)
+    return () => {
+      window.removeEventListener('storage', comprobar)
+      window.removeEventListener('focus', comprobar)
+    }
+  }, [loaded, config, clienteNombre])
 
   // useCallback porque ContratoCliente lo llama desde un efecto.
   const marcarContratoFirmado = useCallback(() => {

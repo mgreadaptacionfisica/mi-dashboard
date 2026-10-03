@@ -1,4 +1,4 @@
-import { normalizaNombre } from './cuestionarioPrevio'
+import { normalizaNombre, cuestionarioDeCliente } from './cuestionarioPrevio'
 import { contratoDeCliente } from './contrato'
 
 // Qué pasos lleva cada onboarding. Vive aquí (y no en Onboarding.jsx) porque
@@ -16,7 +16,7 @@ export const VARIANTES_ONBOARDING = {
   },
   premium: {
     storageKey: 'mg-onboarding-premium-progress',
-    pasos: ['contrato', 'harbiz', 'tut-app', 'tut-forms', 'tut-rutina', 'tut-entrenamiento'],
+    pasos: ['contrato', 'cuestionario', 'harbiz', 'tut-app', 'tut-forms', 'tut-rutina', 'tut-entrenamiento'],
     final: null,
     tiempo: 'Unos 15 minutos',
   },
@@ -32,12 +32,15 @@ export const ACCION_CONTACTO = {
 // Estado del onboarding de cada cliente, a partir de los eventos de
 // onboarding_progreso (en orden ascendente: el último de cada paso manda) y
 // de los contratos firmados (el paso 'contrato' sale de ahí, no de eventos).
+// El paso 'cuestionario' cuenta si hay cuestionario recibido O si el cliente
+// lo marcó: el recibido es la prueba buena, la marca cubre el que lo mandó
+// con el nombre escrito distinto.
 //
 // Devuelve [{ clienteNombre, variante, hechos, total, contrato, terminado,
 // contactado, ultimo }] ordenado: primero los que han terminado y esperan a
 // que se les escriba, luego los que van a medias, y al final los ya
 // contactados.
-export function estadoOnboarding(eventos = [], contratos = []) {
+export function estadoOnboarding(eventos = [], contratos = [], cuestionarios = []) {
   const porCliente = new Map()
   const entrada = (nombre) => {
     const k = normalizaNombre(nombre)
@@ -67,7 +70,10 @@ export function estadoOnboarding(eventos = [], contratos = []) {
     const variante = VARIANTES_ONBOARDING[c.variante] ? c.variante : 'premium'
     const pasos = VARIANTES_ONBOARDING[variante].pasos
     const contrato = contratoDeCliente(contratos, c.clienteNombre, normalizaNombre)
-    const hecho = (p) => (p === 'contrato' ? Boolean(contrato) : c.pasos[p] === true)
+    const cuestionario = cuestionarioDeCliente(cuestionarios, c.clienteNombre)
+    const hecho = (p) => (p === 'contrato' ? Boolean(contrato)
+      : p === 'cuestionario' ? Boolean(cuestionario) || c.pasos[p] === true
+      : c.pasos[p] === true)
     const hechos = pasos.filter(hecho).length
     return {
       clienteNombre: c.clienteNombre,
@@ -91,6 +97,7 @@ export const pendientesDeContactar = (estados) => estados.filter((e) => e.termin
 // Nombres cortos de cada paso, para listar lo que le falta a un cliente.
 export const ETIQUETA_PASO = {
   contrato: 'contrato',
+  cuestionario: 'cuestionario previo',
   harbiz: 'registro en Harbiz',
   'tut-app': 'tutorial app',
   'tut-forms': 'tutorial formularios',

@@ -63,7 +63,7 @@ function inicioDeSemanaISO() {
 }
 
 export default function Dashboard({
-  clientes = [], ventas = [], recontactos = [], tareasPersonales = [], onboardingProgreso = [], contratos = [],
+  clientes = [], ventas = [], recontactos = [], tareasPersonales = [], onboardingProgreso = [], contratos = [], cuestionarios = [],
   seguimientos = [], contactosSemanales = [], revisionesSemanales = [], onNavigate,
 }) {
   const hoy = todayISO()
@@ -183,8 +183,8 @@ export default function Dashboard({
   // Clientes que han terminado el onboarding y esperan a que Raúl les
   // escriba / cree el grupo de WhatsApp (se quita al marcarlo en Clientes).
   const onboardingListos = useMemo(
-    () => pendientesDeContactar(estadoOnboarding(onboardingProgreso, contratos)),
-    [onboardingProgreso, contratos]
+    () => pendientesDeContactar(estadoOnboarding(onboardingProgreso, contratos, cuestionarios)),
+    [onboardingProgreso, contratos, cuestionarios]
   )
 
   // ————— Lo que requiere acción hoy —————

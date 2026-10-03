@@ -457,7 +457,7 @@ export default function ClientesAdmin({ contratos = [], onboardingProgreso = [],
 
         {/* Quién va por dónde en el onboarding y a quién toca escribir. */}
         <OnboardingClientes
-          estados={estadoOnboarding(onboardingProgreso, contratos)}
+          estados={estadoOnboarding(onboardingProgreso, contratos, cuestionariosPrevios)}
           cuestionarios={cuestionariosPrevios}
           setOnboardingProgreso={setOnboardingProgreso}
           miEmail={miEmail}

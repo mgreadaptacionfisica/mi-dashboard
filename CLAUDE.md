@@ -221,7 +221,10 @@ las páginas del cliente son públicas), Operaciones
   eso el rol `closer` tiene esa sección):
   - `/onboarding` = **low ticket**: Harbiz + tutoriales + verificación. Ya no
     tiene "Entra al WhatsApp" (Raúl escribe él al cliente).
-  - `/onboarding-premium` = **high ticket**: contrato + Harbiz + tutoriales
+  - `/onboarding-premium` = **high ticket**: contrato + cuestionario previo
+    (con su `?c=`; se marca solo al enviarlo, avisado por localStorage
+    `mg-cuestionario-enviado`, y en el panel cuenta el cuestionario
+    recibido) + Harbiz + tutoriales
     SIN el de grabar movilidad (esa valoración la hace el fisio por
     videollamada) y cierra explicando que se crea el grupo de WhatsApp.
   - Los pasos viven una vez en `PASOS` y cada variante lista los suyos; el
