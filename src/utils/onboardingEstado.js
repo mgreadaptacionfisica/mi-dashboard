@@ -10,7 +10,7 @@ export const VARIANTES_ONBOARDING = {
     // Se mantiene la clave de siempre para no perder el progreso de quien
     // ya lo tenía a medias.
     storageKey: 'mg-onboarding-progress',
-    pasos: ['harbiz', 'tut-app', 'tut-forms', 'tut-movilidad', 'tut-rutina', 'tut-entrenamiento', 'verificacion'],
+    pasos: ['cuestionario', 'harbiz', 'tut-app', 'tut-forms', 'tut-movilidad', 'tut-rutina', 'tut-entrenamiento', 'verificacion'],
     final: 'verificacion',
     tiempo: 'Menos de 10 minutos',
   },
@@ -97,7 +97,7 @@ export const pendientesDeContactar = (estados) => estados.filter((e) => e.termin
 // Nombres cortos de cada paso, para listar lo que le falta a un cliente.
 export const ETIQUETA_PASO = {
   contrato: 'contrato',
-  cuestionario: 'cuestionario previo',
+  cuestionario: 'cuestionario inicial',
   harbiz: 'registro en Harbiz',
   'tut-app': 'tutorial app',
   'tut-forms': 'tutorial formularios',

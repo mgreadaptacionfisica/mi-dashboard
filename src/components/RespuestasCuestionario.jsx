@@ -3,6 +3,9 @@ import {
   respuestasPorFactor,
   suLectura,
   respuestasSueltas,
+  datosGenerales,
+  alertasCuestionario,
+  textoPregunta,
   respondidas,
   TOTAL_PREGUNTAS,
   enlaceCuestionario,
@@ -20,6 +23,7 @@ import { marcarCuestionarioRevisado } from '../lib/queries/cuestionariosPrevios'
 
 function valorLegible(pregunta, valor) {
   if (pregunta?.tipo === 'escala') return `${valor} / 10`
+  if (Array.isArray(valor)) return valor.join(', ')
   return String(valor)
 }
 
@@ -42,6 +46,9 @@ export default function RespuestasCuestionario({ cuestionario, onRevisadoChange 
   const porFactor = respuestasPorFactor(cuestionario.respuestas)
   const lectura = suLectura(cuestionario.respuestas)
   const sueltas = respuestasSueltas(cuestionario.respuestas)
+  const generales = datosGenerales(cuestionario.respuestas)
+  const alertas = alertasCuestionario(cuestionario.respuestas)
+  const enunciado = (p) => textoPregunta(p, cuestionario.respuestas)
   const hechas = respondidas(cuestionario.respuestas)
   const fecha = cuestionario.enviadoEn ? new Date(cuestionario.enviadoEn).toLocaleDateString('es-ES') : ''
 
@@ -56,7 +63,7 @@ export default function RespuestasCuestionario({ cuestionario, onRevisadoChange 
     <div className={`cq-panel ${revisado ? 'cq-panel-revisado' : ''}`}>
       <button type="button" className="cq-cabecera" onClick={() => setAbierto((v) => !v)}>
         <span className="cq-cabecera-titulo">
-          📋 Cuestionario previo del cliente
+          📋 Cuestionario del cliente
           {revisado && <span className="cq-badge cq-badge-ok">ya pasado a la red</span>}
         </span>
         <span className="cq-cabecera-meta">
@@ -73,6 +80,39 @@ export default function RespuestasCuestionario({ cuestionario, onRevisadoChange 
             </p>
           )}
 
+          {/* Lo primero que hay que ver: un "sí" de seguridad o un hormigueo
+              cambian lo que se puede hacer en la primera sesión. */}
+          {alertas.length > 0 && (
+            <div className="cq-alertas">
+              <div className="cq-subtitulo">⚠️ Revisar antes de empezar</div>
+              {alertas.map(({ pregunta, valor }) => (
+                <div key={pregunta.id} className="cq-item">
+                  <div className="cq-item-pregunta">{enunciado(pregunta)}</div>
+                  <div className="cq-item-valor">{valorLegible(pregunta, valor)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Zona, salud, historia y entreno: no van a la red, pero es con lo
+              que el entrenador monta el programa. */}
+          {generales.length > 0 && (
+            <div className="cq-generales">
+              <div className="cq-subtitulo">📌 Datos generales</div>
+              {generales.map(({ bloque, items }) => (
+                <div key={bloque.id} className="cq-general-bloque">
+                  <div className="cq-factor-nombre">{bloque.titulo}</div>
+                  {items.map(({ pregunta, valor }) => (
+                    <div key={pregunta.id} className="cq-item">
+                      <div className="cq-item-pregunta">{enunciado(pregunta)}</div>
+                      <div className="cq-item-valor">{valorLegible(pregunta, valor)}</div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
           {lectura.length > 0 && (
             <div className="cq-lectura">
               <div className="cq-subtitulo">🎯 Su propia lectura</div>
@@ -82,7 +122,7 @@ export default function RespuestasCuestionario({ cuestionario, onRevisadoChange 
               </p>
               {lectura.map(({ pregunta, valor }) => (
                 <div key={pregunta.id} className="cq-item">
-                  <div className="cq-item-pregunta">{pregunta.texto}</div>
+                  <div className="cq-item-pregunta">{enunciado(pregunta)}</div>
                   <div className="cq-item-valor">{valorLegible(pregunta, valor)}</div>
                 </div>
               ))}
@@ -106,7 +146,7 @@ export default function RespuestasCuestionario({ cuestionario, onRevisadoChange 
                         const aviso = avisoInvertida(pregunta, valor)
                         return (
                           <div key={pregunta.id} className="cq-item">
-                            <div className="cq-item-pregunta">{pregunta.texto}</div>
+                            <div className="cq-item-pregunta">{enunciado(pregunta)}</div>
                             <div className="cq-item-valor">
                               {valorLegible(pregunta, valor)}
                               {aviso && <span className="cq-item-aviso">⚠️ {aviso}</span>}
@@ -131,7 +171,7 @@ export default function RespuestasCuestionario({ cuestionario, onRevisadoChange 
               {sueltas.map(({ id, valor }) => (
                 <div key={id} className="cq-item">
                   <div className="cq-item-pregunta">{id}</div>
-                  <div className="cq-item-valor">{String(valor)}</div>
+                  <div className="cq-item-valor">{Array.isArray(valor) ? valor.join(', ') : String(valor)}</div>
                 </div>
               ))}
             </div>

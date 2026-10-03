@@ -6794,3 +6794,17 @@ button.onb-chip { cursor: pointer; }
 @media (max-width: 900px) {
   .onb-fila { grid-template-columns: 1fr; gap: 8px; }
 }
+
+/* Cuestionario general: alertas de seguridad y datos para el entrenador
+   (RespuestasCuestionario.jsx). */
+.cq-alertas {
+  background: rgba(220, 38, 38, .07);
+  border: 1px solid rgba(220, 38, 38, .3);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.cq-alertas .cq-subtitulo { margin-top: 0; color: #b91c1c; }
+.cq-generales { margin-bottom: 10px; }
+.cq-general-bloque { border-left: 3px solid var(--color-border); padding-left: 8px; margin-bottom: 8px; }

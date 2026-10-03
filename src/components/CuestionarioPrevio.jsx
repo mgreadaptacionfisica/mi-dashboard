@@ -4,6 +4,7 @@ import {
   BLOQUES_CUESTIONARIO,
   TOTAL_PREGUNTAS,
   respondidas,
+  textoPregunta,
 } from '../utils/cuestionarioPrevio'
 import { enviarCuestionarioPublico } from '../lib/queries/cuestionariosPrevios'
 
@@ -17,7 +18,7 @@ import { enviarCuestionarioPublico } from '../lib/queries/cuestionariosPrevios'
 // reasignarlo después.
 //
 // Se guarda un borrador en el navegador del cliente mientras rellena: son
-// 12-15 minutos de escritura y se pierden con un toque en el sitio
+// 15-20 minutos de escritura y se pierden con un toque en el sitio
 // equivocado. Todo entre try/catch, porque en ventana privada o con las
 // cookies bloqueadas el simple acceso a localStorage ya lanza.
 
@@ -66,6 +67,21 @@ function Campo({ pregunta, valor, onChange }) {
         {pregunta.opciones.map((o) => (
           <label key={o} className={valor === o ? 'cp-opcion-activa' : ''}>
             <input type="radio" name={pregunta.id} value={o} checked={valor === o} onChange={() => onChange(o)} />
+            {o}
+          </label>
+        ))}
+      </div>
+    )
+  }
+  // Varias a la vez (tipo de dolor, horario): se guarda como array.
+  if (pregunta.tipo === 'varias') {
+    const marcadas = Array.isArray(valor) ? valor : []
+    const alternar = (o) => onChange(marcadas.includes(o) ? marcadas.filter((x) => x !== o) : [...marcadas, o])
+    return (
+      <div className="cp-opciones">
+        {pregunta.opciones.map((o) => (
+          <label key={o} className={marcadas.includes(o) ? 'cp-opcion-activa' : ''}>
+            <input type="checkbox" value={o} checked={marcadas.includes(o)} onChange={() => alternar(o)} />
             {o}
           </label>
         ))}
@@ -167,11 +183,12 @@ export default function CuestionarioPrevio() {
     return (
       <div className="cp-pagina">
         <div className="cp-hoja cp-gracias">
-          <img src={Logo} alt="MG Group" className="cp-logo" />
+          <img src={Logo} alt="MG Readaptación Física" className="cp-logo" />
           <h1>Recibido, {clienteNombre.split(' ')[0]}</h1>
           <p>
-            Ya tenemos tus respuestas. Las revisaremos antes de tu valoración, así que no hace falta que nos
-            mandes nada más.
+            Ya tenemos tus respuestas. Tu equipo las revisa antes de montarte el programa, así que no hace
+            falta que nos mandes nada más. Si has llegado desde tu onboarding, puedes volver a esa pestaña y
+            seguir con el siguiente paso.
           </p>
           <p className="cp-gracias-nota">
             Si te has dejado algo importante o quieres matizar una respuesta, díselo a tu entrenador por WhatsApp
@@ -186,17 +203,17 @@ export default function CuestionarioPrevio() {
     <div className="cp-pagina">
       <form className="cp-hoja" onSubmit={enviar}>
         <header className="cp-cabecera">
-          <img src={Logo} alt="MG Group" className="cp-logo" />
-          <span className="cp-marca">MG Group · Readaptación física</span>
-          <h1>Antes de tu valoración</h1>
+          <img src={Logo} alt="MG Readaptación Física" className="cp-logo" />
+          <span className="cp-marca">MG Readaptación Física</span>
+          <h1>Antes de empezar</h1>
           <p className="cp-entradilla">
-            Este cuestionario nos sirve para entender qué está influyendo en tu caso, más allá de lo que podemos
-            medir en la camilla. Con tus respuestas montamos el mapa de factores sobre el que decidiremos por
-            dónde empezar.
+            Este cuestionario nos sirve para entender tu caso y montarte el programa: dónde te duele, qué está
+            influyendo más allá de lo que podemos medir, y cómo es tu semana de verdad. Con tus respuestas
+            decidimos por dónde empezar.
           </p>
           <div className="cp-meta">
-            <span><b>Tiempo:</b> 12-15 minutos</span>
-            <span><b>Lo ve:</b> solo tu equipo de MG Group</span>
+            <span><b>Tiempo:</b> 15-20 minutos</span>
+            <span><b>Lo ve:</b> solo tu equipo de MG Readaptación Física</span>
             <span><b>Puedes parar:</b> se guarda solo en este móvil</span>
           </div>
         </header>
@@ -256,7 +273,7 @@ export default function CuestionarioPrevio() {
             <div className="cp-preguntas">
               {bloque.preguntas.map((p) => (
                 <div key={p.id} className="cp-pregunta">
-                  <div className="cp-pregunta-texto">{p.texto}</div>
+                  <div className="cp-pregunta-texto">{textoPregunta(p, respuestas)}</div>
                   {p.pista && <div className="cp-pregunta-pista">{p.pista}</div>}
                   <div className="cp-pregunta-campo">
                     <Campo pregunta={p} valor={respuestas[p.id]} onChange={(v) => setRespuesta(p.id, v)} />

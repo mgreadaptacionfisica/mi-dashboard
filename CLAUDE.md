@@ -181,13 +181,19 @@ las páginas del cliente son públicas), Operaciones
     Filtra en `misClientesTodos`, así que afecta a TODA la sección (las dos
     pestañas, banners y contadores). Al añadir algo nuevo aquí, derívalo de
     `misClientes`/`misClientesTodos` y respetará el filtro solo.
-- **Cuestionario previo** (`utils/cuestionarioPrevio.js` +
-  `components/CuestionarioPrevio.jsx`, tabla `cuestionarios_previos`): 30
-  preguntas que el cliente contesta ANTES de la valoración y que alimentan la
-  red de determinantes. Cada pregunta lleva el id del factor al que alimenta
-  (`factor`), y el panel enseña las respuestas agrupadas por factor junto al
-  editor de la red, no en el orden en que se contestaron. Dos cosas a tener
-  en cuenta:
+- **Cuestionario inicial** (antes "previo"; `utils/cuestionarioPrevio.js` +
+  `components/CuestionarioPrevio.jsx`, tabla `cuestionarios_previos`): ~49
+  preguntas que el cliente contesta al arrancar, como paso del onboarding
+  (low y high ticket). **Sustituye a los formularios iniciales de Harbiz**
+  (ENTREVISTA y DOLOR, que ya no se asignan); en Harbiz quedan solo los de
+  seguimiento semanal/mensual. Es **general, no solo de hombro**: la primera
+  pregunta es la zona y los enunciados con `{zona}` se adaptan
+  (`textoPregunta()`). Las preguntas con `factor` alimentan la red de
+  determinantes y el panel las agrupa por factor junto al editor; las que no
+  (zona, seguridad, historia, entreno) salen en "Datos generales"
+  (`datosGenerales()`), y las marcadas con `alerta` (los "sí" de seguridad,
+  hormigueo/pérdida de fuerza) arriba del todo. Tipo `varias` = array. No
+  cambiar ids de preguntas existentes. Además:
   - Se rellena desde **`/cuestionario`, ruta PÚBLICA sin login** (segunda del
     panel, junto a `/onboarding` — ver `PUBLIC_PATHS` en App.jsx). Es la única
     tabla que acepta escritura anónima: `anon` puede insertar y nada más (no

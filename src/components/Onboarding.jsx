@@ -8,9 +8,9 @@ import { registrarPasoOnboarding } from '../lib/queries/onboardingProgreso'
 // las manda la closer al cerrar la venta (los enlaces salen de la sección
 // Onboarding del panel, OnboardingEnlaces.jsx):
 //
-//   - /onboarding          → low ticket. El de siempre, sin el paso de
-//                            "Entra al WhatsApp": ahora es Raúl quien le
-//                            escribe al cliente directamente.
+//   - /onboarding          → low ticket. Cuestionario inicial, Harbiz y
+//                            tutoriales. Sin "Entra al WhatsApp": ahora es
+//                            Raúl quien le escribe al cliente directamente.
 //   - /onboarding-premium  → high ticket. Lleva el CONTRATO para firmar
 //                            online, no tiene el tutorial de grabar la
 //                            movilidad (esa valoración la hace el fisio por
@@ -32,8 +32,8 @@ const PASOS = {
   },
   cuestionario: {
     icon: '📝',
-    title: 'Rellena tu cuestionario previo',
-    description: 'Unas preguntas sobre tu caso para que tu fisioterapeuta llegue a la valoración sabiendo de dónde partimos. Son 12-15 minutos y se marca solo al enviarlo.',
+    title: 'Rellena tu cuestionario inicial',
+    description: 'Tu salud, tu dolor y cómo es tu semana: con esto te montamos el programa. Son 15-20 minutos, puedes dejarlo a medias y se marca solo al enviarlo.',
     cta: 'Abrir cuestionario',
     // El enlace real (con su nombre) se monta en el componente: ver hrefPaso.
     href: '/cuestionario',
@@ -54,8 +54,10 @@ const PASOS = {
   },
   'tut-forms': {
     icon: '📝',
-    title: 'Tutorial: formularios iniciales y de dolor',
-    description: 'Cómo rellenar correctamente tus formularios.',
+    // Los formularios iniciales de Harbiz ya no se asignan (los sustituye el
+    // cuestionario de aquí arriba); en la app quedan los de seguimiento.
+    title: 'Tutorial: cómo rellenar tus formularios',
+    description: 'Cada semana y cada mes te llegará por la app un formulario corto de seguimiento. Así se rellenan.',
     cta: 'Ver tutorial',
     href: 'https://www.loom.com/share/d01055c3e5d44dbcad7352ccd522a8b2',
   },

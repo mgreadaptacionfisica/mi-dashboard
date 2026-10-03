@@ -68,8 +68,8 @@ export default function OnboardingEnlaces() {
             <span className="ob-tag ob-tag-low">Low ticket</span>
             <h3>Onboarding estándar</h3>
             <p className="ob-desc">
-              Registro en Harbiz y los tutoriales (incluido el de grabar la valoración de movilidad). Sin contrato.
-              Raúl le escribe por WhatsApp.
+              Cuestionario inicial, registro en Harbiz y los tutoriales (incluido el de grabar la valoración de
+              movilidad). Sin contrato. Raúl le escribe por WhatsApp.
             </p>
             <BotonesEnlace url={enlaceOnboarding('/onboarding', { nombre: d.nombre })} />
           </div>
@@ -78,8 +78,8 @@ export default function OnboardingEnlaces() {
             <span className="ob-tag ob-tag-high">High ticket</span>
             <h3>Onboarding premium + contrato</h3>
             <p className="ob-desc">
-              Contrato para firmar online, Harbiz y tutoriales (sin el de movilidad: la valoración la hace el fisio
-              por videollamada). Termina avisando de que se le crea el grupo de WhatsApp.
+              Contrato para firmar online, cuestionario inicial, Harbiz y tutoriales (sin el de movilidad: la
+              valoración la hace el fisio por videollamada). Termina avisando de que se le crea el grupo de WhatsApp.
             </p>
 
             <p className="ob-desc"><strong>Condiciones del contrato</strong> — lo que rellenes aquí le sale ya puesto y bloqueado; lo que dejes vacío lo rellena él.</p>
