@@ -39,12 +39,13 @@ export const PROFESIONAL = {
 // lo negociaba y el cliente no sabía qué poner.
 export const PREAVISO_DIAS = 7
 
-// Solo los dos programas que se venden. Si se quita una duración, los
+// Solo los programas que se venden. Si se quita una duración, los
 // contratos ya firmados con ella siguen saliendo bien en el PDF (usan su foto
 // de cláusulas); solo la lista de Clientes la enseñaría como "—".
 export const DURACIONES = [
   { id: 'cuatrimestral', label: 'Cuatrimestral', detalle: '4 meses' },
   { id: 'semestral', label: 'Semestral', detalle: '6 meses' },
+  { id: 'anual', label: 'Anual', detalle: '12 meses' },
 ]
 
 export const FORMAS_PAGO = [
@@ -335,7 +336,8 @@ export function onboardingDesdeVenta(lead) {
   }
 
   const duracion = servicio.includes('CUATRIMESTR') ? 'cuatrimestral'
-    : servicio.includes('SEMESTR') ? 'semestral' : ''
+    : servicio.includes('SEMESTR') ? 'semestral'
+    : servicio.includes('ANUAL') ? 'anual' : ''
   const importe = Number(v.importe) || 0
   const reserva = Number(v.importeReserva) || 0
   const resto = importe - reserva
