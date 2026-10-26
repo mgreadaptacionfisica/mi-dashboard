@@ -20,9 +20,6 @@ import { normalizaNombre } from './cuestionarioPrevio'
 // getDay() → id de día de la rejilla (0 = domingo).
 const DIA_POR_GETDAY = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
 
-// Mismo tope que la rejilla: como mucho 3 sesiones por día.
-const MAX_SESIONES_DIA = 3
-
 // Semana y día de la rejilla en que cae una fecha 'YYYY-MM-DD'. La semana se
 // calcula con las MISMAS funciones que usa la rejilla (mondayOf + toISO), con
 // su rareza de zona horaria incluida (ver formatRangoSemana), para que la
@@ -47,7 +44,11 @@ export function clienteDeHarbiz(clientes, harbizClienteId, harbizEmail) {
 // Texto del chip: el nombre del entreno en Harbiz. Desde la migración 65
 // siempre llega (se lee del calendario del cliente); el genérico queda por
 // si algún entreno no tiene nombre.
+// Los formularios (seguimiento semanal/mensual que el cliente rellena en
+// Harbiz) llegan igual que un entreno, con tipo 'programForm': llevan 📋
+// para distinguirlos de una sesión, como antes se apuntaba "Semanal" a mano.
 export function textoSesionHarbiz(sesion) {
+  if (sesion.tipo === 'programForm') return `📋 ${sesion.titulo || 'Formulario'}`
   if (sesion.titulo) return sesion.titulo
   return sesion.tipo === 'cardio' ? 'Cardio' : 'Entreno'
 }
@@ -96,9 +97,12 @@ export function volcarSesionesHarbiz(sesiones, clientes, seguimientos) {
       // alguien lo haya cambiado a mano.
       const t = tareas[yaEsta]
       if (t.harbizSinTitulo && sesion.titulo) {
-        nuevasTareas = tareas.map((x, i) => (i === yaEsta ? { ...x, texto: sesion.titulo, harbizSinTitulo: false } : x))
+        nuevasTareas = tareas.map((x, i) => (i === yaEsta ? { ...x, texto: textoSesionHarbiz(sesion), harbizSinTitulo: false } : x))
       }
-    } else if (tareas.length < MAX_SESIONES_DIA) {
+    } else {
+      // Sin el tope de 3 por día de la rejilla: ese tope es para no apuntar de
+      // más a mano, pero lo que viene de Harbiz pasó de verdad (y con los
+      // formularios un día puede tener más de 3 cosas).
       nuevasTareas = [...tareas, {
         texto: textoSesionHarbiz(sesion),
         revisado: false,
@@ -142,6 +146,23 @@ export function harbizSinEmparejar(sesiones, clientes) {
     }
   })
   return [...porCliente.values()].sort((a, b) => (a.ultima < b.ultima ? 1 : -1))
+}
+
+// Clientes de Harbiz que SÍ casan con una ficha, pero esa ficha no está
+// ACTIVO (EN PAUSA o NO ACTIVO): sus entrenos no salen en la rejilla, que solo
+// enseña activos. Suele ser una ficha sin actualizar (empezó y sigue EN PAUSA)
+// o una ficha duplicada, así que se avisa junto a los sin emparejar.
+export function harbizEnFichaNoActiva(sesiones, clientes) {
+  const porCliente = new Map()
+  ;(sesiones || []).forEach((s) => {
+    if (s.descartada) return
+    const cliente = clienteDeHarbiz(clientes, s.harbizClienteId, s.harbizEmail)
+    if (!cliente || cliente['Estado del cliente'] === 'ACTIVO') return
+    const previo = porCliente.get(cliente.id)
+    if (previo) previo.sesiones += 1
+    else porCliente.set(cliente.id, { cliente, sesiones: 1 })
+  })
+  return [...porCliente.values()]
 }
 
 // Propuesta de emparejamiento por nombre, SOLO como sugerencia para el botón

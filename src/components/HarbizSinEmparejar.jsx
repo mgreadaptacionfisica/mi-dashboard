@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { harbizSinEmparejar, sugerenciaPorNombre } from '../utils/sesionesHarbiz'
+import { harbizSinEmparejar, harbizEnFichaNoActiva, sugerenciaPorNombre } from '../utils/sesionesHarbiz'
 
 // Clientes de Harbiz con entrenos recientes que no casan con ninguna ficha
 // (ni por email ni emparejados a mano). Mientras no se emparejen, sus
@@ -29,7 +29,8 @@ export default function HarbizSinEmparejar({ sesiones, clientes, onEmparejar }) 
     () => (clientes || []).filter((c) => !c['Harbiz ID']).sort((a, b) => a.Nombre.localeCompare(b.Nombre)),
     [clientes]
   )
-  if (pendientes.length === 0) return null
+  const noActivas = useMemo(() => harbizEnFichaNoActiva(sesiones, clientes), [sesiones, clientes])
+  if (pendientes.length === 0 && noActivas.length === 0) return null
 
   const ignorar = (id) => {
     const nuevo = new Set(ignorados)
@@ -40,6 +41,7 @@ export default function HarbizSinEmparejar({ sesiones, clientes, onEmparejar }) 
 
   return (
     <div className="cq-huerfanos">
+      {pendientes.length > 0 && (<>
       <strong>🔗 {pendientes.length} cliente{pendientes.length === 1 ? '' : 's'} de Harbiz sin emparejar</strong>
       <p>
         Han entrenado en Harbiz pero su email no coincide con ninguna ficha, así que sus sesiones no llegan a
@@ -77,6 +79,24 @@ export default function HarbizSinEmparejar({ sesiones, clientes, onEmparejar }) 
           </div>
         )
       })}
+      </>)}
+      {noActivas.length > 0 && (
+        <>
+          <strong>⏸️ {noActivas.length} cliente{noActivas.length === 1 ? '' : 's'} entrenando en Harbiz con la ficha sin activar</strong>
+          <p>
+            Sus entrenos llegan pero no salen en ⚡ Registro de sesiones, que solo enseña clientes ACTIVO. Si ya han
+            empezado, pon su ficha en ACTIVO y aparecerán solos.
+          </p>
+          {noActivas.map(({ cliente, sesiones: n }) => (
+            <div key={cliente.id} className="cq-huerfano">
+              <span className="cq-huerfano-nombre">
+                {cliente.Nombre}
+                <em> · {cliente['Estado del cliente'] || 'sin estado'} · {n} entreno{n === 1 ? '' : 's'}</em>
+              </span>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   )
 }
