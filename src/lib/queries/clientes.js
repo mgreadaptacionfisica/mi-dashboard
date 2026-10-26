@@ -12,6 +12,9 @@ function fromRow(row) {
     Nombre: row.nombre || '',
     Drive: row.drive || '',
     Email: row.email || '',
+    // Id del cliente en Harbiz, solo para los que no casan por email (ver
+    // migración 64 y utils/sesionesHarbiz.js).
+    'Harbiz ID': row.harbiz_id || '',
     'Estado del cliente': row.estado || '',
     // Datos del estado EN PAUSA (ver migración 53): cuándo hay que retomar al
     // cliente y por qué está parado. Vacíos en cualquier otro estado.
@@ -48,6 +51,7 @@ const CAMPO_A_COLUMNA = {
   Nombre: 'nombre',
   Drive: 'drive',
   Email: 'email',
+  'Harbiz ID': 'harbiz_id',
   'Estado del cliente': 'estado',
   'Fecha fin de pausa': 'pausa_hasta',
   'Motivo de la pausa': 'pausa_motivo',
@@ -84,6 +88,10 @@ function toColumns(cliente) {
   Object.entries(cliente).forEach(([key, value]) => {
     const columna = CAMPO_A_COLUMNA[key]
     if (!columna) return
+    // harbiz_id vacío no se envía: el formulario guarda la ficha entera y
+    // así no se pisa el emparejamiento (ni falla si aún no está la columna).
+    // Para desemparejar se manda null.
+    if (columna === 'harbiz_id' && value === '') return
     row[columna] = COLUMNAS_NUMERICAS.has(columna) && value === '' ? null : value
   })
   return row

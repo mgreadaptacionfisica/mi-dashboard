@@ -21,6 +21,8 @@ import {
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { crearProblema, problemaDeSesion, contarAbiertos, esAbierto } from '../utils/problemasCliente'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
+import { descartarSesionHarbizRemote } from '../lib/queries/sesionesHarbiz'
+import { horaSesionHarbiz } from '../utils/sesionesHarbiz'
 import { upsertProblemaClienteRemote } from '../lib/queries/problemasCliente'
 import { seguimientoTecnico } from '../utils/equipoHelpers'
 
@@ -85,7 +87,7 @@ function formatHora12(horaHHMM) {
 // eran datos de CONSULTA que el técnico tenía delante todos los días sin
 // usarlos, y ahora viven en la cabecera del modal de Seguimiento, que es
 // donde se miran cuando hacen falta.
-export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, problemas = [], setProblemas, onRefrescar, refrescando, onNavigate }) {
+export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, problemas = [], setProblemas, setSesionesHarbiz, onRefrescar, refrescando, onNavigate }) {
   const [search, setSearch] = useState('')
   // Se entra directamente al registro de sesiones: es lo que el técnico
   // hace todos los días. El contacto semanal es la otra pestaña.
@@ -350,7 +352,15 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
 
   // Borrar una sesión mal puesta sin abrir el modal (antes solo se podía
   // desde el modal de Seguimiento, que ahora es de solo lectura).
-  const removeTareaRapida = (clienteNombre, diaId, index) => {
+  // Si la sesión vino de Harbiz, además se marca descartada: si no, el
+  // volcado la volvería a poner en la próxima carga.
+  const removeTareaRapida = (clienteNombre, diaId, index, harbizId) => {
+    if (harbizId) {
+      descartarSesionHarbizRemote(harbizId)
+      if (typeof setSesionesHarbiz === 'function') {
+        setSesionesHarbiz((prev) => prev.map((s) => (s.id === harbizId ? { ...s, descartada: true } : s)))
+      }
+    }
     actualizarSeguimientoSemana(clienteNombre, (dias) => {
       const dia = dias[diaId] || diaVacio()
       return { ...dias, [diaId]: { tareas: dia.tareas.filter((_, i) => i !== index) } }
@@ -879,9 +889,12 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                           type="button"
                                           className={`registro-rapido-chip ${t.revisado ? 'registro-rapido-chip-hecho' : ''}`}
                                           onClick={() => toggleTareaRapida(cliente.Nombre, d.id, i)}
-                                          title={t.revisado ? 'Hecho — clic para desmarcar' : 'Clic para marcar hecho'}
+                                          title={[
+                                            t.harbizId ? `Completado por el cliente en Harbiz${horaSesionHarbiz(t.harbizHechaEn) ? ` a las ${horaSesionHarbiz(t.harbizHechaEn)}` : ''}` : '',
+                                            t.revisado ? 'Hecho — clic para desmarcar' : 'Clic para marcar hecho',
+                                          ].filter(Boolean).join(' · ')}
                                         >
-                                          {t.revisado ? '✅' : '⬜'} {t.texto}
+                                          {t.revisado ? '✅' : '⬜'} {t.harbizId && <span className="registro-rapido-chip-harbiz">🔗</span>}{t.texto}
                                         </button>
                                         <button
                                           type="button"
@@ -896,8 +909,8 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                         <button
                                           type="button"
                                           className="registro-rapido-chip-del"
-                                          onClick={() => removeTareaRapida(cliente.Nombre, d.id, i)}
-                                          title="Quitar esta sesión"
+                                          onClick={() => removeTareaRapida(cliente.Nombre, d.id, i, t.harbizId)}
+                                          title={t.harbizId ? 'Quitar esta sesión (no volverá a traerse de Harbiz)' : 'Quitar esta sesión'}
                                         >
                                           ✕
                                         </button>

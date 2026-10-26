@@ -69,6 +69,15 @@ const seguimientosDataPromise = async () => {
   if (remoto !== null) return { default: remoto }
   return import('./data/seguimientos')
 }
+// Entrenos completados en Harbiz que trae la rutina automática (migración
+// 64). No se pintan tal cual: se vuelcan a los seguimientos al cargar (ver
+// aplicarSesionesHarbiz más abajo y utils/sesionesHarbiz.js).
+const sesionesHarbizDataPromise = async () => {
+  const { fetchSesionesHarbiz } = await import('./lib/queries/sesionesHarbiz')
+  const remoto = await fetchSesionesHarbiz()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/sesionesHarbiz')
+}
 const recontactosDataPromise = async () => {
   const { fetchRecontactos } = await import('./lib/queries/recontactos')
   const remoto = await fetchRecontactos()
@@ -309,6 +318,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [objetivosClienteFase, setObjetivosClienteFase] = useState([])
   const [revisionesSemanales, setRevisionesSemanales] = useState([])
   const [problemasCliente, setProblemasCliente] = useState([])
+  const [sesionesHarbiz, setSesionesHarbiz] = useState([])
   const [tareasPersonales, setTareasPersonales] = useState([])
   const [manuales, setManuales] = useState([])
   const [enlacesInteres, setEnlacesInteres] = useState([])
@@ -340,6 +350,18 @@ function InternalApp({ session, rol, onLogout }) {
       objetivosClienteFase, revisionesSemanales, recontactos, ingresosEmpresa, gastosEmpresa, mensajesEquipo]
   )
 
+  // Vuelca a los seguimientos los entrenos de Harbiz que aún no estén y
+  // guarda solo las semanas que cambian. Lo hacen admin y técnicos, que son
+  // los que trabajan la rejilla; a closer y contenido no les toca escribir ahí.
+  const aplicarSesionesHarbiz = async (sesiones, clientesLista, segs) => {
+    if (!(sesiones || []).length || (rol !== 'admin' && rol !== 'tecnico')) return segs
+    const { volcarSesionesHarbiz } = await import('./utils/sesionesHarbiz')
+    const { upsertSeguimientoRemote } = await import('./lib/queries/seguimientos')
+    const { seguimientos: fusion, cambiados } = volcarSesionesHarbiz(sesiones, clientesLista, segs)
+    cambiados.forEach((registro) => upsertSeguimientoRemote(registro))
+    return fusion
+  }
+
   useEffect(() => {
     let cancelled = false
     Promise.all([
@@ -351,12 +373,14 @@ function InternalApp({ session, rol, onLogout }) {
       reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(), objetivosClienteFaseDataPromise(),
       revisionesSemanalesDataPromise(), enlacesInteresDataPromise(), cuestionariosPreviosDataPromise(),
       problemasClienteDataPromise(), contratosClientesDataPromise(), onboardingProgresoDataPromise(),
-    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq, pc, cc, op]) => {
+      sesionesHarbizDataPromise(),
+    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq, pc, cc, op, sh]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
       setVentas(v.default)
-      setSeguimientos(s.default)
+      setSesionesHarbiz(sh.default)
+      setSeguimientos(await aplicarSesionesHarbiz(sh.default, c.default, s.default))
       setRecontactos(rc.default)
       setContenidoIdeas(ci.default)
       setSops(so.default)
@@ -423,14 +447,15 @@ function InternalApp({ session, rol, onLogout }) {
   const refrescarSeguimientoEquipo = async () => {
     setRefrescandoSeguimiento(true)
     try {
-      const [c, t, s, vc, ocf, rs, cs, pc] = await Promise.all([
+      const [c, t, s, vc, ocf, rs, cs, pc, sh] = await Promise.all([
         clientesDataPromise(), teamDataPromise(), seguimientosDataPromise(),
         valoracionesClientesDataPromise(), objetivosClienteFaseDataPromise(), revisionesSemanalesDataPromise(),
-        contactosSemanalesDataPromise(), problemasClienteDataPromise(),
+        contactosSemanalesDataPromise(), problemasClienteDataPromise(), sesionesHarbizDataPromise(),
       ])
       setClientes(c.default)
       setTeam(t.default)
-      setSeguimientos(s.default)
+      setSesionesHarbiz(sh.default)
+      setSeguimientos(await aplicarSesionesHarbiz(sh.default, c.default, s.default))
       setValoracionesClientes(vc.default)
       setObjetivosClienteFase(ocf.default)
       setRevisionesSemanales(rs.default)
@@ -460,7 +485,7 @@ function InternalApp({ session, rol, onLogout }) {
     const _src = datosDemo || {
       clientes, team, ventas, seguimientos, contactosSemanales, valoraciones: valoracionesClientes,
       objetivosClienteFase, revisionesSemanales, recontactos, ingresosEmpresa, gastosEmpresa, mensajesEquipo,
-      cuestionariosPrevios, problemasCliente, contratosClientes, onboardingProgreso,
+      cuestionariosPrevios, problemasCliente, contratosClientes, onboardingProgreso, sesionesHarbiz,
     }
     const {
       clientes: dClientes, team: dTeam, ventas: dVentas, seguimientos: dSeguimientos,
@@ -479,13 +504,15 @@ function InternalApp({ session, rol, onLogout }) {
       contratosClientes: dContratos = [],
       // Nombres de clientes reales: igual, fuera en modo demo.
       onboardingProgreso: dOnboarding = [],
+      // Nombres y emails tal cual vienen de Harbiz: fuera en modo demo.
+      sesionesHarbiz: dHarbiz = [],
     } = _src
 
     switch (vista) {
       case 'dashboard':    return <Dashboard clientes={dClientes} onboardingProgreso={dOnboarding} contratos={dContratos} cuestionarios={dCuestionarios} ventas={dVentas} recontactos={dRecontactos} tareasPersonales={tareasPersonales} seguimientos={dSeguimientos} contactosSemanales={dContactos} revisionesSemanales={dRevisiones} onNavigate={irVistaPermitida} />
       case 'ventas':       return <Ventas ventas={dVentas} setVentas={setVentas} team={dTeam} setClientes={setClientes} setIngresosEmpresa={setIngresosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} recontactos={dRecontactos} setRecontactos={setRecontactos} />
-      case 'clientes':     return <ClientesAdmin clientes={dClientes} contratos={dContratos} onboardingProgreso={dOnboarding} setOnboardingProgreso={setOnboardingProgreso} cuestionariosPrevios={dCuestionarios} setCuestionariosPrevios={setCuestionariosPrevios} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} miEmail={session?.user?.email} />
-      case 'clientes-equipo': return <ClientesEquipo clientes={dClientes} cuestionariosPrevios={dCuestionarios} team={dTeam} miEmail={session?.user?.email} rol={rol} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
+      case 'clientes':     return <ClientesAdmin clientes={dClientes} contratos={dContratos} onboardingProgreso={dOnboarding} setOnboardingProgreso={setOnboardingProgreso} cuestionariosPrevios={dCuestionarios} setCuestionariosPrevios={setCuestionariosPrevios} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} sesionesHarbiz={dHarbiz} miEmail={session?.user?.email} />
+      case 'clientes-equipo': return <ClientesEquipo clientes={dClientes} cuestionariosPrevios={dCuestionarios} team={dTeam} miEmail={session?.user?.email} rol={rol} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} sesionesHarbiz={dHarbiz} setSesionesHarbiz={setSesionesHarbiz} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
       case 'equipo':       return <Equipo team={dTeam} setTeam={setTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} valoraciones={dValoraciones} objetivosClienteFase={dObjetivos} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} miEmail={session?.user?.email} />
       case 'mi-ficha':     return <MiFicha team={dTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} contactosSemanales={dContactos} gastosEmpresa={dGastosEmpresa} tareas={tareasPersonales} revisionesSemanales={dRevisiones} miEmail={session?.user?.email} onNavigate={irVistaPermitida} />
       case 'comunicacion': return <MuroEquipo mensajes={dMensajes} setMensajes={setMensajesEquipo} team={dTeam} miEmail={session?.user?.email} rol={rol} />

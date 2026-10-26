@@ -8,6 +8,9 @@ import { reasignarCuestionario } from '../lib/queries/cuestionariosPrevios'
 import FasesObjetivos from './FasesObjetivos'
 import ContratosFirmados from './ContratosFirmados'
 import OnboardingClientes from './OnboardingClientes'
+import HarbizSinEmparejar from './HarbizSinEmparejar'
+import { volcarSesionesHarbiz } from '../utils/sesionesHarbiz'
+import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { estadoOnboarding } from '../utils/onboardingEstado'
 import { contratoDeCliente, imprimirContrato } from '../utils/contrato'
 import { normalizaNombre } from '../utils/cuestionarioPrevio'
@@ -153,7 +156,7 @@ function MultiTrabajadorSelect({ options, selected, onChange }) {
   )
 }
 
-export default function ClientesAdmin({ contratos = [], onboardingProgreso = [], setOnboardingProgreso, cuestionariosPrevios = [], setCuestionariosPrevios, clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, problemas = [], setProblemas, miEmail }) {
+export default function ClientesAdmin({ contratos = [], onboardingProgreso = [], setOnboardingProgreso, cuestionariosPrevios = [], setCuestionariosPrevios, clientes, setClientes, team, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, contactosSemanales = [], setContactosSemanales, ingresosEmpresa = [], setIngresosEmpresa, gastosEmpresa = [], setGastosEmpresa, tarifasPasarela = [], objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, problemas = [], setProblemas, sesionesHarbiz = [], miEmail }) {
   const [vista, setVista] = useState('listado')
   const [search, setSearch] = useState('')
   // Por defecto se ven los clientes en curso: ACTIVO y EN PAUSA (menos ruido
@@ -338,7 +341,8 @@ export default function ClientesAdmin({ contratos = [], onboardingProgreso = [],
     if (isEditing && editingIndex !== null) {
       const nombreViejo = clientes[editingIndex]?.Nombre || ''
       const nombreNuevo = formData.nombre
-      setClientes(prev => prev.map((item, index) => index === editingIndex ? clienteActualizado : item))
+      // El emparejamiento con Harbiz no está en el formulario: se conserva.
+      setClientes(prev => prev.map((item, index) => index === editingIndex ? { ...clienteActualizado, 'Harbiz ID': item['Harbiz ID'] || '' } : item))
       updateClienteRemote(id, clienteActualizado)
 
       // Si se ha corregido el nombre, arrastra ese cambio a todo el
@@ -451,6 +455,24 @@ export default function ClientesAdmin({ contratos = [], onboardingProgreso = [],
             reasignarCuestionario(id, nombre)
             if (setCuestionariosPrevios) {
               setCuestionariosPrevios((prev) => prev.map((c) => (c.id === id ? { ...c, clienteNombre: nombre } : c)))
+            }
+          }}
+        />
+
+        {/* Clientes de Harbiz cuyo email no casa con ninguna ficha. Al
+            emparejar, sus entrenos se vuelcan ya a la rejilla sin esperar a
+            recargar. */}
+        <HarbizSinEmparejar
+          sesiones={sesionesHarbiz}
+          clientes={clientes}
+          onEmparejar={(cliente, harbizClienteId) => {
+            updateClienteRemote(cliente.id, { 'Harbiz ID': harbizClienteId })
+            const clientesNuevos = clientes.map((c) => (c.id === cliente.id ? { ...c, 'Harbiz ID': harbizClienteId } : c))
+            setClientes(clientesNuevos)
+            if (setSeguimientos) {
+              const { seguimientos: fusion, cambiados } = volcarSesionesHarbiz(sesionesHarbiz, clientesNuevos, seguimientos)
+              cambiados.forEach((registro) => upsertSeguimientoRemote(registro))
+              setSeguimientos(fusion)
             }
           }}
         />

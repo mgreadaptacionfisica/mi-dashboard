@@ -3142,6 +3142,15 @@ textarea {
   text-decoration: line-through;
 }
 
+/* Sesión que llegó sola desde Harbiz (utils/sesionesHarbiz.js): mismo chip,
+   solo una marca para distinguirla de las apuntadas a mano. */
+.registro-rapido-chip-harbiz {
+  margin-right: 3px;
+  font-size: 10px;
+  text-decoration: none;
+  display: inline-block;
+}
+
 .registro-rapido-add {
   border: 1px dashed var(--color-border);
   background: none;
