@@ -44,7 +44,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 64; la siguiente sería la 65). Deben ser **idempotentes**
+  (la última es la 65; la siguiente sería la 66). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -177,8 +177,10 @@ las páginas del cliente son públicas), Operaciones
     con fecha, con buscador. No guarda nada nuevo: lee las mismas filas de
     `seguimientos` y `contactos_semanales` (nada se borra al cambiar de semana).
   - **Sesiones desde Harbiz** (`utils/sesionesHarbiz.js`, tabla
-    `sesiones_harbiz`, migración 64): una rutina de Claude en la nube (6:00 y
-    18:00) lee los entrenos completados en Harbiz y los deja en esa tabla
+    `sesiones_harbiz`, migraciones 64 y 65): una rutina de Claude en la nube
+    (6:00 y 18:00) lee los entrenos completados en Harbiz (calendario de cada
+    cliente con actividad, id `ev-{evento}`; el feed de actividad reciente
+    NO sirve para esto, su contador por día falla) y los deja en esa tabla
     llamando a `registrar_sesiones_harbiz(clave, sesiones)` (clave en
     `robot_claves`, no es un usuario del panel). El panel, al cargar (admin y
     técnico), los **vuelca** a `dias -> tareas` como sesión sin revisar con

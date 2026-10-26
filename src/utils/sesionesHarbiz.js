@@ -44,8 +44,9 @@ export function clienteDeHarbiz(clientes, harbizClienteId, harbizEmail) {
   return lista.find((c) => String(c.Email || '').trim().toLowerCase() === email) || null
 }
 
-// Texto del chip. Harbiz solo da el título del último entreno de cada día,
-// así que si hizo dos el primero puede venir sin nombre.
+// Texto del chip: el nombre del entreno en Harbiz. Desde la migración 65
+// siempre llega (se lee del calendario del cliente); el genérico queda por
+// si algún entreno no tiene nombre.
 export function textoSesionHarbiz(sesion) {
   if (sesion.titulo) return sesion.titulo
   return sesion.tipo === 'cardio' ? 'Cardio' : 'Entreno'
@@ -69,7 +70,12 @@ export function volcarSesionesHarbiz(sesiones, clientes, seguimientos) {
 
   const pendientes = (sesiones || [])
     .filter((s) => !s.descartada)
-    .sort((a, b) => (a.fecha === b.fecha ? a.n - b.n : a.fecha < b.fecha ? -1 : 1))
+    // Por día y, dentro del día, por la hora a la que lo hizo (así en la
+    // rejilla salen en el orden en que entrenó).
+    .sort((a, b) => {
+      if (a.fecha !== b.fecha) return a.fecha < b.fecha ? -1 : 1
+      return String(a.hechaEn || '').localeCompare(String(b.hechaEn || '')) || a.n - b.n
+    })
 
   pendientes.forEach((sesion) => {
     const cliente = clienteDeHarbiz(clientes, sesion.harbizClienteId, sesion.harbizEmail)
