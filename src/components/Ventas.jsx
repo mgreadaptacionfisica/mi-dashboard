@@ -78,6 +78,15 @@ function addDaysISO(fechaISO, dias) {
   return fecha.toISOString().slice(0, 10)
 }
 
+// Resumen legible de la atribución que trae GHL (66_citas_ghl.sql), solo
+// con lo que haya: "facebook / paid · Campaña hombro · Anuncio vídeo 3".
+function textoAtribucion(atribucion) {
+  if (!atribucion) return ''
+  const fuente = [atribucion.fuente, atribucion.medio].filter(Boolean).join(' / ')
+  return [fuente, atribucion.campana, atribucion.conjunto, atribucion.anuncio, atribucion.contenido]
+    .filter(Boolean).join(' · ')
+}
+
 function LeadCard({ lead, onOpen }) {
   return (
     <button type="button" className="lead-card" onClick={onOpen}>
@@ -91,6 +100,9 @@ function LeadCard({ lead, onOpen }) {
       </div>
       <p className="lead-name">{lead.nombre}</p>
       <p className="lead-closer">👤 {lead.closer || 'Sin closer'}</p>
+      {lead.ghlCitaId && (
+        <p className="lead-checks">📅 Desde GHL{lead.atribucion?.campana ? ` · ${lead.atribucion.campana}` : ''}</p>
+      )}
       {lead.etapa === 'agendada' && (
         <p className="lead-checks">
           {lead.preLlamada?.whatsapp ? '✅' : '⬜'} WhatsApp · {lead.preLlamada?.prellamada ? '✅' : '⬜'} Prellamada · {lead.preLlamada?.recordatorio ? '✅' : '⬜'} Recordatorio
@@ -898,6 +910,13 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
                   </select>
                 </div>
               </div>
+
+              {(activeLead.ghlCitaId || activeLead.atribucion) && (
+                <div>
+                  <label className="lead-detail-label">📅 Reservó en el calendario de GHL · de dónde vino</label>
+                  <p className="lead-checks">{textoAtribucion(activeLead.atribucion) || 'GHL no trae la fuente (entró sin UTMs ni anuncio).'}</p>
+                </div>
+              )}
 
               <div className="lead-detail-row" style={{ gridTemplateColumns: activeLead.etapaAnterior && activeLead.etapa !== 'ganada' ? '1fr auto' : '1fr' }}>
                 <span className="status-pill status-activo">{ETAPAS.find((e) => e.id === activeLead.etapa)?.label}</span>

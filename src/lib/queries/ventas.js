@@ -25,6 +25,11 @@ function fromRow(row) {
     // De dónde llegó el lead: 'instagram' | 'whatsapp' | null (sin indicar,
     // p. ej. los leads anteriores a 61_canal_origen_ventas.sql).
     canalOrigen: row.canal_origen || null,
+    // Leads que entran solos desde el calendario de GHL (66_citas_ghl.sql):
+    // la cita de la que salen y de qué anuncio/campaña vinieron según GHL
+    // { fuente, medio, campana, contenido, anuncio, conjunto, url… }.
+    ghlCitaId: row.ghl_cita_id || null,
+    atribucion: row.atribucion || null,
     notasSeguimiento: row.notas_seguimiento || [],
     grabacionUrl: row.grabacion_url || '',
     // Lista de intentos de llamada (ver 54_historial_llamadas_ventas.sql):
@@ -57,6 +62,8 @@ const CAMPO_A_COLUMNA = {
   seguimiento: 'seguimiento',
   origenSeguimiento: 'origen_seguimiento',
   canalOrigen: 'canal_origen',
+  ghlCitaId: 'ghl_cita_id',
+  atribucion: 'atribucion',
   notasSeguimiento: 'notas_seguimiento',
   grabacionUrl: 'grabacion_url',
   historialLlamadas: 'historial_llamadas',

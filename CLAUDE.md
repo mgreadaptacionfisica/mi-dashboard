@@ -44,7 +44,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 65; la siguiente sería la 66). Deben ser **idempotentes**
+  (la última es la 66; la siguiente sería la 67). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -284,6 +284,19 @@ las páginas del cliente son públicas), Operaciones
     `VARIANTES_ONBOARDING`) lo junta. Quien termina sale en 🚀 arriba de
     Clientes y en el Dashboard hasta que Raúl marca `contactado` (grupo de
     WhatsApp creado / ya le ha escrito).
+- **Citas de GHL → Pipeline** (migración 66, `registrar_cita_ghl(jsonb)`):
+  la landing y el calendario de llamadas están en GoHighLevel. Un Workflow
+  de GHL ("cita reservada" y "estado de cita") llama a esa función con la
+  acción Webhook normal: `?apikey=` en la URL y la clave del robot
+  (`robot_claves`, nombre `ghl`) en Custom Data. El parámetro jsonb va SIN
+  nombre para que PostgREST le pase el JSON de GHL tal cual. Crea el lead en
+  "Agendada" (con `atribucion` = UTMs/anuncio), reagenda por `ghl_cita_id`
+  o por contacto/teléfono/email (**nunca por nombre**) y una cancelación hace
+  lo mismo que "Cancelada → Pasar a seguimiento". Lo demás (realizada, no
+  show, compra) lo sigue marcando la closer en el panel: no se usan las
+  Oportunidades de GHL a propósito. Todo lo recibido queda en `ghl_eventos`.
+  El WhatsApp NO está conectado a GHL: quien escribe por WhatsApp sin
+  reservar no llega por aquí.
 - **Supabase (plan free) se pausa** tras días sin uso: si todo aparece a 0, hay
   que reactivar el proyecto en supabase.com. No es un bug del código.
 
