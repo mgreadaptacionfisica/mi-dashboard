@@ -44,7 +44,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 66; la siguiente sería la 67). Deben ser **idempotentes**
+  (la última es la 67; la siguiente sería la 68). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -99,6 +99,15 @@ las páginas del cliente son públicas), Operaciones
   mes en que sale el dinero. Mi Ficha enseña lo mismo en solo lectura (técnicos y closers: el closer
   ve su comisión, tramos e historial; el cálculo vive en
   `utils/comisionesCloser.js` y lo comparten Equipo y Mi Ficha).
+- **Protocolo de llamada** (`utils/protocoloLlamada.js` + `ProtocoloLlamada.jsx`,
+  en la ficha del lead): pasos pre-llamada en `preLlamada[clave]` y los del
+  seguimiento de 48 h en `seguimiento.pasos`, sin columna nueva. Las claves
+  `whatsapp`, `prellamada` y `recordatorio` son las casillas antiguas y no se
+  renombran: el Embudo y la ficha del closer comparan la asistencia con ellas.
+  Las plantillas abren WhatsApp como borrador (`wa.me`), no envían nada.
+  El enlace de la videollamada (`enlace_llamada`, migración 67) llega de
+  GHL con la cita (`calendar.address` o Custom Data `enlace`) o se escribe
+  en la ficha.
 - **Hotmart/seQura**: una venta financiada se registra como UN cobro (Hotmart
   adelanta el grueso y libera el resto), no como plazos mensuales.
 - **Seguimiento y Valoración** (`ClientesEquipo.jsx`, sección `clientes-equipo`)

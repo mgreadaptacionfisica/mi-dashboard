@@ -2173,6 +2173,79 @@ tbody td {
   margin: 2px 0 0;
 }
 
+/* Protocolo de llamada en la ficha del lead (ProtocoloLlamada.jsx): un paso
+   por fila; los hechos se pliegan a una línea para que se vea lo pendiente. */
+.protocolo-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.protocolo-paso {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.protocolo-paso-hecho {
+  opacity: 0.6;
+}
+
+.protocolo-paso-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.protocolo-paso-titulo {
+  flex: 1;
+  font-weight: 600;
+}
+
+.protocolo-paso-cuando {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.protocolo-paso-ayuda {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 4px 0 0 24px;
+}
+
+.protocolo-paso-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0 24px;
+}
+
+.protocolo-paso-acciones a {
+  text-decoration: none;
+}
+
+.protocolo-guion-pasos {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.protocolo-guion-pasos > li {
+  margin-bottom: 8px;
+}
+
+.protocolo-guion-pasos ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: var(--color-text-secondary);
+}
+
 .active-toggle {
   background: var(--color-primary, #008A41) !important;
   color: #fff !important;

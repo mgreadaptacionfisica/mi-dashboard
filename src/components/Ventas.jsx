@@ -11,6 +11,8 @@ import { construirComisionCobro } from '../utils/comisionesHelpers'
 import { generarPlazosPorNumero, generarPlazosDesdeFecha } from '../lib/plazos'
 import { calcularEmbudo, semaforo } from '../utils/embudoVentas'
 import { enlaceOnboarding, onboardingDesdeVenta } from '../utils/contrato'
+import ProtocoloLlamada, { GuionLlamada } from './ProtocoloLlamada'
+import { PASOS_PRELLAMADA, PASOS_SEGUIMIENTO, progresoPrellamada } from '../utils/protocoloLlamada'
 
 const ETAPAS = [
   { id: 'agendada', label: 'Agendada', hint: 'Pre-llamada' },
@@ -103,11 +105,14 @@ function LeadCard({ lead, onOpen }) {
       {lead.ghlCitaId && (
         <p className="lead-checks">📅 Desde GHL{lead.atribucion?.campana ? ` · ${lead.atribucion.campana}` : ''}</p>
       )}
-      {lead.etapa === 'agendada' && (
-        <p className="lead-checks">
-          {lead.preLlamada?.whatsapp ? '✅' : '⬜'} WhatsApp · {lead.preLlamada?.prellamada ? '✅' : '⬜'} Prellamada · {lead.preLlamada?.recordatorio ? '✅' : '⬜'} Recordatorio
-        </p>
-      )}
+      {lead.etapa === 'agendada' && (() => {
+        const progreso = progresoPrellamada(lead)
+        return (
+          <p className="lead-checks">
+            {progreso.siguiente ? `☑ Protocolo ${progreso.hechos}/${progreso.total} · Siguiente: ${progreso.siguiente.titulo}` : '✅ Protocolo pre-llamada completo'}
+          </p>
+        )
+      })()}
       {lead.objeciones?.length > 0 && (
         <p className="lead-objections">⚠️ {lead.objeciones.length} objeción{lead.objeciones.length === 1 ? '' : 'es'}</p>
       )}
@@ -299,6 +304,16 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
     if (!activeLead) return
     updateLead(activeLead.id, {
       preLlamada: { ...activeLead.preLlamada, [key]: !activeLead.preLlamada?.[key] },
+    })
+  }
+
+  // Pasos del seguimiento de 48 h (resumen, audio, pregunta cerrada…): viven
+  // dentro del jsonb `seguimiento` para no necesitar columna nueva.
+  const toggleSeguimientoPaso = (key) => {
+    if (!activeLead) return
+    const pasos = activeLead.seguimiento?.pasos || {}
+    updateLead(activeLead.id, {
+      seguimiento: { ...activeLead.seguimiento, pasos: { ...pasos, [key]: !pasos[key] } },
     })
   }
 
@@ -927,6 +942,24 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
                 )}
               </div>
 
+              {activeLead.etapa === 'agendada' && (
+                <div>
+                  <label className="lead-detail-label">🔗 Enlace de la llamada{activeLead.ghlCitaId ? ' (llega solo de GHL)' : ''}</label>
+                  <div className="lead-detail-actions">
+                    <input
+                      type="url"
+                      placeholder="Enlace de Meet / Zoom (lo usan los mensajes del protocolo)"
+                      value={activeLead.enlaceLlamada || ''}
+                      onChange={(e) => updateLead(activeLead.id, { enlaceLlamada: e.target.value })}
+                      style={{ flex: 1 }}
+                    />
+                    {activeLead.enlaceLlamada && (
+                      <a className="secondary-action" href={activeLead.enlaceLlamada} target="_blank" rel="noreferrer">Abrir ↗</a>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="lead-detail-label">📄 Informe prellamada (ZeroChats, Calendly...)</label>
                 <div className="lead-detail-actions">
@@ -962,13 +995,10 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
               {activeLead.etapa === 'agendada' && !showReagendar && !showResultadoNoRealizada && !showElegirSeguimiento && (
                 <>
                   <div>
-                    <label className="lead-detail-label">Checklist pre-llamada</label>
-                    <div className="lead-checklist">
-                      <label><input type="checkbox" checked={!!activeLead.preLlamada?.whatsapp} onChange={() => toggleCheck('whatsapp')} /> Contacto por WhatsApp</label>
-                      <label><input type="checkbox" checked={!!activeLead.preLlamada?.prellamada} onChange={() => toggleCheck('prellamada')} /> Enviar prellamada</label>
-                      <label><input type="checkbox" checked={!!activeLead.preLlamada?.recordatorio} onChange={() => toggleCheck('recordatorio')} /> Recordatorio de llamada</label>
-                    </div>
+                    <label className="lead-detail-label">Protocolo pre-llamada</label>
+                    <ProtocoloLlamada pasos={PASOS_PRELLAMADA} estado={activeLead.preLlamada} onToggle={toggleCheck} lead={activeLead} />
                   </div>
+                  <GuionLlamada />
                   <div className="lead-detail-actions">
                     <button type="button" className="primary-action" onClick={marcarLlamadaRealizada}>Llamada realizada →</button>
                     <button type="button" className="secondary-action" onClick={() => setShowResultadoNoRealizada(true)}>Llamada no realizada…</button>
@@ -1031,6 +1061,12 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
                   <p className="plan-subtitle-inline">
                     {activeLead.origenSeguimiento === 'reagendar' ? 'Seguimiento — pendiente de reagendar' : 'Seguimiento'}
                   </p>
+                  {activeLead.origenSeguimiento !== 'reagendar' && (
+                    <div style={{ marginBottom: 10 }}>
+                      <label className="lead-detail-label">Seguimiento de 48 h</label>
+                      <ProtocoloLlamada pasos={PASOS_SEGUIMIENTO} estado={activeLead.seguimiento?.pasos} onToggle={toggleSeguimientoPaso} lead={activeLead} />
+                    </div>
+                  )}
                   {activeLead.origenSeguimiento === 'reagendar' && (
                     <p className="lead-detail-label" style={{ marginBottom: 8 }}>
                       La llamada se marcó como "{RESULTADO_NO_REALIZADA.find((r) => r.id === activeLead.resultadoLlamada)?.label || 'no realizada'}". Fecha de aviso en la pestaña 🔁 Recontactar.

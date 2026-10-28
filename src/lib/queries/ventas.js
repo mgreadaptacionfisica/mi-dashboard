@@ -30,6 +30,10 @@ function fromRow(row) {
     // { fuente, medio, campana, contenido, anuncio, conjunto, url… }.
     ghlCitaId: row.ghl_cita_id || null,
     atribucion: row.atribucion || null,
+    // Enlace de la videollamada (Meet/Zoom), de GHL o escrito a mano en la
+    // ficha — ver 67_enlace_llamada_ghl.sql. Lo usan las plantillas del
+    // protocolo de llamada.
+    enlaceLlamada: row.enlace_llamada || '',
     notasSeguimiento: row.notas_seguimiento || [],
     grabacionUrl: row.grabacion_url || '',
     // Lista de intentos de llamada (ver 54_historial_llamadas_ventas.sql):
@@ -64,6 +68,7 @@ const CAMPO_A_COLUMNA = {
   canalOrigen: 'canal_origen',
   ghlCitaId: 'ghl_cita_id',
   atribucion: 'atribucion',
+  enlaceLlamada: 'enlace_llamada',
   notasSeguimiento: 'notas_seguimiento',
   grabacionUrl: 'grabacion_url',
   historialLlamadas: 'historial_llamadas',
