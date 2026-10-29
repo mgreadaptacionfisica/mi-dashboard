@@ -94,7 +94,9 @@ export function enmascararTodo(d) {
     // los resúmenes semanales): también se enmascaran.
     dias: Object.fromEntries(Object.entries(s.dias || {}).map(([dia, info]) => [dia, {
       ...info,
-      tareas: (info?.tareas || []).map((tarea) => (tarea.nota ? { ...tarea, nota: reemplazaEnTexto(tarea.nota, pares()) } : tarea)),
+      // Lo que escribe el cliente en Harbiz no se enseña: texto libre de salud
+      // sin versión ficticia (como los problemas y los cuestionarios).
+      tareas: (info?.tareas || []).map((tarea) => ({ ...tarea, harbizDetalle: null, ...(tarea.nota ? { nota: reemplazaEnTexto(tarea.nota, pares()) } : {}) })),
     }])),
     cambiosPendientes: (s.cambiosPendientes || []).map((c) => ({ ...c, texto: reemplazaEnTexto(c.texto, pares()) })),
     revisiones: (s.revisiones || []).map((r) => ({ ...r, persona: r.persona ? worker.get(r.persona) : r.persona })),

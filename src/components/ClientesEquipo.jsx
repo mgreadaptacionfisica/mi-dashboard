@@ -23,6 +23,7 @@ import { crearProblema, problemaDeSesion, contarAbiertos, esAbierto } from '../u
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { descartarSesionHarbizRemote } from '../lib/queries/sesionesHarbiz'
 import { horaSesionHarbiz } from '../utils/sesionesHarbiz'
+import DetalleHarbiz from './DetalleHarbiz'
 import { upsertProblemaClienteRemote } from '../lib/queries/problemasCliente'
 import { seguimientoTecnico } from '../utils/equipoHelpers'
 
@@ -915,6 +916,8 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                           ✕
                                         </button>
                                       </div>
+                                      {/* Lo que dejó escrito el cliente en Harbiz (solo lectura). */}
+                                      <DetalleHarbiz detalle={t.harbizDetalle} />
                                       {notaCell === notaKey ? (
                                         <form
                                           className="registro-rapido-notaform"

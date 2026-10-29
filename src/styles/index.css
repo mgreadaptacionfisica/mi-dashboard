@@ -6044,6 +6044,39 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
   max-width: 100%;
 }
 
+/* Lo que escribió el cliente en Harbiz (DetalleHarbiz.jsx). Ámbar para no
+   confundirlo con la nota del entrenador, que es azul. */
+.harbiz-detalle,
+.harbiz-detalle-cifras {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: #78350f;
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+
+.harbiz-detalle summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.harbiz-detalle-general {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+
+.harbiz-detalle ul {
+  margin: 4px 0 0;
+  padding-left: 14px;
+}
+
+.harbiz-detalle li {
+  margin-bottom: 2px;
+  white-space: pre-wrap;
+}
+
 .seguimiento-tarea-nota {
   font-size: 11px;
   color: #1e3a8a;

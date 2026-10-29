@@ -3,11 +3,11 @@ import { historialCliente } from '../utils/seguimientoHelpers'
 
 // Historial del cliente (vista 📜 del modal de Seguimiento): todo lo apuntado
 // semana a semana y con fecha — problemas y lo que hicimos por ellos, notas
-// de sesión, cambios, contacto y comentario semanal — con un buscador para
+// de sesión, lo que comentó el cliente en Harbiz, cambios, contacto y comentario semanal — con un buscador para
 // encontrar cuándo pasó algo ("dolor", "press", "hombro"…). Solo lectura; los
 // datos son los de siempre (ver historialCliente() en utils/seguimientoHelpers.js).
 
-const ICONO = { nota: '💬', cambio: '🔧', contacto: '🤝', comentario: '📝', problema: '🚨', accion: '🔧', resuelto: '✅' }
+const ICONO = { nota: '💬', cliente: '🗣️', cambio: '🔧', contacto: '🤝', comentario: '📝', problema: '🚨', accion: '🔧', resuelto: '✅' }
 
 // Sin tildes ni mayúsculas, para que "dolor" encuentre "Dolor" y "rotacion"
 // encuentre "rotación".

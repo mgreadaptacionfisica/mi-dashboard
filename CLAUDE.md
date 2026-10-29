@@ -44,7 +44,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 67; la siguiente sería la 68). Deben ser **idempotentes**
+  (la última es la 68; la siguiente sería la 69). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -199,6 +199,12 @@ las páginas del cliente son públicas), Operaciones
     poner. Quitar con ✕ la marca `descartada` (si no, vuelve). Emparejamiento
     por `harbiz_id` de la ficha o por email, **nunca por nombre**; los que no
     casan salen arriba de Clientes para emparejar a mano.
+    **Lo que escribe el cliente** al completar el entreno (comentario
+    general, RPE, duración y comentario por ejercicio) llega en `detalle`
+    (migración 68), se copia a la sesión como `harbizDetalle` y sale plegado
+    bajo el chip (`DetalleHarbiz.jsx`, ámbar; la nota del entrenador es la
+    azul), en el modal, en 📝 Resúmenes y en el 📜 Historial. Pesos y
+    repeticiones no se traen. En modo demo no se enseña.
   - **Filtro por trabajador** (`filtroAdmin`, solo admin): chips arriba con
     "Todo el equipo" + uno por trabajador (con su nº de activos) + "Sin asignar".
     Filtra en `misClientesTodos`, así que afecta a TODA la sección (las dos

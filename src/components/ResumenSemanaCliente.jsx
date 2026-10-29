@@ -6,6 +6,7 @@
 // exactamente lo mismo que ve el trabajador.
 export default function ResumenSemanaCliente({ resumen, mostrarComentario = true }) {
   const { sesiones, notas, cambios, contacto, comentario } = resumen
+  const comentariosCliente = resumen.comentariosCliente || []
   // Los problemas van arriba del todo: de una semana, lo primero que hay que
   // saber es si ha pasado algo y qué se ha hecho, no cuántas sesiones hubo.
   const problemas = resumen.problemas || { nuevos: [], resueltos: [], acciones: [], abiertos: [] }
@@ -47,6 +48,24 @@ export default function ResumenSemanaCliente({ resumen, mostrarComentario = true
           <ul>
             {notas.map((n, i) => (
               <li key={i}><strong>{n.dia} · {n.sesion}:</strong> {n.nota}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {comentariosCliente.length > 0 && (
+        <div className="resumen-semana-bloque">
+          <span className="resumen-semana-etq">🗣️ Lo que ha comentado el cliente en Harbiz</span>
+          <ul>
+            {comentariosCliente.map((c, i) => (
+              <li key={i}>
+                <strong>{c.dia} · {c.sesion}{c.rpe ? ` (RPE ${c.rpe})` : ''}:</strong> {c.comentario}
+                {c.ejercicios.length > 0 && (
+                  <ul>
+                    {c.ejercicios.map((e, j) => <li key={j}><strong>{e.nombre}:</strong> {e.comentario}</li>)}
+                  </ul>
+                )}
+              </li>
             ))}
           </ul>
         </div>

@@ -15,6 +15,7 @@ import {
 import ResumenSemanaCliente from './ResumenSemanaCliente'
 import HistorialCliente from './HistorialCliente'
 import ProblemasCliente from './ProblemasCliente'
+import DetalleHarbiz from './DetalleHarbiz'
 import { contarAbiertos } from '../utils/problemasCliente'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
@@ -297,6 +298,7 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
                       >
                         {tarea.revisado ? '✅' : '⬜'} {tarea.texto}
                       </span>
+                      <DetalleHarbiz detalle={tarea.harbizDetalle} />
                       {tarea.nota && <span className="seguimiento-tarea-nota">💬 {tarea.nota}</span>}
                     </span>
                   ))}

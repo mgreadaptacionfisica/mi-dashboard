@@ -61,6 +61,46 @@ export function horaSesionHarbiz(hechaEn) {
   return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 }
 
+// Lo que escribió el cliente al completar el entreno (columna `detalle`,
+// migración 68), ya limpio: solo lo que tiene contenido, o null si no hay
+// nada. Viene de un robot, así que no se da nada por hecho (tipos, vacíos).
+export function detalleHarbizLimpio(detalle) {
+  if (!detalle || typeof detalle !== 'object') return null
+  const texto = (v) => String(v ?? '').trim()
+  const comentario = texto(detalle.comentario)
+  // RPE "0" o vacío = no lo puso (Harbiz guarda la cadena vacía).
+  const rpe = texto(detalle.rpe) && texto(detalle.rpe) !== '0' ? texto(detalle.rpe) : ''
+  const minutos = Number(detalle.minutos) > 0 ? Math.round(Number(detalle.minutos)) : null
+  const ejercicios = (Array.isArray(detalle.ejercicios) ? detalle.ejercicios : [])
+    .map((e) => ({ nombre: texto(e?.nombre), comentario: texto(e?.comentario) }))
+    .filter((e) => e.comentario)
+  if (!comentario && !rpe && !minutos && ejercicios.length === 0) return null
+  return { comentario, rpe, minutos, ejercicios }
+}
+
+// "RPE 7 · 1 h 09 min": la línea corta que va debajo del chip.
+export function cifrasDetalleHarbiz(detalle) {
+  if (!detalle) return ''
+  const partes = []
+  if (detalle.rpe) partes.push(`RPE ${detalle.rpe}`)
+  if (detalle.minutos) {
+    const h = Math.floor(detalle.minutos / 60)
+    const m = detalle.minutos % 60
+    partes.push(h ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`)
+  }
+  return partes.join(' · ')
+}
+
+// Los comentarios del cliente como líneas sueltas (general primero, luego por
+// ejercicio). Lo usan el resumen semanal y el historial.
+export function comentariosDetalleHarbiz(detalle) {
+  if (!detalle) return []
+  return [
+    ...(detalle.comentario ? [{ ejercicio: '', texto: detalle.comentario }] : []),
+    ...detalle.ejercicios.map((e) => ({ ejercicio: e.nombre, texto: e.comentario })),
+  ]
+}
+
 // Mete en los seguimientos las sesiones de Harbiz que aún no están.
 // Devuelve la lista completa ya fusionada y, aparte, solo los registros que
 // han cambiado (para guardarlos). Solo clientes ACTIVOS: los que están EN
@@ -91,14 +131,24 @@ export function volcarSesionesHarbiz(sesiones, clientes, seguimientos) {
     const tareas = actual.dias?.[diaId]?.tareas || diaVacio().tareas
 
     const yaEsta = tareas.findIndex((t) => t.harbizId === sesion.id)
+    // Se copia a la sesión (como la hora) para que el modal, el resumen y el
+    // historial lo lean de `seguimientos` sin tener que cruzar con esta tabla.
+    const detalle = detalleHarbizLimpio(sesion.detalle)
     let nuevasTareas = null
     if (yaEsta >= 0) {
+      const t = tareas[yaEsta]
+      let cambio = null
       // Llegó primero sin título y ahora ya se sabe: se completa, salvo que
       // alguien lo haya cambiado a mano.
-      const t = tareas[yaEsta]
       if (t.harbizSinTitulo && sesion.titulo) {
-        nuevasTareas = tareas.map((x, i) => (i === yaEsta ? { ...x, texto: textoSesionHarbiz(sesion), harbizSinTitulo: false } : x))
+        cambio = { texto: textoSesionHarbiz(sesion), harbizSinTitulo: false }
       }
+      // El cliente puede comentar después de marcarlo (o la sesión se volcó
+      // antes de la migración 68): se pone al día con lo último de Harbiz.
+      if (detalle && JSON.stringify(t.harbizDetalle || null) !== JSON.stringify(detalle)) {
+        cambio = { ...cambio, harbizDetalle: detalle }
+      }
+      if (cambio) nuevasTareas = tareas.map((x, i) => (i === yaEsta ? { ...x, ...cambio } : x))
     } else {
       // Sin el tope de 3 por día de la rejilla: ese tope es para no apuntar de
       // más a mano, pero lo que viene de Harbiz pasó de verdad (y con los
@@ -110,6 +160,7 @@ export function volcarSesionesHarbiz(sesiones, clientes, seguimientos) {
         harbizId: sesion.id,
         harbizHechaEn: sesion.hechaEn || null,
         harbizSinTitulo: !sesion.titulo,
+        ...(detalle ? { harbizDetalle: detalle } : {}),
       }]
     }
     if (!nuevasTareas) return

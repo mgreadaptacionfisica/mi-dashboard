@@ -409,9 +409,16 @@ export function motivosNoCierre({ seguimiento, contacto, problemas = [], cliente
 export function resumenSemanaCliente({ seguimiento, contacto, problemas = [], clienteNombre, semana }) {
   const sesiones = progresoSemana(seguimiento)
   const notas = []
+  const comentariosCliente = []
   DIAS_SEMANA.forEach((d) => {
     ;(seguimiento?.dias?.[d.id]?.tareas || []).forEach((t) => {
       if ((t.nota || '').trim()) notas.push({ dia: d.label, sesion: t.texto, nota: t.nota.trim(), hecha: Boolean(t.revisado) })
+      // Lo que escribió el cliente en Harbiz al completarla (ya limpio en el
+      // volcado, ver utils/sesionesHarbiz.js).
+      const det = t.harbizDetalle
+      if (det && (det.comentario || (det.ejercicios || []).length > 0)) {
+        comentariosCliente.push({ dia: d.label, sesion: t.texto, rpe: det.rpe || '', comentario: det.comentario || '', ejercicios: det.ejercicios || [] })
+      }
     })
   })
   const contactoPuntos = PUNTOS_CONTACTO.map((p) => ({
@@ -430,13 +437,14 @@ export function resumenSemanaCliente({ seguimiento, contacto, problemas = [], cl
   return {
     sesiones,
     notas,
+    comentariosCliente,
     cambios,
     contacto: { hechos: contactoPuntos.filter((p) => p.hecho).length, puntos: contactoPuntos },
     comentario,
     problemas: problemasSemana,
     // ¿Hay algo que leer? Sirve para ordenar la pestaña de resúmenes y poner
     // arriba los clientes con novedades.
-    tieneContenido: notas.length > 0 || cambios.length > 0 || Boolean(comentario) || contactoPuntos.some((p) => p.comentario)
+    tieneContenido: notas.length > 0 || comentariosCliente.length > 0 || cambios.length > 0 || Boolean(comentario) || contactoPuntos.some((p) => p.comentario)
       || problemasSemana.nuevos.length > 0 || problemasSemana.resueltos.length > 0 || problemasSemana.acciones.length > 0,
   }
 }
@@ -502,6 +510,15 @@ export function historialCliente({ clienteNombre, seguimientos = [], contactos =
           if ((t.nota || '').trim()) {
             const dia = fechaDiaSemana(semana, i)
             entradas.push({ tipo: 'nota', ts: dia.getTime(), fecha: fechaCorta(dia), titulo: `Sesión ${t.texto}`, texto: t.nota.trim() })
+          }
+          const det = t.harbizDetalle
+          if (det && (det.comentario || (det.ejercicios || []).length > 0)) {
+            const dia = fechaDiaSemana(semana, i)
+            const lineas = [
+              ...(det.comentario ? [det.comentario] : []),
+              ...(det.ejercicios || []).map((e) => `${e.nombre}: ${e.comentario}`),
+            ]
+            entradas.push({ tipo: 'cliente', ts: dia.getTime(), fecha: fechaCorta(dia), titulo: `El cliente en Harbiz · ${t.texto}${det.rpe ? ` (RPE ${det.rpe})` : ''}`, texto: lineas.join(' · ') })
           }
         })
       })

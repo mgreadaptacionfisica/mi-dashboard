@@ -16,6 +16,9 @@ function fromRow(row) {
     titulo: row.titulo || '',
     hechaEn: row.hecha_en || null,
     descartada: row.descartada === true,
+    // Lo que escribió el cliente al completarlo (migración 68): comentario,
+    // RPE, duración y comentarios por ejercicio. Se limpia en el volcado.
+    detalle: row.detalle || null,
   }
 }
 
