@@ -40,6 +40,7 @@ const MuroEquipo = lazy(() => import('./components/MuroEquipo'))
 const MisTareas = lazy(() => import('./components/MisTareas'))
 const Manuales = lazy(() => import('./components/Manuales'))
 const EnlacesInteres = lazy(() => import('./components/EnlacesInteres'))
+const Formacion = lazy(() => import('./components/Formacion'))
 // Clientes: último módulo migrado a Supabase. Los 64 clientes reales se
 // recuperaron del estado en memoria del panel (nunca hubo persistencia
 // real antes) y se migraron con supabase-sql/04_clientes.sql + 04b.
@@ -243,6 +244,14 @@ const enlacesInteresDataPromise = async () => {
   return { default: remoto || [] }
 }
 
+// Formación (programa para profesionales + interesados): admin-only por RLS,
+// sin datos estáticos. El programa es una sola fila (puede no existir aún).
+const formacionDataPromise = async () => {
+  const { fetchFormacionInteresados, fetchFormacionPrograma } = await import('./lib/queries/formacion')
+  const [interesados, programa] = await Promise.all([fetchFormacionInteresados(), fetchFormacionPrograma()])
+  return { default: { interesados: interesados || [], programa: programa || { titulo: '', contenido: '', actualizadoEn: null } } }
+}
+
 function PlaceholderView({ name }) {
   return (
     <>
@@ -322,6 +331,8 @@ function InternalApp({ session, rol, onLogout }) {
   const [tareasPersonales, setTareasPersonales] = useState([])
   const [manuales, setManuales] = useState([])
   const [enlacesInteres, setEnlacesInteres] = useState([])
+  const [formacionInteresados, setFormacionInteresados] = useState([])
+  const [formacionPrograma, setFormacionPrograma] = useState({ titulo: '', contenido: '', actualizadoEn: null })
   const [dataLoaded, setDataLoaded] = useState(false)
 
   // Modo demo / presentación (solo admin): enmascara los datos personales en
@@ -373,8 +384,8 @@ function InternalApp({ session, rol, onLogout }) {
       reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(), objetivosClienteFaseDataPromise(),
       revisionesSemanalesDataPromise(), enlacesInteresDataPromise(), cuestionariosPreviosDataPromise(),
       problemasClienteDataPromise(), contratosClientesDataPromise(), onboardingProgresoDataPromise(),
-      sesionesHarbizDataPromise(),
-    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq, pc, cc, op, sh]) => {
+      sesionesHarbizDataPromise(), formacionDataPromise(),
+    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq, pc, cc, op, sh, fo]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -393,6 +404,8 @@ function InternalApp({ session, rol, onLogout }) {
       setTareasPersonales(ta.default)
       setManuales(ma.default)
       setEnlacesInteres(ei.default)
+      setFormacionInteresados(fo.default.interesados)
+      setFormacionPrograma(fo.default.programa)
       setReglasRecurrentes(rr.default)
       setTarifasPasarela(tp.default)
       setObjetivosClienteFase(ocf.default)
@@ -536,6 +549,13 @@ function InternalApp({ session, rol, onLogout }) {
       case 'tareas':       return <MisTareas tareas={tareasPersonales} setTareas={setTareasPersonales} miEmail={session?.user?.email} />
       case 'manuales':     return <Manuales manuales={manuales} setManuales={setManuales} rol={rol} />
       case 'enlaces':      return <EnlacesInteres enlaces={enlacesInteres} setEnlaces={setEnlacesInteres} />
+      case 'formacion':    return (
+        <Formacion
+          interesados={formacionInteresados} setInteresados={setFormacionInteresados}
+          programa={formacionPrograma} setPrograma={setFormacionPrograma}
+          modoDemo={modoDemo}
+        />
+      )
       default:             return null
     }
   }

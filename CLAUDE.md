@@ -13,7 +13,8 @@ Secciones: Dashboard, Ventas (pipeline + recontactar + calendario +
 resumen semanal), Clientes (contabilidad/cobros), Seguimiento y Valoración, Equipo,
 Mi Ficha, Comunicación (muro), Finanzas, Onboarding (generador de enlaces;
 las páginas del cliente son públicas), Operaciones
-(SOPs + contenido), Mis tareas, Manuales y Enlaces de interés (solo admin).
+(SOPs + contenido), Mis tareas, Manuales, Enlaces de interés y 🎓 Formación
+(estas dos, solo admin).
 
 ## Stack y despliegue
 - **React + Vite** (frontend). Sin backend propio: el navegador habla directo
@@ -44,7 +45,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 68; la siguiente sería la 69). Deben ser **idempotentes**
+  (la última es la 69; la siguiente sería la 70). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -312,6 +313,14 @@ las páginas del cliente son públicas), Operaciones
   Oportunidades de GHL a propósito. Todo lo recibido queda en `ghl_eventos`.
   El WhatsApp NO está conectado a GHL: quien escribe por WhatsApp sin
   reservar no llega por aquí.
+- **🎓 Formación** (`Formacion.jsx` + `lib/queries/formacion.js`, migración 69,
+  solo admin por rol y RLS): el programa de formación para otros
+  profesionales (fisios, entrenadores…). Dos pestañas: 👥 Interesados
+  (`formacion_interesados`: nombre + Instagram/WhatsApp/email, profesión,
+  origen, estado interesado → contactado → inscrito/descartado) y 📘 Programa
+  (`formacion_programa`, una sola fila id `principal` con texto libre). **No
+  son leads del Pipeline** a propósito: otro público y otro producto. En modo
+  demo se enmascaran nombres y contactos.
 - **Supabase (plan free) se pausa** tras días sin uso: si todo aparece a 0, hay
   que reactivar el proyecto en supabase.com. No es un bug del código.
 

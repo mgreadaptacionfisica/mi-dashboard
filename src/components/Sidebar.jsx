@@ -15,6 +15,7 @@ const TODOS_LOS_ITEMS = [
   { id: 'tareas', icon: '🗒️', label: 'Mis tareas' },
   { id: 'manuales', icon: '📚', label: 'Manuales' },
   { id: 'enlaces', icon: '🔗', label: 'Enlaces de interés' },
+  { id: 'formacion', icon: '🎓', label: 'Formación' },
 ]
 
 const ETIQUETA_ROL = {

@@ -26,8 +26,10 @@ import { supabase } from './supabaseClient'
 // Raúl (dashboards de clientes, etc.) para copiar y enviar rápido — no
 // tiene sentido para el resto de roles, así que va solo en este array
 // (y la RLS de supabase-sql/50_enlaces_interes.sql lo refuerza en el servidor).
+// 'formacion' (Formacion.jsx), igual: el programa para profesionales y sus
+// interesados (contactos de terceros), solo admin también por RLS (migración 69).
 export const SECCIONES_POR_ROL = {
-  admin: ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'mi-ficha', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales', 'enlaces'],
+  admin: ['dashboard', 'ventas', 'clientes', 'clientes-equipo', 'equipo', 'mi-ficha', 'comunicacion', 'finanzas', 'onboarding', 'operaciones', 'tareas', 'manuales', 'enlaces', 'formacion'],
   closer: ['ventas', 'mi-ficha', 'onboarding', 'comunicacion', 'manuales'],
   tecnico: ['clientes-equipo', 'mi-ficha', 'operaciones', 'tareas', 'comunicacion', 'manuales'],
   contenido: ['operaciones', 'comunicacion', 'manuales'],
