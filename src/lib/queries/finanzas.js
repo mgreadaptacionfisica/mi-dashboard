@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Las 4 tablas de Finanzas comparten forma base (id, fecha, concepto,
@@ -59,7 +60,7 @@ function fromRow(tabla, row) {
 
 export async function fetchFinanzas(tabla) {
   if (!supabase) return null
-  const { data, error } = await supabase.from(tabla).select('*')
+  const { data, error } = await leerTodo(tabla)
   if (error) {
     console.error(`[finanzas] fetch ${tabla} error:`, error.message)
     return null

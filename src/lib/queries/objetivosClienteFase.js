@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Objetivos por fase de CADA CLIENTE (ver supabase-sql/43_objetivos_cliente_fase.sql).
@@ -34,11 +35,9 @@ function toRow(o) {
 
 export async function fetchObjetivosClienteFase() {
   if (!supabase) return null
-  const { data, error } = await supabase
-    .from('objetivos_cliente_fase')
-    .select('*')
+  const { data, error } = await leerTodo('objetivos_cliente_fase', (q) => q
     .order('fase', { ascending: true })
-    .order('orden', { ascending: true })
+    .order('orden', { ascending: true }))
   if (error) {
     console.error('[objetivosClienteFase] fetch error:', error.message)
     return null

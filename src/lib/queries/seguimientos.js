@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 function fromRow(row) {
@@ -25,7 +26,7 @@ function toRow(registro) {
 
 export async function fetchSeguimientos() {
   if (!supabase) return null
-  const { data, error } = await supabase.from('seguimientos').select('*')
+  const { data, error } = await leerTodo('seguimientos')
   if (error) {
     console.error('[seguimientos] fetch error:', error.message)
     return null

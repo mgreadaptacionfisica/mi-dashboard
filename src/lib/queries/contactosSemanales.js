@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 const PUNTO_VACIO = { hecho: false, fecha: null, comentario: '' }
@@ -25,7 +26,7 @@ function toRow(registro) {
 
 export async function fetchContactosSemanales() {
   if (!supabase) return null
-  const { data, error } = await supabase.from('contactos_semanales').select('*')
+  const { data, error } = await leerTodo('contactos_semanales')
   if (error) {
     console.error('[contactosSemanales] fetch error:', error.message)
     return null

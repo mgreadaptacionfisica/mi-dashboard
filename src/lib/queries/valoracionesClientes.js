@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Nota: la columna "dinamometria" sigue existiendo en la tabla (datos
@@ -67,7 +68,7 @@ function toRow(v) {
 
 export async function fetchValoraciones() {
   if (!supabase) return null
-  const { data, error } = await supabase.from('valoraciones_clientes').select('*').order('fecha', { ascending: true })
+  const { data, error } = await leerTodo('valoraciones_clientes', (q) => q.order('fecha', { ascending: true }))
   if (error) {
     console.error('[valoracionesClientes] fetch error:', error.message)
     return null

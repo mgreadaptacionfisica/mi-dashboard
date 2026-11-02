@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 // "Mis tareas": lista de tareas personales, con fecha opcional y checkbox
@@ -30,7 +31,7 @@ function toRow(entrada) {
 
 export async function fetchTareasPersonales() {
   if (!supabase) return null
-  const { data, error } = await supabase.from('tareas_personales').select('*')
+  const { data, error } = await leerTodo('tareas_personales')
   if (error) {
     console.error('[tareasPersonales] fetch error:', error.message)
     return null

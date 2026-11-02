@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 function fromRow(row) {
@@ -96,7 +97,7 @@ function toColumns(obj) {
 
 export async function fetchVentas() {
   if (!supabase) return null
-  const { data, error } = await supabase.from('ventas').select('*').order('creado_en', { ascending: false })
+  const { data, error } = await leerTodo('ventas', (q) => q.order('creado_en', { ascending: false }))
   if (error) {
     console.error('[ventas] fetch error:', error.message)
     return null

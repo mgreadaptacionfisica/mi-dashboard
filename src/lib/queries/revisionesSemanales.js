@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Check final del seguimiento semanal, POR CLIENTE (ver
@@ -32,7 +33,7 @@ function toRow(r) {
 
 export async function fetchRevisionesSemanales() {
   if (!supabase) return null
-  const { data, error } = await supabase.from('revisiones_semanales_cliente').select('*')
+  const { data, error } = await leerTodo('revisiones_semanales_cliente')
   if (error) {
     console.error('[revisionesSemanales] fetch error:', error.message)
     return null

@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Entrenos completados en Harbiz que trae la rutina automática (migración 64).
@@ -30,11 +31,9 @@ export async function fetchSesionesHarbiz() {
   if (!supabase) return null
   const desde = new Date()
   desde.setDate(desde.getDate() - DIAS_ATRAS)
-  const { data, error } = await supabase
-    .from('sesiones_harbiz')
-    .select('*')
+  const { data, error } = await leerTodo('sesiones_harbiz', (q) => q
     .gte('fecha', desde.toISOString().slice(0, 10))
-    .order('fecha', { ascending: true })
+    .order('fecha', { ascending: true }))
   if (error) {
     console.error('[sesionesHarbiz] fetch error:', error.message)
     return null

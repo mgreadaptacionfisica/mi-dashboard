@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 function fromRow(row) {
@@ -17,10 +18,8 @@ function fromRow(row) {
 // así que recorrerlos en orden y pisar es lo más sencillo.
 export async function fetchOnboardingProgreso() {
   if (!supabase) return null
-  const { data, error } = await supabase
-    .from('onboarding_progreso')
-    .select('*')
-    .order('creado_en', { ascending: true })
+  const { data, error } = await leerTodo('onboarding_progreso', (q) => q
+    .order('creado_en', { ascending: true }))
   if (error) {
     console.error('[onboardingProgreso] fetch error:', error.message)
     return null

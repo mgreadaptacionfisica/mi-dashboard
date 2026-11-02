@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
 
 // Problemas del cliente (ver supabase-sql/60_problemas_cliente.sql): qué le
@@ -41,7 +42,7 @@ function toRow(p) {
 
 export async function fetchProblemasCliente() {
   if (!supabase) return null
-  const { data, error } = await supabase.from('problemas_cliente').select('*')
+  const { data, error } = await leerTodo('problemas_cliente')
   if (error) {
     console.error('[problemasCliente] fetch error:', error.message)
     return null
