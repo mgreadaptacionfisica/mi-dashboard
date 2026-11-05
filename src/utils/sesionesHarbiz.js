@@ -203,10 +203,19 @@ export function harbizSinEmparejar(sesiones, clientes) {
 // ACTIVO (EN PAUSA o NO ACTIVO): sus entrenos no salen en la rejilla, que solo
 // enseña activos. Suele ser una ficha sin actualizar (empezó y sigue EN PAUSA)
 // o una ficha duplicada, así que se avisa junto a los sin emparejar.
+//
+// Solo cuentan los entrenos recientes: el panel carga 6 semanas de sesiones, y
+// sin este corte quien acaba el programa saldría aquí semanas después por los
+// entrenos que hizo cuando aún era cliente, aunque ya no esté en Harbiz.
+const DIAS_ENTRENO_RECIENTE = 7
+
 export function harbizEnFichaNoActiva(sesiones, clientes) {
+  const corte = new Date()
+  corte.setDate(corte.getDate() - DIAS_ENTRENO_RECIENTE)
+  const desde = corte.toISOString().slice(0, 10)
   const porCliente = new Map()
   ;(sesiones || []).forEach((s) => {
-    if (s.descartada) return
+    if (s.descartada || s.fecha < desde) return
     const cliente = clienteDeHarbiz(clientes, s.harbizClienteId, s.harbizEmail)
     if (!cliente || cliente['Estado del cliente'] === 'ACTIVO') return
     const previo = porCliente.get(cliente.id)

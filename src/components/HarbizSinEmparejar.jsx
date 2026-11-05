@@ -91,7 +91,7 @@ export default function HarbizSinEmparejar({ sesiones, clientes, onEmparejar }) 
             <div key={cliente.id} className="cq-huerfano">
               <span className="cq-huerfano-nombre">
                 {cliente.Nombre}
-                <em> · {cliente['Estado del cliente'] || 'sin estado'} · {n} entreno{n === 1 ? '' : 's'}</em>
+                <em> · {cliente['Estado del cliente'] || 'sin estado'} · {n} entreno{n === 1 ? '' : 's'} esta última semana</em>
               </span>
             </div>
           ))}
