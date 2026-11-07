@@ -7080,6 +7080,7 @@ button.onb-chip { cursor: pointer; }
 .propuesta-tipo-molestia { background: #fffbeb; }
 .propuesta-tipo-subir,
 .propuesta-tipo-propioPeso { background: #f0fdf4; }
+.propuesta-tipo-reps { background: #eff6ff; }
 
 .propuesta-respondida { opacity: 0.6; }
 

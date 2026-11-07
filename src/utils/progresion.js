@@ -48,11 +48,12 @@ export const TIPOS = {
   molestia: { emoji: '🟡', titulo: 'Misma carga: molestia', ayuda: 'Cualquier molestia → misma carga, y preguntar si sigue.' },
   subir: { emoji: '🟢', titulo: 'Subir carga', ayuda: 'Llega al tope del rango (o lleva 2 semanas cerca) y sin molestias.' },
   propioPeso: { emoji: '🟢', titulo: 'Propio peso: progresar', ayuda: 'Llega al tope sin carga: subir reps o un ejercicio más difícil (criterio del fisio).' },
+  reps: { emoji: '🔵', titulo: 'Mantener carga: más reps', ayuda: 'Acaba de subir de peso y aún no llega al tope: se mantiene el peso nuevo y se buscan más reps (doble progresión).' },
   igual: { emoji: '⚪', titulo: '2 semanas igual', ayuda: 'Mismas reps y misma carga dos semanas: hablar con la persona. Siempre tiene que haber progresión.' },
   movilidad: { emoji: '🔁', titulo: 'Cambiar la movilidad', ayuda: 'La movilidad lleva semanas igual.' },
   nota: { emoji: '📝', titulo: 'Notas del cliente', ayuda: 'Sustituciones, máquina distinta, peso que no había… Ese día el dato no es comparable.' },
 }
-export const ORDEN_TIPOS = ['dolor', 'molestia', 'subir', 'propioPeso', 'igual', 'movilidad', 'nota']
+export const ORDEN_TIPOS = ['dolor', 'molestia', 'subir', 'propioPeso', 'reps', 'igual', 'movilidad', 'nota']
 
 // Si el robot no trajo `clase` (sesiones viejas), se deduce del nombre. Es
 // solo un respaldo: en cuanto un ejercicio lleva carga, es de fuerza.
@@ -232,6 +233,20 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
       const motivo = llegaAlTope ? `llega al tope de ${rango}` : `2 semanas cerca del tope de ${rango}`
       if (u.kgMax > 0) propone('subir', `${fmtKg(u.kgMax)} kg → ${rangoCargaNueva(u.kgMax).texto} (${motivo}: ${hecho})`)
       else propone('propioPeso', `Sin carga, ${motivo} (${hecho}): subir reps o ejercicio más difícil.`)
+      return
+    }
+
+    // Doble progresión (caso de Alicia, 2026-11-07): se le propuso subir,
+    // subió de peso y, como es normal, las reps bajan del tope. Sin esta
+    // regla el ejercicio se quedaba sin propuesta. Lo que toca es mantener
+    // el peso nuevo y buscar reps hasta el tope; al llegar, ya saldrá
+    // "subir" otra vez. Se compara con la aparición anterior que tenga
+    // carga, sea de la semana pasada o de antes en esta misma semana (si
+    // el lunes hizo 15 y el jueves 16, la subida es del jueves).
+    const antes = [...apariciones].filter((a) => (a.fecha + a.hechaEn) < (u.fecha + u.hechaEn) && a.kgMax > 0).pop()
+    if (antes && u.kgMax > antes.kgMax) {
+      const objetivo = fijo ? `cumplir las ${hi} reps` : `llegar a ${hi} reps en todas las series`
+      propone('reps', `Subió de ${fmtKg(antes.kgMax)} a ${fmtKg(u.kgMax)} kg (${hecho}): mantener ${fmtKg(u.kgMax)} kg y ${objetivo}.`)
       return
     }
 
