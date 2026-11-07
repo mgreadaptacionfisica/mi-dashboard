@@ -45,7 +45,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 70; la siguiente sería la 71). Deben ser **idempotentes**
+  (la última es la 71; la siguiente sería la 72). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -218,7 +218,18 @@ las páginas del cliente son públicas), Operaciones
     final de semana. Cada propuesta lleva `sesionId` = la ÚLTIMA sesión de
     la semana con ese ejercicio (si se repite el jueves, se muda; el id no
     lleva la sesión, así que lo respondido el lunes sigue respondido salvo
-    que cambie el tipo). La pestaña 🤖 Propuestas es solo un **índice** de lo
+    que cambie el tipo). **📲 Lo aceptado se escribe solo en Harbiz**
+    (migración 71, prueba desde el 2026-11-08 solo con los clientes de
+    `HARBIZ_PRUEBA_TRABAJADORES` y los tipos de `TIPOS_A_HARBIZ`, ambos en
+    `progresion.js`): al dar ✅ la fila queda `harbiz_estado = 'pendiente'`
+    con `nota_harbiz` (el texto para el CLIENTE, distinto del del fisio) y la
+    rutina "Panel → Harbiz" (trig_01FAfie6VkUQ5dTwvemqSrKQ, 7:30 y 20:30) lo
+    escribe en la **nota del ejercicio** de las sesiones sin hacer de la
+    semana siguiente (sustituye la nota vieja; la anterior queda en
+    `harbiz_detalle`) y marca escrita / sin_sesion / error. Es la ÚNICA
+    rutina que escribe en Harbiz; la de las 6:00/18:00 sigue siendo de solo
+    lectura. Deshacer en el panel no borra lo ya escrito en Harbiz.
+    La pestaña 🤖 Propuestas es solo un **índice** de lo
     que queda sin responder (no responde, como 🚨 Pendientes). Existe porque decidir la
     progresión/regresión es lo que más tiempo le cuesta al equipo. Reparto:
     el **robot** de Harbiz solo lee y traduce (manda en `detalle.registro`
@@ -233,7 +244,7 @@ las páginas del cliente son públicas), Operaciones
     no se usa, a propósito. Las propuestas no se guardan (se recalculan);
     solo la **respuesta** del fisio (✅ aplicada / ❌ con motivo), que es lo
     que sirve para pulir las reglas. Fase 1: solo propone y el fisio pasa
-    el cambio a Harbiz a mano. Ojo con la clave de semana: puede caer en
+    el cambio a Harbiz a mano (salvo la prueba 📲 de arriba). Ojo con la clave de semana: puede caer en
     domingo (ver `semanaMenos()`). En modo demo no sale nada.
   - **Filtro por trabajador** (`filtroAdmin`, solo admin): chips arriba con
     "Todo el equipo" + uno por trabajador (con su nº de activos) + "Sin asignar".

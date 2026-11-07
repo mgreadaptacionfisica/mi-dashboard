@@ -17,11 +17,17 @@ function fromRow(row) {
     motivo: row.motivo || '',
     respondidoPor: row.respondido_por || '',
     respondidoEn: row.respondido_en || null,
+    // 📲 Escritura en Harbiz (migración 71). Todo null si no va a Harbiz.
+    harbizClienteId: row.harbiz_cliente_id || '',
+    notaHarbiz: row.nota_harbiz || '',
+    harbizEstado: row.harbiz_estado || null,
+    harbizDetalle: row.harbiz_detalle || '',
+    harbizEn: row.harbiz_en || null,
   }
 }
 
 function toRow(r) {
-  return {
+  const fila = {
     id: r.id,
     cliente_nombre: r.clienteNombre,
     semana: r.semana,
@@ -33,6 +39,21 @@ function toRow(r) {
     respondido_por: r.respondidoPor || null,
     respondido_en: r.respondidoEn || new Date().toISOString(),
   }
+  // 📲 Solo si va a Harbiz (migración 71). Fuera de ese caso las columnas no
+  // se mandan, para que el resto del equipo pueda responder aunque la
+  // migración aún no esté ejecutada. Después solo las toca el robot
+  // (marcar_propuestas_harbiz). Para volver a responder hay que deshacer,
+  // que borra la fila, así que no quedan restos de una escritura anterior.
+  if (r.harbizEstado) {
+    Object.assign(fila, {
+      harbiz_cliente_id: r.harbizClienteId || null,
+      nota_harbiz: r.notaHarbiz || null,
+      harbiz_estado: r.harbizEstado,
+      harbiz_detalle: null,
+      harbiz_en: null,
+    })
+  }
+  return fila
 }
 
 // Solo las últimas semanas, igual que sesiones_harbiz: las propuestas se

@@ -55,6 +55,18 @@ export const TIPOS = {
 }
 export const ORDEN_TIPOS = ['dolor', 'molestia', 'subir', 'propioPeso', 'reps', 'igual', 'movilidad', 'nota']
 
+// 📲 Escribir en Harbiz lo aceptado (prueba desde el 2026-11-08). Cuando el
+// fisio da ✅ a una propuesta de estos tipos, el texto de `notaHarbiz` se
+// escribe en la NOTA de ese ejercicio en las sesiones de la semana siguiente
+// (rutina en la nube "Panel → Harbiz", migración 71). Solo estos tipos
+// porque son los únicos con una instrucción clara para el cliente: dolor,
+// "2 semanas igual" y propio peso piden criterio del fisio o hablar con la
+// persona, y eso no se le escribe al cliente en una nota.
+// De momento solo con los clientes de estos trabajadores: para comprobar
+// que funciona antes de abrirlo al equipo, se amplía añadiendo nombres.
+export const TIPOS_A_HARBIZ = ['subir', 'reps', 'molestia']
+export const HARBIZ_PRUEBA_TRABAJADORES = ['Raúl Morales']
+
 // Si el robot no trajo `clase` (sesiones viejas), se deduce del nombre. Es
 // solo un respaldo: en cuanto un ejercicio lleva carga, es de fuerza.
 const PATRON_MOVILIDAD = /estiramiento|movilidad|moviliza|gato|camello|rotaci[oó]n|respira|asistid|isom[eé]tric|anteversi|retroversi|90.?90|expansi[oó]n|estabilidad|^test /i
@@ -167,9 +179,12 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
   const movilidad = { cambiar: [], pronto: [] }
   // `clave` solo hace falta cuando el nombre no basta para que el id sea
   // único (dos sesiones el mismo día con comentario general).
-  const nueva = (tipo, ejercicio, texto, cita = '', clave = ejercicio, sesionId = null) => propuestas.push({
+  // `notaHarbiz` es lo que leería el CLIENTE en la nota del ejercicio si se
+  // acepta (ver TIPOS_A_HARBIZ): va en segunda persona y sin la explicación
+  // de la regla, que es para el fisio.
+  const nueva = (tipo, ejercicio, texto, cita = '', clave = ejercicio, sesionId = null, notaHarbiz = null) => propuestas.push({
     id: `${clienteNombre}|${semana}|${tipo}|${clave.toLowerCase()}`,
-    tipo, ejercicio, texto, cita, sesionId,
+    tipo, ejercicio, texto, cita, sesionId, notaHarbiz,
   })
 
   historial.forEach(({ nombre, apariciones }) => {
@@ -177,7 +192,7 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     if (esta.length === 0) return
     const u = esta[esta.length - 1]
     // Todas las propuestas de este ejercicio cuelgan de su última sesión.
-    const propone = (tipo, texto, cita = '') => nueva(tipo, nombre, texto, cita, nombre, u.sesionId)
+    const propone = (tipo, texto, cita = '', notaHarbiz = null) => nueva(tipo, nombre, texto, cita, nombre, u.sesionId, notaHarbiz)
     const previa = apariciones.filter((a) => a.semana === anterior)
     const p = previa[previa.length - 1] || null
     const valoraciones = esta.map((a) => a.valoracion)
@@ -213,7 +228,8 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
       const carga = u.kgMax > 0 ? ` (${fmtKg(u.kgMax)} kg)` : ''
       propone('molestia',
         sigue ? `Misma carga${carga}. 2ª semana con molestia: preguntar cómo va.` : `Misma carga${carga}. Preguntar si sigue la semana que viene.`,
-        conCita(['molestia']))
+        conCita(['molestia']),
+        `${u.kgMax > 0 ? `Mantén el peso (${fmtKg(u.kgMax)} kg).` : 'Mantén la misma carga.'} Si sigues notando molestia, cuéntanoslo en el comentario.`)
       return
     }
 
@@ -231,7 +247,11 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
 
     if (llegaAlTope || dosSemanasCerca) {
       const motivo = llegaAlTope ? `llega al tope de ${rango}` : `2 semanas cerca del tope de ${rango}`
-      if (u.kgMax > 0) propone('subir', `${fmtKg(u.kgMax)} kg → ${rangoCargaNueva(u.kgMax).texto} (${motivo}: ${hecho})`)
+      if (u.kgMax > 0) {
+        const nuevo = rangoCargaNueva(u.kgMax).texto
+        propone('subir', `${fmtKg(u.kgMax)} kg → ${nuevo} (${motivo}: ${hecho})`, '',
+          `Sube a ${nuevo}${fijo ? '' : ` (${rango} repeticiones)`}.`)
+      }
       else propone('propioPeso', `Sin carga, ${motivo} (${hecho}): subir reps o ejercicio más difícil.`)
       return
     }
@@ -246,7 +266,10 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     const antes = [...apariciones].filter((a) => (a.fecha + a.hechaEn) < (u.fecha + u.hechaEn) && a.kgMax > 0).pop()
     if (antes && u.kgMax > antes.kgMax) {
       const objetivo = fijo ? `cumplir las ${hi} reps` : `llegar a ${hi} reps en todas las series`
-      propone('reps', `Subió de ${fmtKg(antes.kgMax)} a ${fmtKg(u.kgMax)} kg (${hecho}): mantener ${fmtKg(u.kgMax)} kg y ${objetivo}.`)
+      propone('reps', `Subió de ${fmtKg(antes.kgMax)} a ${fmtKg(u.kgMax)} kg (${hecho}): mantener ${fmtKg(u.kgMax)} kg y ${objetivo}.`, '',
+        fijo
+          ? `Mantén el peso (${fmtKg(u.kgMax)} kg) y completa las ${hi} repeticiones en todas las series.`
+          : `Mantén el peso (${fmtKg(u.kgMax)} kg) y busca más repeticiones, hasta ${hi} en todas las series.`)
       return
     }
 

@@ -7,7 +7,7 @@ import PendientesSeguimiento from './PendientesSeguimiento'
 import ResumenesSemanales from './ResumenesSemanales'
 import PropuestasProgresion from './PropuestasProgresion'
 import PropuestasSesion from './PropuestasSesion'
-import { propuestasCliente, sesionesHarbizDeCliente } from '../utils/progresion'
+import { propuestasCliente, sesionesHarbizDeCliente, TIPOS_A_HARBIZ, HARBIZ_PRUEBA_TRABAJADORES } from '../utils/progresion'
 import { upsertRespuestaPropuestaRemote, deleteRespuestaPropuestaRemote } from '../lib/queries/propuestasProgresion'
 import {
   semanaActualISO,
@@ -389,8 +389,21 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   // Respuesta del fisio a una propuesta (✅ aplicada / ❌ con motivo). Se
   // guarda con una foto del texto para poder leer el motivo con contexto
   // aunque la regla cambie después (ver migración 70).
+  // 📲 Prueba de escritura en Harbiz: solo los clientes de los trabajadores
+  // de HARBIZ_PRUEBA_TRABAJADORES y los tipos de TIPOS_A_HARBIZ. Hace falta
+  // el id de Harbiz del cliente, que se saca de la sesión de la que sale la
+  // propuesta (es la misma persona por construcción).
+  const vaAHarbiz = (clienteNombre, propuesta) => {
+    if (!propuesta?.notaHarbiz || !TIPOS_A_HARBIZ.includes(propuesta.tipo)) return null
+    const cliente = clientes.find((c) => c.Nombre === clienteNombre)
+    if (!cliente || !trabajadoresDe(cliente).some((t) => HARBIZ_PRUEBA_TRABAJADORES.includes(t))) return null
+    const sesion = (sesionesHarbiz || []).find((s) => s.id === propuesta.sesionId)
+    return sesion?.harbizClienteId || null
+  }
+
   const responderPropuesta = (clienteNombre, propuesta, estado, motivo = '') => {
     if (typeof setPropuestasProgresion !== 'function') return
+    const harbizClienteId = estado === 'aplicada' ? vaAHarbiz(clienteNombre, propuesta) : null
     const r = {
       id: propuesta.id,
       clienteNombre,
@@ -402,6 +415,11 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
       motivo: (motivo || '').trim(),
       respondidoPor: miIdentidad,
       respondidoEn: new Date().toISOString(),
+      harbizClienteId: harbizClienteId || '',
+      notaHarbiz: harbizClienteId ? propuesta.notaHarbiz : '',
+      harbizEstado: harbizClienteId ? 'pendiente' : null,
+      harbizDetalle: '',
+      harbizEn: null,
     }
     setPropuestasProgresion((prev) => [...(prev || []).filter((x) => x.id !== r.id), r])
     upsertRespuestaPropuestaRemote(r)
@@ -852,6 +870,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                         <PropuestasSesion
                                           propuestas={(propuestasRegistro.get(cliente.Nombre) || []).filter((p) => p.sesionId === t.harbizId)}
                                           respuestas={propuestasProgresion}
+                                          aHarbiz={(p) => Boolean(vaAHarbiz(cliente.Nombre, p))}
                                           onResponder={(p, estado, motivo) => responderPropuesta(cliente.Nombre, p, estado, motivo)}
                                           onDeshacer={deshacerPropuesta}
                                         />

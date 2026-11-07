@@ -14,7 +14,19 @@ import { TIPOS, esRespondible } from '../utils/progresion'
 // cliente" no se repiten aquí porque ese comentario ya sale justo encima
 // (DetalleHarbiz); por lo mismo, la cita del comentario tampoco se repite.
 // Solo la movilidad enseña su lista de ejercicios, que no está en otro sitio.
-export default function PropuestasSesion({ propuestas = [], respuestas = [], onResponder, onDeshacer }) {
+//
+// 📲 `aHarbiz(p)` dice si al aceptar esa propuesta se escribe sola en Harbiz
+// (prueba con los clientes de Raúl, ver TIPOS_A_HARBIZ en progresion.js).
+// Si es así, antes de aceptar se enseña lo que leerá el cliente, y después
+// cómo ha ido: la escribe una rutina en la nube, no el navegador.
+const ESTADO_HARBIZ = {
+  pendiente: { clase: 'pendiente', texto: () => '📲 Se escribe en Harbiz en la próxima pasada (7:30 o 20:30)' },
+  escrita: { clase: 'ok', texto: (d) => `📲 Escrita en Harbiz${d ? `: ${d}` : ''}` },
+  sin_sesion: { clase: 'aviso', texto: (d) => `⚠️ No escrita en Harbiz${d ? `: ${d}` : ''}. Pásalo a mano.` },
+  error: { clase: 'aviso', texto: (d) => `⚠️ No escrita en Harbiz${d ? `: ${d}` : ''}. Pásalo a mano.` },
+}
+
+export default function PropuestasSesion({ propuestas = [], respuestas = [], onResponder, onDeshacer, aHarbiz = () => false }) {
   const [abierto, setAbierto] = useState(false)
   const [descartando, setDescartando] = useState(null)
   const [motivo, setMotivo] = useState('')
@@ -43,6 +55,8 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
         <ul className="propuestas-sesion-lista">
           {lista.map((p) => {
             const r = respuestaDe(p.id)
+            const irAHarbiz = !r && aHarbiz(p)
+            const estadoHarbiz = r?.estado === 'aplicada' && r.harbizEstado ? ESTADO_HARBIZ[r.harbizEstado] : null
             return (
               <li key={p.id} className={`propuestas-sesion-item propuesta-tipo-${p.tipo}${r ? ` propuesta-respondida propuesta-${r.estado}` : ''}`}>
                 <div className="propuestas-sesion-texto" title={TIPOS[p.tipo]?.ayuda}>
@@ -50,6 +64,8 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
                   {p.tipo !== 'movilidad' && <strong>{p.ejercicio}: </strong>}
                   {p.texto}
                   {p.tipo === 'movilidad' && p.cita && <div className="propuesta-lista-ejercicios">{p.cita}</div>}
+                  {irAHarbiz && <div className="propuesta-harbiz propuesta-harbiz-previa">📲 Al aceptar, el cliente leerá en Harbiz: «{p.notaHarbiz}»</div>}
+                  {estadoHarbiz && <div className={`propuesta-harbiz propuesta-harbiz-${estadoHarbiz.clase}`}>{estadoHarbiz.texto(r.harbizDetalle)}</div>}
                 </div>
                 {r ? (
                   <div className="propuestas-sesion-acciones">
@@ -57,7 +73,17 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
                       {r.estado === 'aplicada' ? '✅' : `❌${r.motivo ? ` ${r.motivo}` : ''}`}
                       {r.respondidoPor ? ` · ${r.respondidoPor}` : ''}
                     </span>
-                    <button type="button" className="propuesta-btn-deshacer" onClick={() => onDeshacer(p.id)}>Deshacer</button>
+                    <button
+                      type="button"
+                      className="propuesta-btn-deshacer"
+                      onClick={() => {
+                        // Deshacer aquí no borra lo que ya está en Harbiz.
+                        if (r.harbizEstado === 'escrita' && !window.confirm('Esta propuesta ya está escrita en Harbiz. Deshacerla aquí NO la quita de Harbiz: si hace falta, cambia la nota a mano. ¿Deshacer?')) return
+                        onDeshacer(p.id)
+                      }}
+                    >
+                      Deshacer
+                    </button>
                   </div>
                 ) : descartando === p.id ? (
                   <form
@@ -70,7 +96,7 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
                   </form>
                 ) : (
                   <div className="propuestas-sesion-acciones">
-                    <button type="button" className="propuesta-btn propuesta-btn-ok" onClick={() => onResponder(p, 'aplicada')} title="Ya lo he cambiado en Harbiz (o lo he hablado con el cliente)">✅</button>
+                    <button type="button" className="propuesta-btn propuesta-btn-ok" onClick={() => onResponder(p, 'aplicada')} title={irAHarbiz ? 'Aceptar: se escribe sola en la nota del ejercicio en Harbiz' : 'Ya lo he cambiado en Harbiz (o lo he hablado con el cliente)'}>✅</button>
                     <button type="button" className="propuesta-btn propuesta-btn-no" onClick={() => { setDescartando(p.id); setMotivo('') }} title="No la veo: di por qué (sirve para pulir las reglas)">❌</button>
                   </div>
                 )}

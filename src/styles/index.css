@@ -7082,6 +7082,16 @@ button.onb-chip { cursor: pointer; }
 .propuesta-tipo-propioPeso { background: #f0fdf4; }
 .propuesta-tipo-reps { background: #eff6ff; }
 
+/* 📲 Escritura en Harbiz de lo aceptado (prueba con los clientes de Raúl). */
+.propuesta-harbiz {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #475569;
+}
+.propuesta-harbiz-previa { font-style: italic; }
+.propuesta-harbiz-ok { color: #008A41; }
+.propuesta-harbiz-aviso { color: #b45309; font-weight: 600; }
+
 .propuesta-respondida { opacity: 0.6; }
 
 .propuestas-sesion-acciones {
