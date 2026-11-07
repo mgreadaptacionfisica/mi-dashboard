@@ -45,7 +45,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 69; la siguiente sería la 70). Deben ser **idempotentes**
+  (la última es la 70; la siguiente sería la 71). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -60,9 +60,9 @@ las páginas del cliente son públicas), Operaciones
 
 ## Trampas conocidas (IMPORTANTE)
 - **El historial de cada cliente se enlaza por NOMBRE** (`cliente_nombre`), no
-  por id, en 6 tablas: `seguimientos`, `contactos_semanales`,
+  por id, en 7 tablas: `seguimientos`, `contactos_semanales`,
   `valoraciones_clientes`, `objetivos_cliente_fase`,
-  `revisiones_semanales_cliente`, `problemas_cliente`. Al renombrar un cliente hay que arrastrar el
+  `revisiones_semanales_cliente`, `problemas_cliente`, `propuestas_progresion`. Al renombrar un cliente hay que arrastrar el
   cambio a todas (ya existe `src/lib/queries/renombrarCliente.js`, llamado desde
   ClientesAdmin). Ojo con `unique (cliente_nombre, semana)` en algunas.
 - **Estados de cliente**: `ACTIVO`, `EN PAUSA` y `NO ACTIVO` (migración 53).
@@ -112,7 +112,7 @@ las páginas del cliente son públicas), Operaciones
 - **Hotmart/seQura**: una venta financiada se registra como UN cobro (Hotmart
   adelanta el grueso y libera el resto), no como plazos mensuales.
 - **Seguimiento y Valoración** (`ClientesEquipo.jsx`, sección `clientes-equipo`)
-  tiene DOS pestañas de trabajo (más una tercera de solo lectura para admin) y
+  tiene TRES pestañas de trabajo (⚡ Registro, 🤖 Propuestas y 🤝 Contacto; más las de solo lectura para admin) y
   cada una es la dueña de su dato — no duplicar la edición en otro sitio, que
   ya pasó y hubo que deshacerlo:
   - **⚡ Registro de sesiones** (por defecto): rejilla cliente × día. Es el
@@ -204,8 +204,27 @@ las páginas del cliente son públicas), Operaciones
     general, RPE, duración y comentario por ejercicio) llega en `detalle`
     (migración 68), se copia a la sesión como `harbizDetalle` y sale plegado
     bajo el chip (`DetalleHarbiz.jsx`, ámbar; la nota del entrenador es la
-    azul), en el modal, en 📝 Resúmenes y en el 📜 Historial. Pesos y
-    repeticiones no se traen. En modo demo no se enseña.
+    azul), en el modal, en 📝 Resúmenes y en el 📜 Historial. Desde la migración 70 también llegan reps, kilos y objetivo de cada
+    ejercicio en `detalle.registro` (para 🤖 Propuestas; no se enseñan en la rejilla). En modo demo no se enseña.
+  - **🤖 Propuestas** (`PropuestasProgresion.jsx` + `utils/progresion.js`,
+    tabla `propuestas_progresion`, migración 70): qué cambiar la semana que
+    viene en cada ejercicio, cliente por cliente y ordenado por urgencia
+    (🔴 dolor → 🟡 cambios → 🟢 todo bien). Existe porque decidir la
+    progresión/regresión es lo que más tiempo le cuesta al equipo. Reparto:
+    el **robot** de Harbiz solo lee y traduce (manda en `detalle.registro`
+    reps, kg, objetivo y, leyendo el comentario entero, una `valoracion`
+    `sin`/`molestia`/`dolor`/`nota` y una `clase` `fuerza`/`movilidad`); el
+    **panel** decide con las reglas de Raúl, todas en `REGLAS` arriba de
+    `progresion.js` (llega al tope del rango o 2 semanas a 1 rep → +10–15 %
+    como rango "16–17 kg"; cualquier molestia → misma carga; dolor → al
+    fisio; 2 semanas iguales → hablar con la persona; movilidad sin
+    propuestas de carga, una línea por cliente a las 3–4 semanas igual; reps
+    fijas solo progresan si se superan). El dolor NO se cuantifica y el RPE
+    no se usa, a propósito. Las propuestas no se guardan (se recalculan);
+    solo la **respuesta** del fisio (✅ aplicada / ❌ con motivo), que es lo
+    que sirve para pulir las reglas. Fase 1: solo propone y el fisio pasa
+    el cambio a Harbiz a mano. Ojo con la clave de semana: puede caer en
+    domingo (ver `semanaMenos()`). En modo demo no sale nada.
   - **Filtro por trabajador** (`filtroAdmin`, solo admin): chips arriba con
     "Todo el equipo" + uno por trabajador (con su nº de activos) + "Sin asignar".
     Filtra en `misClientesTodos`, así que afecta a TODA la sección (las dos

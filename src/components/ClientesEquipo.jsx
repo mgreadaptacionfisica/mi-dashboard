@@ -5,6 +5,7 @@ import FasesObjetivos from './FasesObjetivos'
 import ContactoSemanal from './ContactoSemanal'
 import PendientesSeguimiento from './PendientesSeguimiento'
 import ResumenesSemanales from './ResumenesSemanales'
+import PropuestasProgresion from './PropuestasProgresion'
 import {
   semanaActualISO,
   formatRangoSemana,
@@ -88,7 +89,7 @@ function formatHora12(horaHHMM) {
 // eran datos de CONSULTA que el técnico tenía delante todos los días sin
 // usarlos, y ahora viven en la cabecera del modal de Seguimiento, que es
 // donde se miran cuando hacen falta.
-export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, problemas = [], setProblemas, setSesionesHarbiz, onRefrescar, refrescando, onNavigate }) {
+export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, problemas = [], setProblemas, sesionesHarbiz = [], setSesionesHarbiz, propuestasProgresion = [], setPropuestasProgresion, onRefrescar, refrescando, onNavigate }) {
   const [search, setSearch] = useState('')
   // Se entra directamente al registro de sesiones: es lo que el técnico
   // hace todos los días. El contacto semanal es la otra pestaña.
@@ -598,6 +599,12 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
               <button type="button" className={`tab-btn ${vista === 'registro' ? 'tab-btn-active' : ''}`} onClick={() => setVista('registro')}>
                 ⚡ Registro de sesiones
               </button>
+              {/* Propuestas de progresión (utils/progresion.js): qué cambiar
+                  la semana que viene según lo apuntado en Harbiz. Para admin
+                  y técnicos: es justo el trabajo del entrenador. */}
+              <button type="button" className={`tab-btn ${vista === 'propuestas' ? 'tab-btn-active' : ''}`} onClick={() => setVista('propuestas')}>
+                🤖 Propuestas
+              </button>
               <button type="button" className={`tab-btn ${vista === 'contacto' ? 'tab-btn-active' : ''}`} onClick={() => setVista('contacto')}>
                 🤝 Contacto semanal
               </button>
@@ -1056,6 +1063,18 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
             revisionesSemanales={revisionesSemanales}
             trabajadoresDe={trabajadoresDe}
             onAbrirSeguimiento={abrirSeguimientoEnSemana}
+          />
+        )}
+
+        {(esAdmin || miPersona) && vista === 'propuestas' && (
+          <PropuestasProgresion
+            clientes={misClientes}
+            todosLosClientes={clientes}
+            sesionesHarbiz={sesionesHarbiz}
+            respuestas={propuestasProgresion}
+            setRespuestas={setPropuestasProgresion}
+            miNombre={miIdentidad}
+            onAbrirSeguimiento={abrirSeguimiento}
           />
         )}
 

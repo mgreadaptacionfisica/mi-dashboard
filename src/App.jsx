@@ -192,6 +192,16 @@ const revisionesSemanalesDataPromise = async () => {
   return import('./data/revisionesSemanales')
 }
 
+// Respuestas del fisio a las 🤖 propuestas de progresión (migración 70):
+// las propuestas las calcula utils/progresion.js; aquí solo se carga si se
+// aplicaron o se descartaron.
+const propuestasProgresionDataPromise = async () => {
+  const { fetchPropuestasProgresion } = await import('./lib/queries/propuestasProgresion')
+  const remoto = await fetchPropuestasProgresion()
+  if (remoto !== null) return { default: remoto }
+  return import('./data/propuestasProgresion')
+}
+
 // Problemas del cliente (qué le pasa y qué hemos hecho por ello): mismo
 // patrón remoto-con-fallback. Ver supabase-sql/60_problemas_cliente.sql.
 const problemasClienteDataPromise = async () => {
@@ -328,6 +338,7 @@ function InternalApp({ session, rol, onLogout }) {
   const [revisionesSemanales, setRevisionesSemanales] = useState([])
   const [problemasCliente, setProblemasCliente] = useState([])
   const [sesionesHarbiz, setSesionesHarbiz] = useState([])
+  const [propuestasProgresion, setPropuestasProgresion] = useState([])
   const [tareasPersonales, setTareasPersonales] = useState([])
   const [manuales, setManuales] = useState([])
   const [enlacesInteres, setEnlacesInteres] = useState([])
@@ -384,8 +395,8 @@ function InternalApp({ session, rol, onLogout }) {
       reglasRecurrentesDataPromise(), tarifasPasarelaDataPromise(), objetivosClienteFaseDataPromise(),
       revisionesSemanalesDataPromise(), enlacesInteresDataPromise(), cuestionariosPreviosDataPromise(),
       problemasClienteDataPromise(), contratosClientesDataPromise(), onboardingProgresoDataPromise(),
-      sesionesHarbizDataPromise(), formacionDataPromise(),
-    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq, pc, cc, op, sh, fo]) => {
+      sesionesHarbizDataPromise(), formacionDataPromise(), propuestasProgresionDataPromise(),
+    ]).then(async ([c, t, v, s, rc, ip, gp, ie, ge, ci, so, cs, me, vc, ta, ma, rr, tp, ocf, rs, ei, cq, pc, cc, op, sh, fo, pp]) => {
       if (cancelled) return
       setClientes(c.default)
       setTeam(t.default)
@@ -411,6 +422,7 @@ function InternalApp({ session, rol, onLogout }) {
       setObjetivosClienteFase(ocf.default)
       setRevisionesSemanales(rs.default)
       setProblemasCliente(pc.default)
+      setPropuestasProgresion(pp.default)
 
       // Catch-up de gastos/ingresos recurrentes: por cada regla activa,
       // genera (e inserta en Supabase) las filas de los periodos que ya
@@ -460,10 +472,11 @@ function InternalApp({ session, rol, onLogout }) {
   const refrescarSeguimientoEquipo = async () => {
     setRefrescandoSeguimiento(true)
     try {
-      const [c, t, s, vc, ocf, rs, cs, pc, sh] = await Promise.all([
+      const [c, t, s, vc, ocf, rs, cs, pc, sh, pp] = await Promise.all([
         clientesDataPromise(), teamDataPromise(), seguimientosDataPromise(),
         valoracionesClientesDataPromise(), objetivosClienteFaseDataPromise(), revisionesSemanalesDataPromise(),
         contactosSemanalesDataPromise(), problemasClienteDataPromise(), sesionesHarbizDataPromise(),
+        propuestasProgresionDataPromise(),
       ])
       setClientes(c.default)
       setTeam(t.default)
@@ -474,6 +487,7 @@ function InternalApp({ session, rol, onLogout }) {
       setRevisionesSemanales(rs.default)
       setContactosSemanales(cs.default)
       setProblemasCliente(pc.default)
+      setPropuestasProgresion(pp.default)
     } finally {
       setRefrescandoSeguimiento(false)
     }
@@ -499,6 +513,7 @@ function InternalApp({ session, rol, onLogout }) {
       clientes, team, ventas, seguimientos, contactosSemanales, valoraciones: valoracionesClientes,
       objetivosClienteFase, revisionesSemanales, recontactos, ingresosEmpresa, gastosEmpresa, mensajesEquipo,
       cuestionariosPrevios, problemasCliente, contratosClientes, onboardingProgreso, sesionesHarbiz,
+      propuestasProgresion,
     }
     const {
       clientes: dClientes, team: dTeam, ventas: dVentas, seguimientos: dSeguimientos,
@@ -519,13 +534,16 @@ function InternalApp({ session, rol, onLogout }) {
       onboardingProgreso: dOnboarding = [],
       // Nombres y emails tal cual vienen de Harbiz: fuera en modo demo.
       sesionesHarbiz: dHarbiz = [],
+      // Las propuestas citan lo que escribió el cliente sobre su dolor: sin
+      // sesiones de Harbiz en demo no sale ninguna, y sus respuestas tampoco.
+      propuestasProgresion: dPropuestas = [],
     } = _src
 
     switch (vista) {
       case 'dashboard':    return <Dashboard clientes={dClientes} onboardingProgreso={dOnboarding} contratos={dContratos} cuestionarios={dCuestionarios} ventas={dVentas} recontactos={dRecontactos} tareasPersonales={tareasPersonales} seguimientos={dSeguimientos} contactosSemanales={dContactos} revisionesSemanales={dRevisiones} onNavigate={irVistaPermitida} />
       case 'ventas':       return <Ventas ventas={dVentas} setVentas={setVentas} team={dTeam} setClientes={setClientes} setIngresosEmpresa={setIngresosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} recontactos={dRecontactos} setRecontactos={setRecontactos} />
       case 'clientes':     return <ClientesAdmin clientes={dClientes} contratos={dContratos} onboardingProgreso={dOnboarding} setOnboardingProgreso={setOnboardingProgreso} cuestionariosPrevios={dCuestionarios} setCuestionariosPrevios={setCuestionariosPrevios} setClientes={setClientes} team={dTeam} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} ingresosEmpresa={dIngresosEmpresa} setIngresosEmpresa={setIngresosEmpresa} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} tarifasPasarela={tarifasPasarela} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} sesionesHarbiz={dHarbiz} miEmail={session?.user?.email} />
-      case 'clientes-equipo': return <ClientesEquipo clientes={dClientes} cuestionariosPrevios={dCuestionarios} team={dTeam} miEmail={session?.user?.email} rol={rol} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} sesionesHarbiz={dHarbiz} setSesionesHarbiz={setSesionesHarbiz} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
+      case 'clientes-equipo': return <ClientesEquipo clientes={dClientes} cuestionariosPrevios={dCuestionarios} team={dTeam} miEmail={session?.user?.email} rol={rol} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} valoraciones={dValoraciones} setValoraciones={setValoracionesClientes} objetivosClienteFase={dObjetivos} setObjetivosClienteFase={setObjetivosClienteFase} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} sesionesHarbiz={dHarbiz} setSesionesHarbiz={setSesionesHarbiz} propuestasProgresion={dPropuestas} setPropuestasProgresion={setPropuestasProgresion} onRefrescar={refrescarSeguimientoEquipo} refrescando={refrescandoSeguimiento} onNavigate={irVistaPermitida} />
       case 'equipo':       return <Equipo team={dTeam} setTeam={setTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} setSeguimientos={setSeguimientos} gastosEmpresa={dGastosEmpresa} setGastosEmpresa={setGastosEmpresa} contactosSemanales={dContactos} setContactosSemanales={setContactosSemanales} valoraciones={dValoraciones} objetivosClienteFase={dObjetivos} revisionesSemanales={dRevisiones} setRevisionesSemanales={setRevisionesSemanales} problemas={dProblemas} setProblemas={setProblemasCliente} miEmail={session?.user?.email} />
       case 'mi-ficha':     return <MiFicha team={dTeam} clientes={dClientes} ventas={dVentas} seguimientos={dSeguimientos} contactosSemanales={dContactos} gastosEmpresa={dGastosEmpresa} tareas={tareasPersonales} revisionesSemanales={dRevisiones} miEmail={session?.user?.email} onNavigate={irVistaPermitida} />
       case 'comunicacion': return <MuroEquipo mensajes={dMensajes} setMensajes={setMensajesEquipo} team={dTeam} miEmail={session?.user?.email} rol={rol} />

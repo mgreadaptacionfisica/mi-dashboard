@@ -6946,3 +6946,212 @@ button.onb-chip { cursor: pointer; }
 .contrato-firma-profesional { display: flex; align-items: center; gap: 12px; margin: 10px 0 16px; }
 .contrato-firma-profesional img { height: 56px; width: auto; }
 .contrato-firma-profesional .contrato-nota { margin: 0; }
+
+/* ───────── 🤖 Propuestas de progresión (PropuestasProgresion.jsx) ─────────
+   Tablero por cliente ordenado por urgencia. El color de la tarjeta es el
+   semáforo (rojo dolor, ámbar cambios, verde todo bien) para que se lea de
+   un vistazo dónde empezar. */
+.propuestas-cabecera {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.propuestas-semana {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.propuestas-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  padding: 0 20px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.propuestas-resumen-pendientes {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.propuestas-ver-verdes {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.propuestas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+.propuesta-tarjeta {
+  border: 1px solid var(--color-border);
+  border-left: 5px solid #94a3b8;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.propuesta-rojo { border-left-color: var(--color-danger); }
+.propuesta-ambar { border-left-color: var(--color-orange); }
+.propuesta-verde { border-left-color: var(--color-success); }
+.propuesta-sin-datos { border-left-color: #cbd5e1; opacity: 0.75; }
+
+.propuesta-tarjeta-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.propuesta-tarjeta-estado {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.propuesta-ver-semana {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.propuesta-grupo {
+  margin-top: 8px;
+}
+
+.propuesta-grupo-titulo {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+  cursor: help;
+}
+
+.propuesta-grupo ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.propuesta-grupo li {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.propuesta-grupo-dolor li { background: #fef2f2; }
+.propuesta-grupo-molestia li { background: #fffbeb; }
+.propuesta-grupo-subir li,
+.propuesta-grupo-propioPeso li { background: #f0fdf4; }
+
+.propuesta-respondida { opacity: 0.6; }
+
+.propuesta-texto {
+  flex: 1 1 320px;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+/* Lo que escribió el cliente: mismo ámbar que DetalleHarbiz, para que se
+   reconozca como "palabras del cliente" en todo el panel. */
+.propuesta-cita {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #78350f;
+  font-style: italic;
+}
+
+.propuesta-lista-ejercicios {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  quotes: none;
+}
+
+.propuesta-acciones {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.propuesta-btn {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.propuesta-btn-ok:hover { border-color: var(--color-success); background: #f0fdf4; }
+.propuesta-btn-no:hover { border-color: var(--color-danger); background: #fef2f2; }
+
+.propuesta-btn-deshacer {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.propuesta-respuesta {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.propuesta-motivo {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.propuesta-motivo input {
+  min-width: 220px;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.propuesta-vacia {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}

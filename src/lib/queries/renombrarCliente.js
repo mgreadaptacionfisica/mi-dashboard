@@ -17,6 +17,11 @@ const TABLAS_HISTORIAL = [
   // Problemas del cliente (qué le pasa y qué hemos hecho): sin esto, al
   // renombrar se perderían de vista justo los problemas que siguen abiertos.
   'problemas_cliente',
+  // Respuestas a las 🤖 propuestas de progresión (migración 70). Ojo: su id
+  // lleva el nombre dentro ("cliente|semana|…"); tras renombrar, las de
+  // semanas ya respondidas quedan como historial y las propuestas nuevas
+  // salen con el nombre nuevo, que es lo que importa.
+  'propuestas_progresion',
 ]
 
 export async function renombrarClienteEnHistorial(nombreViejo, nombreNuevo) {
