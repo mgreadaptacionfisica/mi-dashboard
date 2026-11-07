@@ -179,6 +179,10 @@ las páginas del cliente son públicas), Operaciones
       badge 🚨 junto al nombre en la rejilla.
     - En **modo demo no se enseña ninguno** (texto libre sobre salud, sin
       versión ficticia), igual que los cuestionarios previos.
+  - **🕒 "Registrar revisión" se quitó** (2026-11-07, ya no se usaba): ni en
+    ⚡ Registro ni en Equipo, ni "Última revisión" en Equipo/Mi Ficha/modal.
+    Las filas viejas siguen en `seguimientos.revisiones` (solo las lee
+    CalendarioTecnico); no volver a añadirlo.
   - **📝 Resúmenes** (`ResumenesSemanales.jsx`, solo admin): el resumen de
     cada cliente por semana (`resumenSemanaCliente()`), para leer el feedback
     del equipo. Solo lectura; por defecto abre la semana pasada.
@@ -206,10 +210,16 @@ las páginas del cliente son públicas), Operaciones
     bajo el chip (`DetalleHarbiz.jsx`, ámbar; la nota del entrenador es la
     azul), en el modal, en 📝 Resúmenes y en el 📜 Historial. Desde la migración 70 también llegan reps, kilos y objetivo de cada
     ejercicio en `detalle.registro` (para 🤖 Propuestas; no se enseñan en la rejilla). En modo demo no se enseña.
-  - **🤖 Propuestas** (`PropuestasProgresion.jsx` + `utils/progresion.js`,
-    tabla `propuestas_progresion`, migración 70): qué cambiar la semana que
-    viene en cada ejercicio, cliente por cliente y ordenado por urgencia
-    (🔴 dolor → 🟡 cambios → 🟢 todo bien). Existe porque decidir la
+  - **🤖 Propuestas** (`utils/progresion.js` + `PropuestasSesion.jsx` +
+    `PropuestasProgresion.jsx`, tabla `propuestas_progresion`, migración
+    70): qué cambiar la semana que viene en cada ejercicio. **Se responden
+    en ⚡ Registro, debajo de la sesión de la que salen** (botón 🤖 plegado,
+    ✅/❌): Raúl quiere hacerlas al revisar cada sesión, no acumularlas al
+    final de semana. Cada propuesta lleva `sesionId` = la ÚLTIMA sesión de
+    la semana con ese ejercicio (si se repite el jueves, se muda; el id no
+    lleva la sesión, así que lo respondido el lunes sigue respondido salvo
+    que cambie el tipo). La pestaña 🤖 Propuestas es solo un **índice** de lo
+    que queda sin responder (no responde, como 🚨 Pendientes). Existe porque decidir la
     progresión/regresión es lo que más tiempo le cuesta al equipo. Reparto:
     el **robot** de Harbiz solo lee y traduce (manda en `detalle.registro`
     reps, kg, objetivo y, leyendo el comentario entero, una `valoracion`

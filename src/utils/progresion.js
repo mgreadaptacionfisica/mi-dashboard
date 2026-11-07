@@ -119,6 +119,7 @@ export function historialEjercicios(sesionesDelCliente) {
       const clave = nombre.toLowerCase()
       if (!porEjercicio.has(clave)) porEjercicio.set(clave, { nombre, apariciones: [] })
       porEjercicio.get(clave).apariciones.push({
+        sesionId: s.id,
         semana,
         fecha: s.fecha,
         hechaEn: s.hechaEn || '',
@@ -149,8 +150,15 @@ function semanasSeguidas(apariciones, semana) {
 // Propuestas de UN cliente para la semana que viene, mirando lo que hizo en
 // `semana` (lunes ISO) y la anterior. Devuelve:
 //   { nivel: 'rojo' | 'ambar' | 'verde' | 'sin-datos', propuestas: [...] }
-// Cada propuesta: { id, tipo, ejercicio, texto, cita }. El id es estable
-// (cliente|semana|tipo|ejercicio) para casarla con su respuesta guardada.
+// Cada propuesta: { id, tipo, ejercicio, texto, cita, sesionId }. El id es
+// estable (cliente|semana|tipo|ejercicio) para casarla con su respuesta
+// guardada. `sesionId` es la sesión de Harbiz de la que sale (la ÚLTIMA de la
+// semana con ese ejercicio): es donde se enseña en ⚡ Registro, porque la
+// propuesta se hace al revisar cada sesión, no toda junta el viernes. Si el
+// ejercicio se repite el jueves, la propuesta "se muda" a la sesión del
+// jueves; como el id no lleva la sesión, si ya se respondió el lunes sale
+// respondida, y solo vuelve a pendiente si lo del jueves cambia el tipo
+// (p. ej. el lunes tocaba subir y el jueves aparece una molestia).
 export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
   const historial = historialEjercicios(sesionesDelCliente)
   const anterior = semanaMenos(semana)
@@ -158,15 +166,17 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
   const movilidad = { cambiar: [], pronto: [] }
   // `clave` solo hace falta cuando el nombre no basta para que el id sea
   // único (dos sesiones el mismo día con comentario general).
-  const nueva = (tipo, ejercicio, texto, cita = '', clave = ejercicio) => propuestas.push({
+  const nueva = (tipo, ejercicio, texto, cita = '', clave = ejercicio, sesionId = null) => propuestas.push({
     id: `${clienteNombre}|${semana}|${tipo}|${clave.toLowerCase()}`,
-    tipo, ejercicio, texto, cita,
+    tipo, ejercicio, texto, cita, sesionId,
   })
 
   historial.forEach(({ nombre, apariciones }) => {
     const esta = apariciones.filter((a) => a.semana === semana)
     if (esta.length === 0) return
     const u = esta[esta.length - 1]
+    // Todas las propuestas de este ejercicio cuelgan de su última sesión.
+    const propone = (tipo, texto, cita = '') => nueva(tipo, nombre, texto, cita, nombre, u.sesionId)
     const previa = apariciones.filter((a) => a.semana === anterior)
     const p = previa[previa.length - 1] || null
     const valoraciones = esta.map((a) => a.valoracion)
@@ -175,22 +185,23 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     const conCarga = apariciones.some((a) => a.kgMax > 0)
     const clase = conCarga ? 'fuerza' : (u.clase || (PATRON_MOVILIDAD.test(nombre) ? 'movilidad' : 'fuerza'))
 
-    if (valoraciones.includes('nota')) nueva('nota', nombre, '', conCita(['nota']))
+    if (valoraciones.includes('nota')) propone('nota', '', conCita(['nota']))
 
     // Dolor: siempre al fisio, sea fuerza o movilidad.
     if (valoraciones.includes('dolor')) {
-      nueva('dolor', nombre, 'Dolor: decide el fisio (cambio de ejercicio, rango o carga).', conCita(['dolor']))
+      propone('dolor', 'Dolor: decide el fisio (cambio de ejercicio, rango o carga).', conCita(['dolor']))
       return
     }
 
     if (clase === 'movilidad') {
       if (valoraciones.includes('molestia')) {
-        nueva('molestia', nombre, 'Movilidad con molestia: revisar.', conCita(['molestia']))
+        propone('molestia', 'Movilidad con molestia: revisar.', conCita(['molestia']))
         return
       }
       const n = semanasSeguidas(apariciones, semana)
-      if (n >= REGLAS.MOVILIDAD_SEMANAS_CAMBIAR) movilidad.cambiar.push({ nombre, semanas: n })
-      else if (n >= REGLAS.MOVILIDAD_SEMANAS_PRONTO) movilidad.pronto.push({ nombre, semanas: n })
+      const m = { nombre, semanas: n, ultima: u }
+      if (n >= REGLAS.MOVILIDAD_SEMANAS_CAMBIAR) movilidad.cambiar.push(m)
+      else if (n >= REGLAS.MOVILIDAD_SEMANAS_PRONTO) movilidad.pronto.push(m)
       return
     }
 
@@ -199,7 +210,7 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     if (valoraciones.includes('molestia')) {
       const sigue = previa.some((a) => a.valoracion === 'molestia')
       const carga = u.kgMax > 0 ? ` (${fmtKg(u.kgMax)} kg)` : ''
-      nueva('molestia', nombre,
+      propone('molestia',
         sigue ? `Misma carga${carga}. 2ª semana con molestia: preguntar cómo va.` : `Misma carga${carga}. Preguntar si sigue la semana que viene.`,
         conCita(['molestia']))
       return
@@ -219,13 +230,13 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
 
     if (llegaAlTope || dosSemanasCerca) {
       const motivo = llegaAlTope ? `llega al tope de ${rango}` : `2 semanas cerca del tope de ${rango}`
-      if (u.kgMax > 0) nueva('subir', nombre, `${fmtKg(u.kgMax)} kg → ${rangoCargaNueva(u.kgMax).texto} (${motivo}: ${hecho})`)
-      else nueva('propioPeso', nombre, `Sin carga, ${motivo} (${hecho}): subir reps o ejercicio más difícil.`)
+      if (u.kgMax > 0) propone('subir', `${fmtKg(u.kgMax)} kg → ${rangoCargaNueva(u.kgMax).texto} (${motivo}: ${hecho})`)
+      else propone('propioPeso', `Sin carga, ${motivo} (${hecho}): subir reps o ejercicio más difícil.`)
       return
     }
 
     const igual = p && JSON.stringify(p.series) === JSON.stringify(u.series)
-    if (igual) nueva('igual', nombre, `${hecho} dos semanas seguidas: hablar con la persona.`)
+    if (igual) propone('igual', `${hecho} dos semanas seguidas: hablar con la persona.`)
   })
 
   // Hay clientes que no comentan por ejercicio sino al final de la sesión
@@ -239,20 +250,22 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     const texto = String(s.detalle?.comentario || '').trim()
     if ((v !== 'dolor' && v !== 'molestia') || !texto) return
     const dia = new Date(`${s.fecha}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })
-    nueva(v, `Sesión del ${dia}`, v === 'dolor' ? 'Comentario general con dolor: decide el fisio.' : 'Comentario general con molestia: preguntar a qué ejercicio se refiere.', texto, `sesion ${s.id}`)
+    nueva(v, `Sesión del ${dia}`, v === 'dolor' ? 'Comentario general con dolor: decide el fisio.' : 'Comentario general con molestia: preguntar a qué ejercicio se refiere.', texto, `sesion ${s.id}`, s.id)
   })
 
   // La movilidad va agrupada en UNA línea por cliente (petición de Raúl):
   // once líneas de "lleva 4 semanas" no se leen.
+  // La línea agrupada cuelga de la última sesión de la semana con movilidad.
+  const ultimaSesion = (lista) => [...lista].sort((a, b) => (a.ultima.fecha + a.ultima.hechaEn).localeCompare(b.ultima.fecha + b.ultima.hechaEn)).pop()?.ultima.sesionId || null
   if (movilidad.cambiar.length > 0) {
     const maxSem = Math.max(...movilidad.cambiar.map((m) => m.semanas))
     nueva('movilidad', 'movilidad',
       `La movilidad lleva ${maxSem >= 6 ? '6+' : maxSem} semanas igual: toca cambiarla (${movilidad.cambiar.length} ejercicio${movilidad.cambiar.length === 1 ? '' : 's'}).`,
-      movilidad.cambiar.map((m) => m.nombre).join(' · '))
+      movilidad.cambiar.map((m) => m.nombre).join(' · '), 'movilidad', ultimaSesion(movilidad.cambiar))
   } else if (movilidad.pronto.length > 0) {
     nueva('movilidad', 'movilidad',
       `La movilidad lleva ${REGLAS.MOVILIDAD_SEMANAS_PRONTO} semanas: cambiarla la semana que viene (${movilidad.pronto.length} ejercicio${movilidad.pronto.length === 1 ? '' : 's'}).`,
-      movilidad.pronto.map((m) => m.nombre).join(' · '))
+      movilidad.pronto.map((m) => m.nombre).join(' · '), 'movilidad', ultimaSesion(movilidad.pronto))
   }
 
   propuestas.sort((a, b) => ORDEN_TIPOS.indexOf(a.tipo) - ORDEN_TIPOS.indexOf(b.tipo))

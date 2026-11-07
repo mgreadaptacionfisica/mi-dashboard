@@ -2,8 +2,7 @@ import { useMemo, useState } from 'react'
 import SeguimientoCliente from './SeguimientoCliente'
 import ContactoSemanal from './ContactoSemanal'
 import { insertMiembroRemote, updateMiembroRemote, deleteMiembroRemote, deleteAllMiembrosRemote } from '../lib/queries/miembrosEquipo'
-import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente, semanaVacia, DIAS_SEMANA } from '../utils/seguimientoHelpers'
-import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
+import { semanaActualISO, progresoSemana, progresoContacto, ultimaRevisionCliente } from '../utils/seguimientoHelpers'
 import { insertFinanzaRemote, deleteFinanzaRemote } from '../lib/queries/finanzas'
 import { actividadTecnico, seguimientoTecnico, contactoTecnico, mesActualISO, mesAPagarISO, mesLabel } from '../utils/equipoHelpers'
 import { tieneTramos, resumenTramos, comisionMesEnCursoCloser, actividadCloser, importeMesCloser } from '../utils/comisionesCloser'
@@ -12,8 +11,6 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-const HORAS_12 = Array.from({ length: 12 }, (_, i) => String(i + 1))
-const MINUTOS = ['00', '15', '30', '45']
 
 const esCloser = (persona) => (persona.rol || '').toLowerCase().includes('closer')
 // El CEO (ej. Raúl) no cobra sueldo del equipo: se le oculta toda la parte
@@ -159,7 +156,6 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
   const [detailCloser, setDetailCloser] = useState(null)
   const [detailTecnico, setDetailTecnico] = useState(null)
   const [seguimientoClienteAbierto, setSeguimientoClienteAbierto] = useState(null)
-  const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', persona: '', dia: 'lunes', hora: '10', minuto: '00', ampm: 'AM' })
   const [formData, setFormData] = useState({
     nombre: '',
     rol: '',
@@ -298,40 +294,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
     }, {})
   }, [team, contactosSemanales, actividadPorTecnico])
 
-  const registrarRevisionManual = (event) => {
-    event.preventDefault()
-    if (!revisionForm.clienteNombre || !revisionForm.persona) return
-    const semanaActual = semanaActualISO()
-    const horaTexto = `${revisionForm.hora}:${revisionForm.minuto} ${revisionForm.ampm}`
-    const nuevaRevision = { persona: revisionForm.persona, dia: revisionForm.dia, hora: horaTexto, fecha: todayISO(), registradoEn: new Date().toISOString() }
-
-    const existente = seguimientos.find((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual)
-    const actualizado = existente
-      ? { ...existente, revisiones: [nuevaRevision, ...(existente.revisiones || [])] }
-      : { clienteNombre: revisionForm.clienteNombre, semana: semanaActual, dias: semanaVacia(), comentarios: '', revisiones: [nuevaRevision] }
-
-    setSeguimientos((prev) => {
-      const existe = prev.some((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual)
-      if (existe) {
-        return prev.map((s) =>
-          (s.clienteNombre === revisionForm.clienteNombre && s.semana === semanaActual) ? actualizado : s
-        )
-      }
-      return [...prev, actualizado]
-    })
-    upsertSeguimientoRemote(actualizado)
-  }
-
   const abrirDetalleTecnico = (persona) => {
-    const clientesDePersona = actividadPorTecnico[persona.nombre]?.clientesAsignados || []
-    setRevisionForm({
-      clienteNombre: clientesDePersona[0]?.Nombre || '',
-      persona: persona.nombre,
-      dia: 'lunes',
-      hora: '10',
-      minuto: '00',
-      ampm: 'AM',
-    })
     setDetailTecnico(persona)
   }
 
@@ -784,7 +747,6 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     {!esCEO(detailTecnico) && <div className="team-activity-kpi"><span>Acumulado mes en curso</span><strong>{act.totalMes.toLocaleString('es-ES')}€</strong></div>}
                     <div className="team-activity-kpi"><span>Contacto semanal (3x)</span><strong>{contacto?.total > 0 ? `${contacto.hechos}/${contacto.total} (${contacto.porcentaje}%)` : '—'}</strong></div>
                     <div className="team-activity-kpi"><span>Progreso tareas semana</span><strong>{seg?.porcentajeGeneral != null ? `${seg.porcentajeGeneral}%` : '—'}</strong></div>
-                    <div className="team-activity-kpi"><span>Última revisión</span><strong style={{ fontSize: 13 }}>{seg?.ultimaRevisionGeneral || 'Sin revisiones'}</strong></div>
                   </div>
 
                   {!esCEO(detailTecnico) && (() => {
@@ -846,7 +808,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
 
                   <h4 className="team-activity-subtitle">Seguimiento semanal por cliente</h4>
                   <ul className="lead-log-list team-activity-leadlist seguimiento-resumen-list">
-                    {seg?.resumenClientes.map(({ cliente, progreso, ultimaRevision }, i) => (
+                    {seg?.resumenClientes.map(({ cliente, progreso }, i) => (
                       <li key={i} className="seguimiento-resumen-item">
                         <div>
                           <strong>{cliente.Nombre}</strong> — {cliente['Servicio contratado'] || 'Sin servicio'}
@@ -858,7 +820,6 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                             ) : (
                               <span className="seguimiento-progreso-badge seguimiento-progreso-vacio">Sin tareas esta semana</span>
                             )}
-                            <span className="seguimiento-ultima-revision">Última revisión: {ultimaRevision || 'nunca'}</span>
                           </div>
                         </div>
                         {typeof setSeguimientos === 'function' && (
@@ -868,47 +829,6 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     ))}
                   </ul>
 
-                  {typeof setSeguimientos === 'function' && (
-                    <>
-                      <h4 className="team-activity-subtitle">Registrar última revisión</h4>
-                      <form className="seguimiento-revision-form" onSubmit={registrarRevisionManual}>
-                        <select value={revisionForm.clienteNombre} onChange={(e) => setRevisionForm({ ...revisionForm, clienteNombre: e.target.value })}>
-                          <option value="">Selecciona cliente</option>
-                          {(act.clientesAsignados || []).map((c) => <option key={c.Nombre} value={c.Nombre}>{c.Nombre}</option>)}
-                        </select>
-                        <select value={revisionForm.persona} onChange={(e) => setRevisionForm({ ...revisionForm, persona: e.target.value })}>
-                          {team.tecnico.map((p) => <option key={p.nombre} value={p.nombre}>{p.nombre}</option>)}
-                        </select>
-                        <select value={revisionForm.dia} onChange={(e) => setRevisionForm({ ...revisionForm, dia: e.target.value })}>
-                          {DIAS_SEMANA.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
-                        </select>
-                        <div className="seguimiento-hora-picker">
-                          <select value={revisionForm.hora} onChange={(e) => setRevisionForm({ ...revisionForm, hora: e.target.value })}>
-                            {HORAS_12.map((h) => <option key={h} value={h}>{h}</option>)}
-                          </select>
-                          <span>:</span>
-                          <select value={revisionForm.minuto} onChange={(e) => setRevisionForm({ ...revisionForm, minuto: e.target.value })}>
-                            {MINUTOS.map((m) => <option key={m} value={m}>{m}</option>)}
-                          </select>
-                          <select value={revisionForm.ampm} onChange={(e) => setRevisionForm({ ...revisionForm, ampm: e.target.value })}>
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                          </select>
-                        </div>
-                        <button type="submit" className="primary-action">Registrar</button>
-                      </form>
-
-                      {seg?.revisionesRecientes?.length > 0 && (
-                        <ul className="lead-log-list" style={{ marginTop: 10 }}>
-                          {seg.revisionesRecientes.map((r, i) => (
-                            <li key={i}>
-                              <strong>{r.persona}</strong> revisó a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {r.hora} ({r.fecha})
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </>
-                  )}
                 </div>
               )
             })()}

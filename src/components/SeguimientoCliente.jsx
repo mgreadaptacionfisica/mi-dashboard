@@ -8,7 +8,6 @@ import {
   diaVacio,
   semanaVacia,
   progresoSemana,
-  ultimaRevisionCliente,
   motivosNoCierre,
   resumenSemanaCliente,
 } from '../utils/seguimientoHelpers'
@@ -219,10 +218,6 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
               {cliente.Email || '—'}
               {cliente.Teléfono ? ` · ${cliente.Teléfono}` : ''}
             </dd>
-          </div>
-          <div>
-            <dt>Última revisión</dt>
-            <dd>{ultimaRevisionCliente(seguimientos, cliente.Nombre) || 'nunca'}</dd>
           </div>
         </dl>
 

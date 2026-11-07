@@ -2,23 +2,21 @@ import { useMemo, useState } from 'react'
 import { propuestasCliente, sesionesHarbizDeCliente, esRespondible, TIPOS, ORDEN_TIPOS } from '../utils/progresion'
 import { semanaYDiaDeFecha } from '../utils/sesionesHarbiz'
 import { formatRangoSemana } from '../utils/seguimientoHelpers'
-import { upsertRespuestaPropuestaRemote, deleteRespuestaPropuestaRemote } from '../lib/queries/propuestasProgresion'
 
-// 🤖 Propuestas: tablero de lo que toca cambiar la semana que viene, cliente
-// por cliente y ordenado por urgencia (🔴 dolor → 🟡 cambios → 🟢 todo bien).
-// La idea es que el fisio empiece por arriba y, al llegar a los verdes, haya
-// terminado. Las propuestas las calcula utils/progresion.js con las reglas de
-// Raúl; aquí solo se enseñan y se responden.
+// 🤖 Propuestas: ÍNDICE de lo que queda sin responder, una línea por cliente.
 //
-// Fase 1 (desde el 2026-11-07): SOLO propone. El fisio pasa el cambio a
-// Harbiz a mano y marca ✅; si no la ve, ❌ con el motivo (eso es lo que
-// sirve para pulir las reglas).
+// Las propuestas se responden en ⚡ Registro de sesiones, debajo de la sesión
+// de la que salen (PropuestasSesion.jsx): Raúl quiere hacerlas al revisar
+// cada sesión, no todas juntas a final de semana. Aquí no se responde nada,
+// igual que 🚨 Pendientes: sirve para repasar (p. ej. el viernes) que no se
+// ha quedado ninguna atrás, y cada línea lleva a la rejilla de ese cliente.
+// Las calcula utils/progresion.js con las reglas de Raúl.
 
 const NIVELES = {
-  rojo: { orden: 0, emoji: '🔴', texto: 'Dolor: al fisio' },
-  ambar: { orden: 1, emoji: '🟡', texto: 'Cambios propuestos' },
-  verde: { orden: 2, emoji: '🟢', texto: 'Todo bien' },
-  'sin-datos': { orden: 3, emoji: '⚫', texto: 'Sin datos de Harbiz esta semana' },
+  rojo: { orden: 0, emoji: '🔴' },
+  ambar: { orden: 1, emoji: '🟡' },
+  verde: { orden: 2, emoji: '🟢' },
+  'sin-datos': { orden: 3, emoji: '⚫' },
 }
 
 // Lunes (clave de semana, la misma que la rejilla) de hoy ± n semanas. Con
@@ -31,61 +29,42 @@ function lunesDeHoyMas(semanas) {
   return semanaYDiaDeFecha(local).semana
 }
 
-export default function PropuestasProgresion({ clientes, todosLosClientes, sesionesHarbiz, respuestas, setRespuestas, miNombre, onAbrirSeguimiento }) {
+export default function PropuestasProgresion({ clientes, todosLosClientes, sesionesHarbiz, respuestas, onIrSesiones }) {
   const [offset, setOffset] = useState(0)
-  const [descartando, setDescartando] = useState(null) // id de la propuesta
-  const [motivo, setMotivo] = useState('')
-  const [verVerdes, setVerVerdes] = useState(false)
+  const [verTodos, setVerTodos] = useState(false)
   const semana = lunesDeHoyMas(offset)
 
-  const tarjetas = useMemo(() => (clientes || [])
-    .map((cliente) => {
-      const sesiones = sesionesHarbizDeCliente(cliente, sesionesHarbiz, todosLosClientes)
-      return { cliente, ...propuestasCliente(cliente.Nombre, sesiones, semana) }
-    })
-    .sort((a, b) => NIVELES[a.nivel].orden - NIVELES[b.nivel].orden || a.cliente.Nombre.localeCompare(b.cliente.Nombre)),
-  [clientes, todosLosClientes, sesionesHarbiz, semana])
+  const filas = useMemo(() => {
+    const respondidas = new Set((respuestas || []).map((r) => r.id))
+    return (clientes || [])
+      .map((cliente) => {
+        const sesiones = sesionesHarbizDeCliente(cliente, sesionesHarbiz, todosLosClientes)
+        const { nivel, propuestas } = propuestasCliente(cliente.Nombre, sesiones, semana)
+        const respondibles = propuestas.filter(esRespondible)
+        const pendientes = respondibles.filter((p) => !respondidas.has(p.id))
+        // Cuántas de cada tipo quedan, para decir de un vistazo qué hay.
+        const porTipo = ORDEN_TIPOS
+          .map((tipo) => ({ tipo, n: pendientes.filter((p) => p.tipo === tipo).length }))
+          .filter((x) => x.n > 0)
+        return { cliente, nivel, total: respondibles.length, pendientes: pendientes.length, porTipo }
+      })
+      .sort((a, b) => (b.pendientes > 0) - (a.pendientes > 0)
+        || NIVELES[a.nivel].orden - NIVELES[b.nivel].orden
+        || a.cliente.Nombre.localeCompare(b.cliente.Nombre))
+  }, [clientes, todosLosClientes, sesionesHarbiz, respuestas, semana])
 
-  const respuestaDe = (id) => (respuestas || []).find((r) => r.id === id)
-  const pendientesDe = (t) => t.propuestas.filter((p) => esRespondible(p) && !respuestaDe(p.id)).length
-  const totalPendientes = tarjetas.reduce((n, t) => n + pendientesDe(t), 0)
-  const conteo = (nivel) => tarjetas.filter((t) => t.nivel === nivel).length
-
-  const responder = (cliente, propuesta, estado, motivoTexto = '') => {
-    const r = {
-      id: propuesta.id,
-      clienteNombre: cliente.Nombre,
-      semana,
-      ejercicio: propuesta.ejercicio,
-      tipo: propuesta.tipo,
-      texto: propuesta.texto,
-      estado,
-      motivo: motivoTexto.trim(),
-      respondidoPor: miNombre || '',
-      respondidoEn: new Date().toISOString(),
-    }
-    setRespuestas((prev) => [...(prev || []).filter((x) => x.id !== r.id), r])
-    upsertRespuestaPropuestaRemote(r)
-    setDescartando(null)
-    setMotivo('')
-  }
-
-  const deshacer = (id) => {
-    setRespuestas((prev) => (prev || []).filter((x) => x.id !== id))
-    deleteRespuestaPropuestaRemote(id)
-  }
-
-  const visibles = tarjetas.filter((t) => verVerdes || (t.nivel !== 'verde' && t.nivel !== 'sin-datos'))
+  const totalPendientes = filas.reduce((n, f) => n + f.pendientes, 0)
+  const conPendientes = filas.filter((f) => f.pendientes > 0).length
+  const visibles = verTodos ? filas : filas.filter((f) => f.pendientes > 0)
 
   return (
     <div className="table-card">
       <div className="card-header propuestas-cabecera">
         <div>
-          <div className="card-title">🤖 Propuestas para la semana que viene</div>
+          <div className="card-title">🤖 Propuestas sin responder</div>
           <div className="card-subtitle">
-            Calculadas con lo que cada cliente apuntó en Harbiz la semana del {formatRangoSemana(semana)}.
-            Empieza por arriba: al llegar a los 🟢 has terminado. De momento el cambio en Harbiz lo pasas tú; márcalo con ✅,
-            o ❌ con el motivo si no lo ves (así se pulen las reglas).
+            Las propuestas se responden en ⚡ Registro de sesiones, debajo de cada sesión (botón 🤖), al revisarla.
+            Esto es solo el repaso: quién tiene alguna sin responder la semana del {formatRangoSemana(semana)}.
           </div>
         </div>
         <div className="propuestas-semana">
@@ -96,94 +75,35 @@ export default function PropuestasProgresion({ clientes, todosLosClientes, sesio
       </div>
 
       <div className="propuestas-resumen">
-        <span>🔴 {conteo('rojo')}</span>
-        <span>🟡 {conteo('ambar')}</span>
-        <span>🟢 {conteo('verde')}</span>
-        <span>⚫ {conteo('sin-datos')}</span>
-        <span className="propuestas-resumen-pendientes">{totalPendientes} propuesta{totalPendientes === 1 ? '' : 's'} sin responder</span>
+        <span className="propuestas-resumen-pendientes">
+          {totalPendientes === 0 ? '✓ Todo respondido' : `${totalPendientes} sin responder en ${conPendientes} cliente${conPendientes === 1 ? '' : 's'}`}
+        </span>
         <label className="propuestas-ver-verdes">
-          <input type="checkbox" checked={verVerdes} onChange={(e) => setVerVerdes(e.target.checked)} /> Ver también 🟢 y ⚫
+          <input type="checkbox" checked={verTodos} onChange={(e) => setVerTodos(e.target.checked)} /> Ver también los que ya están al día
         </label>
       </div>
 
       {visibles.length === 0 && (
         <p className="lead-log-empty">
-          {tarjetas.length === 0 ? 'No hay clientes activos.' : 'Nada que revisar esta semana 🎉'}
+          {filas.length === 0 ? 'No hay clientes activos.' : 'Nada pendiente esta semana 🎉'}
         </p>
       )}
 
-      <div className="propuestas-lista">
-        {visibles.map((t) => {
-          const nivel = NIVELES[t.nivel]
-          const pendientes = pendientesDe(t)
-          return (
-            <section key={t.cliente.Nombre} className={`propuesta-tarjeta propuesta-${t.nivel}`}>
-              <header className="propuesta-tarjeta-cabecera">
-                <strong>{nivel.emoji} {t.cliente.Nombre}</strong>
-                <span className="propuesta-tarjeta-estado">
-                  {t.nivel === 'verde' || t.nivel === 'sin-datos' ? nivel.texto : pendientes > 0 ? `${pendientes} por responder` : '✓ Todo respondido'}
-                </span>
-                {onAbrirSeguimiento && (
-                  <button type="button" className="propuesta-ver-semana" onClick={() => onAbrirSeguimiento(t.cliente, offset)}>Ver semana →</button>
-                )}
-              </header>
-
-              {ORDEN_TIPOS.map((tipo) => {
-                const delTipo = t.propuestas.filter((p) => p.tipo === tipo)
-                if (delTipo.length === 0) return null
-                return (
-                  <div key={tipo} className={`propuesta-grupo propuesta-grupo-${tipo}`}>
-                    <div className="propuesta-grupo-titulo" title={TIPOS[tipo].ayuda}>{TIPOS[tipo].emoji} {TIPOS[tipo].titulo}</div>
-                    <ul>
-                      {delTipo.map((p) => {
-                        const r = respuestaDe(p.id)
-                        return (
-                          <li key={p.id} className={r ? `propuesta-respondida propuesta-${r.estado}` : ''}>
-                            <div className="propuesta-texto">
-                              {p.tipo !== 'movilidad' && <strong>{p.ejercicio}</strong>}
-                              {p.texto && <span>{p.tipo !== 'movilidad' ? ': ' : ''}{p.texto}</span>}
-                              {p.cita && <q className={p.tipo === 'movilidad' ? 'propuesta-lista-ejercicios' : 'propuesta-cita'}>{p.cita}</q>}
-                            </div>
-                            {esRespondible(p) && (
-                              <div className="propuesta-acciones">
-                                {r ? (
-                                  <>
-                                    <span className="propuesta-respuesta">
-                                      {r.estado === 'aplicada' ? '✅ Aplicada' : `❌ Descartada${r.motivo ? `: ${r.motivo}` : ''}`}
-                                      {r.respondidoPor ? ` · ${r.respondidoPor}` : ''}
-                                    </span>
-                                    <button type="button" className="propuesta-btn-deshacer" onClick={() => deshacer(p.id)}>Deshacer</button>
-                                  </>
-                                ) : descartando === p.id ? (
-                                  <form className="propuesta-motivo" onSubmit={(e) => { e.preventDefault(); responder(t.cliente, p, 'descartada', motivo) }}>
-                                    <input autoFocus value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="¿Por qué no? (ej.: prefiero mantener otra semana)" />
-                                    <button type="submit" className="propuesta-btn">Guardar</button>
-                                    <button type="button" className="propuesta-btn-deshacer" onClick={() => { setDescartando(null); setMotivo('') }}>Cancelar</button>
-                                  </form>
-                                ) : (
-                                  <>
-                                    <button type="button" className="propuesta-btn propuesta-btn-ok" onClick={() => responder(t.cliente, p, 'aplicada')} title="Ya lo he cambiado en Harbiz (o lo he hablado con el cliente)">✅ Aplicada</button>
-                                    <button type="button" className="propuesta-btn propuesta-btn-no" onClick={() => { setDescartando(p.id); setMotivo('') }}>❌</button>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                )
-              })}
-
-              {t.nivel === 'verde' && <p className="propuesta-vacia">Sin cambios: que siga igual.</p>}
-              {t.nivel === 'sin-datos' && (
-                <p className="propuesta-vacia">No hay entrenos de Harbiz con reps y kilos esta semana (o aún no ha entrenado).</p>
-              )}
-            </section>
-          )
-        })}
-      </div>
+      <ul className="propuestas-indice">
+        {visibles.map((f) => (
+          <li key={f.cliente.Nombre} className={`propuestas-indice-fila propuesta-${f.nivel}`}>
+            <span className="propuestas-indice-nombre">{NIVELES[f.nivel].emoji} {f.cliente.Nombre}</span>
+            <span className="propuestas-indice-detalle">
+              {f.pendientes > 0
+                ? f.porTipo.map((x) => `${TIPOS[x.tipo].emoji} ${x.n}`).join('  ')
+                : f.nivel === 'sin-datos' ? 'Sin datos de Harbiz' : f.total > 0 ? '✓ Respondidas' : 'Sin cambios'}
+            </span>
+            {onIrSesiones && (
+              <button type="button" className="propuesta-ver-semana" onClick={() => onIrSesiones(f.cliente, offset)}>Ir a sus sesiones →</button>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

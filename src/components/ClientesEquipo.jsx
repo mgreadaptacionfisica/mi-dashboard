@@ -6,6 +6,9 @@ import ContactoSemanal from './ContactoSemanal'
 import PendientesSeguimiento from './PendientesSeguimiento'
 import ResumenesSemanales from './ResumenesSemanales'
 import PropuestasProgresion from './PropuestasProgresion'
+import PropuestasSesion from './PropuestasSesion'
+import { propuestasCliente, sesionesHarbizDeCliente } from '../utils/progresion'
+import { upsertRespuestaPropuestaRemote, deleteRespuestaPropuestaRemote } from '../lib/queries/propuestasProgresion'
 import {
   semanaActualISO,
   formatRangoSemana,
@@ -16,7 +19,6 @@ import {
   semanaVacia,
   diaVacio,
   progresoSemana,
-  ultimaRevisionCliente,
   pendientesDeCliente,
 } from '../utils/seguimientoHelpers'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
@@ -26,11 +28,6 @@ import { descartarSesionHarbizRemote } from '../lib/queries/sesionesHarbiz'
 import { horaSesionHarbiz } from '../utils/sesionesHarbiz'
 import DetalleHarbiz from './DetalleHarbiz'
 import { upsertProblemaClienteRemote } from '../lib/queries/problemasCliente'
-import { seguimientoTecnico } from '../utils/equipoHelpers'
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10)
-}
 
 // Profesionales asignados a un cliente. Hay fichas antiguas con el campo
 // "Trabajador" (uno solo) y las nuevas con "Trabajadores" (lista), así que
@@ -42,27 +39,6 @@ function trabajadoresDe(cliente) {
 // Valor del filtro de admin para "clientes activos que no tienen a nadie
 // asignado" — no es un nombre de persona, por eso va como constante aparte.
 const SIN_ASIGNAR = '__sin_asignar__'
-
-// Hora en formato 12h con AM/PM seleccionable a mano (hora 1-12 + minuto
-// libre, sin tramos) — coincide con el formato que muestran apps externas
-// como Harbiz ("09:32am"), así se copia directo sin convertir a 24h.
-const HORAS_12 = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
-
-function horaA24h(horaH, horaM, ampm) {
-  let h = Number(horaH) % 12
-  if (ampm === 'PM') h += 12
-  const m = String(horaM).padStart(2, '0').slice(0, 2)
-  return `${String(h).padStart(2, '0')}:${m}`
-}
-
-function formatHora12(horaHHMM) {
-  if (!horaHHMM) return ''
-  const [h, m] = horaHHMM.split(':').map(Number)
-  if (Number.isNaN(h) || Number.isNaN(m)) return ''
-  const ampm = h >= 12 ? 'PM' : 'AM'
-  const h12 = h % 12 === 0 ? 12 : h % 12
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
-}
 
 // Vista de "Seguimiento y Valoración" para el equipo técnico: separada a
 // propósito de ClientesAdmin.jsx (sidebar item "Clientes"), que lleva toda
@@ -109,11 +85,6 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   }
   const [valoracionCliente, setValoracionCliente] = useState(null)
   const [fasesCliente, setFasesCliente] = useState(null)
-  const [revisionForm, setRevisionForm] = useState({ clienteNombre: '', dia: 'lunes', horaH: '10', horaM: '00', ampm: 'AM' })
-  // El formulario de "Registrar última revisión" empieza plegado: son 5
-  // campos que se usan una vez por cliente y semana, y tenerlos siempre
-  // abiertos encima de la rejilla es ruido para lo que se hace a diario.
-  const [revisionAbierta, setRevisionAbierta] = useState(false)
   // Celda del "Registro rápido" que está mostrando ahora mismo el formulario
   // para añadir una sesión nueva (clave "NombreCliente|diaId") y el borrador
   // de texto — para no montar un formulario por cada celda de toda la
@@ -398,8 +369,52 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   }
 
   // Quién firma lo que se apunta: el nombre real del técnico si lo tenemos,
-  // y si no el email (mismo criterio que "Registrar última revisión").
+  // y si no el email.
   const miIdentidad = miPersona?.nombre || miNombreAdmin || miEmail || ''
+
+  // 🤖 Propuestas de la semana que se ve en la rejilla, por cliente. Cada
+  // propuesta lleva el `sesionId` de la sesión de Harbiz de la que sale, y
+  // se enseña debajo de esa sesión: se responde al revisarla (petición de
+  // Raúl, para no acumular todo a final de semana). Sale de misClientes, así
+  // que respeta el filtro por trabajador.
+  const propuestasRegistro = useMemo(() => {
+    const mapa = new Map()
+    misClientes.forEach((c) => {
+      const sesiones = sesionesHarbizDeCliente(c, sesionesHarbiz, clientes)
+      if (sesiones.length > 0) mapa.set(c.Nombre, propuestasCliente(c.Nombre, sesiones, semanaRegistro).propuestas)
+    })
+    return mapa
+  }, [misClientes, sesionesHarbiz, clientes, semanaRegistro])
+
+  // Respuesta del fisio a una propuesta (✅ aplicada / ❌ con motivo). Se
+  // guarda con una foto del texto para poder leer el motivo con contexto
+  // aunque la regla cambie después (ver migración 70).
+  const responderPropuesta = (clienteNombre, propuesta, estado, motivo = '') => {
+    if (typeof setPropuestasProgresion !== 'function') return
+    const r = {
+      id: propuesta.id,
+      clienteNombre,
+      semana: semanaRegistro,
+      ejercicio: propuesta.ejercicio,
+      tipo: propuesta.tipo,
+      texto: propuesta.texto,
+      estado,
+      motivo: (motivo || '').trim(),
+      respondidoPor: miIdentidad,
+      respondidoEn: new Date().toISOString(),
+    }
+    setPropuestasProgresion((prev) => [...(prev || []).filter((x) => x.id !== r.id), r])
+    upsertRespuestaPropuestaRemote(r)
+  }
+  const deshacerPropuesta = (id) => {
+    if (typeof setPropuestasProgresion !== 'function') return
+    setPropuestasProgresion((prev) => (prev || []).filter((x) => x.id !== id))
+    deleteRespuestaPropuestaRemote(id)
+  }
+  const pendientesPropuestas = (clienteNombre) => {
+    const respondidas = new Set((propuestasProgresion || []).map((r) => r.id))
+    return (propuestasRegistro.get(clienteNombre) || []).filter((p) => p.tipo !== 'nota' && !respondidas.has(p.id)).length
+  }
 
   // Abre un problema a partir de una sesión. Se guarda una foto del origen
   // (semana, día y texto de la sesión) para poder decir después "salió en la
@@ -431,38 +446,6 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
     setAddTexto('')
   }
 
-  // "Registrar última revisión" (movido aquí desde Mi Ficha, a petición de
-  // Raúl: toda la operatividad vive en Seguimiento y Valoración; Mi Ficha
-  // se queda solo con los datos del técnico y un resumen). Deja constancia
-  // de cuándo se revisó a un cliente (día/hora), aparte del check final y
-  // de las tareas. Visible también para admin (antes se ocultaba del todo
-  // si no tenía ficha de técnico) — si no hay miPersona se registra con su
-  // email como identificador.
-  const registrarRevisionPropia = (event) => {
-    event.preventDefault()
-    if (!revisionForm.clienteNombre) return
-    const semana = semanaActualISO()
-    const hora24 = horaA24h(revisionForm.horaH, revisionForm.horaM, revisionForm.ampm)
-    const nuevaRevision = { persona: miPersona?.nombre || miEmail || 'Admin', dia: revisionForm.dia, hora: hora24, fecha: todayISO(), registradoEn: new Date().toISOString() }
-
-    const existente = seguimientos.find((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semana)
-    const actualizado = existente
-      ? { ...existente, revisiones: [nuevaRevision, ...(existente.revisiones || [])] }
-      : { clienteNombre: revisionForm.clienteNombre, semana, dias: semanaVacia(), comentarios: '', revisiones: [nuevaRevision] }
-
-    setSeguimientos((prev) => {
-      const existe = prev.some((s) => s.clienteNombre === revisionForm.clienteNombre && s.semana === semana)
-      if (existe) {
-        return prev.map((s) => (s.clienteNombre === revisionForm.clienteNombre && s.semana === semana) ? actualizado : s)
-      }
-      return [...prev, actualizado]
-    })
-    upsertSeguimientoRemote(actualizado)
-  }
-
-  // "Mi última revisión" se filtra a la persona que ha iniciado sesión —
-  // si un cliente se comparte con otro técnico, aquí solo se ve lo que
-  // has registrado tú, no lo suyo (para no liarse entre compañeros).
   // Texto de "aquí no hay nada": con el filtro por trabajador puesto, decir
   // "no hay clientes asignados" a secas despista (los hay, pero no de esa
   // persona), así que se nombra a quién se está mirando.
@@ -514,12 +497,6 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   // desde un contacto atrasado se llega a la pestaña y se retrocede con
   // "← Semana anterior" (lo dice el propio aviso del chip).
   const irAContactoSemanal = () => setVista('contacto')
-
-  const miIdentidadRevision = miPersona?.nombre || miEmail || 'Admin'
-  const seguimientoResumen = useMemo(
-    () => seguimientoTecnico(misClientes, seguimientos, { semanaActualISO, progresoSemana, ultimaRevisionCliente }, miIdentidadRevision),
-    [misClientes, seguimientos, miIdentidadRevision]
-  )
 
   return (
     <>
@@ -599,9 +576,8 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
               <button type="button" className={`tab-btn ${vista === 'registro' ? 'tab-btn-active' : ''}`} onClick={() => setVista('registro')}>
                 ⚡ Registro de sesiones
               </button>
-              {/* Propuestas de progresión (utils/progresion.js): qué cambiar
-                  la semana que viene según lo apuntado en Harbiz. Para admin
-                  y técnicos: es justo el trabajo del entrenador. */}
+              {/* Índice de propuestas sin responder (se responden en la
+                  rejilla, debajo de cada sesión). Para admin y técnicos. */}
               <button type="button" className={`tab-btn ${vista === 'propuestas' ? 'tab-btn-active' : ''}`} onClick={() => setVista('propuestas')}>
                 🤖 Propuestas
               </button>
@@ -694,68 +670,8 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                     onChange={(e) => setSearch(e.target.value)}
                     style={{ maxWidth: 220 }}
                   />
-                  {misClientes.length > 0 && (
-                    <button
-                      type="button"
-                      className="secondary-action"
-                      onClick={() => setRevisionAbierta((v) => !v)}
-                      title="Dejar constancia de cuándo revisaste a un cliente (aparte de marcar sus sesiones)"
-                    >
-                      {revisionAbierta ? '✕ Cerrar' : '🕒 Registrar revisión'}
-                    </button>
-                  )}
                 </div>
               </div>
-
-              {misClientes.length > 0 && revisionAbierta && (
-                <div className="registro-rapido-revision-panel">
-                  <p className="card-subtitle" style={{ margin: '0 0 8px' }}>
-                    Deja constancia de cuándo revisaste a cada cliente (día y hora), aparte de marcar sus sesiones.
-                  </p>
-                  <form className="seguimiento-revision-form" onSubmit={registrarRevisionPropia}>
-                    <select value={revisionForm.clienteNombre} onChange={(e) => setRevisionForm({ ...revisionForm, clienteNombre: e.target.value })}>
-                      <option value="">Selecciona cliente</option>
-                      {misClientes.map((c) => <option key={c.Nombre} value={c.Nombre}>{c.Nombre}</option>)}
-                    </select>
-                    <select value={revisionForm.dia} onChange={(e) => setRevisionForm({ ...revisionForm, dia: e.target.value })}>
-                      {DIAS_SEMANA.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
-                    </select>
-                    <span className="seguimiento-hora-picker">
-                      <select value={revisionForm.horaH} onChange={(e) => setRevisionForm({ ...revisionForm, horaH: e.target.value })}>
-                        {HORAS_12.map((h) => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                      <span>:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        className="seguimiento-minuto-input"
-                        value={revisionForm.horaM}
-                        onChange={(e) => {
-                          const raw = e.target.value.slice(0, 2)
-                          const clamped = raw === '' ? '' : String(Math.min(59, Math.max(0, Number(raw))))
-                          setRevisionForm({ ...revisionForm, horaM: clamped })
-                        }}
-                        onBlur={(e) => setRevisionForm({ ...revisionForm, horaM: String(e.target.value || '0').padStart(2, '0') })}
-                      />
-                      <select value={revisionForm.ampm} onChange={(e) => setRevisionForm({ ...revisionForm, ampm: e.target.value })}>
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
-                    </span>
-                      <button type="submit" className="primary-action">Registrar</button>
-                  </form>
-
-                  {seguimientoResumen?.revisionesRecientes?.[0] && (() => {
-                    const r = seguimientoResumen.revisionesRecientes[0]
-                    return (
-                      <p className="valoracion-referencia" style={{ margin: '10px 0 0' }}>
-                        🕒 Tu último registro: revisaste a <strong>{r.clienteNombre}</strong> — {DIAS_SEMANA.find((d) => d.id === r.dia)?.label} a las {formatHora12(r.hora) || r.hora} ({r.fecha})
-                      </p>
-                    )
-                  })()}
-                </div>
-              )}
 
               <div className="seguimiento-week-nav registro-rapido-week-nav">
                 <button type="button" className="secondary-action" onClick={() => setRegistroOffset((w) => w - 1)}>← Semana anterior</button>
@@ -778,7 +694,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
               <div className="registro-rapido-leyenda">
                 <span><span className="registro-rapido-chip registro-rapido-chip-hecho" style={{ pointerEvents: 'none' }}>✅ Hecho</span></span>
                 <span><span className="registro-rapido-chip" style={{ pointerEvents: 'none' }}>⬜ Pendiente</span></span>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Clic en una sesión para marcarla / desmarcarla · 💬 para apuntar un cambio, una molestia o lo que diga el cliente (y marcarlo como 🚨 problema si hay que resolverlo) · ✕ para quitarla</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Clic en una sesión para marcarla / desmarcarla · 💬 para apuntar un cambio, una molestia o lo que diga el cliente (y marcarlo como 🚨 problema si hay que resolverlo) · ✕ para quitarla · 🤖 debajo de una sesión de Harbiz: lo que toca cambiar la semana que viene, respóndelo al revisarla</span>
               </div>
 
               <div className="table-wrapper">
@@ -830,6 +746,11 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                               >
                                 🚨 {abiertosDe(cliente.Nombre)}
                               </button>
+                            )}
+                            {pendientesPropuestas(cliente.Nombre) > 0 && (
+                              <span className="propuestas-pendientes-badge" title="Propuestas para la semana que viene sin responder (están debajo de cada sesión, botón 🤖)">
+                                🤖 {pendientesPropuestas(cliente.Nombre)}
+                              </span>
                             )}
                             {semPend && (
                               <button
@@ -925,6 +846,16 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                       </div>
                                       {/* Lo que dejó escrito el cliente en Harbiz (solo lectura). */}
                                       <DetalleHarbiz detalle={t.harbizDetalle} />
+                                      {/* Lo que toca cambiar la semana que viene por lo que
+                                          ha apuntado en ESTA sesión; se responde aquí. */}
+                                      {t.harbizId && (
+                                        <PropuestasSesion
+                                          propuestas={(propuestasRegistro.get(cliente.Nombre) || []).filter((p) => p.sesionId === t.harbizId)}
+                                          respuestas={propuestasProgresion}
+                                          onResponder={(p, estado, motivo) => responderPropuesta(cliente.Nombre, p, estado, motivo)}
+                                          onDeshacer={deshacerPropuesta}
+                                        />
+                                      )}
                                       {notaCell === notaKey ? (
                                         <form
                                           className="registro-rapido-notaform"
@@ -1072,9 +1003,14 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
             todosLosClientes={clientes}
             sesionesHarbiz={sesionesHarbiz}
             respuestas={propuestasProgresion}
-            setRespuestas={setPropuestasProgresion}
-            miNombre={miIdentidad}
-            onAbrirSeguimiento={abrirSeguimiento}
+            onIrSesiones={(cliente, offset) => {
+              // Lleva a la rejilla, en esa semana y con el cliente buscado,
+              // que es donde se responden.
+              setRegistroOffset(offset)
+              setSearch(cliente.Nombre)
+              cerrarAddCell()
+              setVista('registro')
+            }}
           />
         )}
 

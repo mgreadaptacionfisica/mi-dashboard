@@ -372,11 +372,11 @@ export default function MiFicha({ team, clientes = [], ventas = [], seguimientos
                   <div className="card-header">
                     <div>
                       <div className="card-title">Seguimiento semanal por cliente</div>
-                      <div className="card-subtitle">Solo consulta — las tareas, el contacto, la valoración, las fases y el registro de revisiones se gestionan desde "📋 Seguimiento y Valoración".</div>
+                      <div className="card-subtitle">Solo consulta — las tareas, el contacto, la valoración, y las fases se gestionan desde "📋 Seguimiento y Valoración".</div>
                     </div>
                   </div>
                   <ul className="lead-log-list seguimiento-resumen-list">
-                    {seguimiento?.resumenClientes.map(({ cliente, progreso, ultimaRevision }, i) => (
+                    {seguimiento?.resumenClientes.map(({ cliente, progreso }, i) => (
                       <li key={i} className="seguimiento-resumen-item">
                         <div>
                           <strong>{cliente.Nombre}</strong>
@@ -392,7 +392,6 @@ export default function MiFicha({ team, clientes = [], ventas = [], seguimientos
                             ) : (
                               <span className="seguimiento-progreso-badge seguimiento-progreso-vacio">Sin tareas esta semana</span>
                             )}
-                            <span className="seguimiento-ultima-revision">Última revisión: {ultimaRevision || 'nunca'}</span>
                           </div>
                         </div>
                       </li>

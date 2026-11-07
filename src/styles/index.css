@@ -3247,23 +3247,12 @@ textarea {
   flex-wrap: wrap;
 }
 
-/* Buscador + botón de "Registrar revisión" en la cabecera de la tarjeta. */
+/* Buscador en la cabecera de la tarjeta del registro. */
 .registro-rapido-header-acciones {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-/* Panel plegable de "Registrar última revisión": se despliega dentro de la
-   misma tarjeta del registro, en vez de ocupar una card propia siempre
-   abierta encima de la rejilla. */
-.registro-rapido-revision-panel {
-  margin: 0 20px 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  background: #f8fafc;
 }
 
 /* Pestaña de contacto semanal: el componente ContactoSemanal viene de
@@ -6947,10 +6936,10 @@ button.onb-chip { cursor: pointer; }
 .contrato-firma-profesional img { height: 56px; width: auto; }
 .contrato-firma-profesional .contrato-nota { margin: 0; }
 
-/* ───────── 🤖 Propuestas de progresión (PropuestasProgresion.jsx) ─────────
-   Tablero por cliente ordenado por urgencia. El color de la tarjeta es el
-   semáforo (rojo dolor, ámbar cambios, verde todo bien) para que se lea de
-   un vistazo dónde empezar. */
+/* ───────── 🤖 Propuestas de progresión ─────────
+   Se responden en ⚡ Registro, debajo de cada sesión (PropuestasSesion.jsx),
+   plegadas para no llenar la rejilla. La pestaña 🤖 Propuestas es solo un
+   índice de lo que queda sin responder (PropuestasProgresion.jsx). */
 .propuestas-cabecera {
   display: flex;
   gap: 16px;
@@ -6993,38 +6982,40 @@ button.onb-chip { cursor: pointer; }
   cursor: pointer;
 }
 
-.propuestas-lista {
+/* Índice: una línea por cliente, con el semáforo en el borde. */
+.propuestas-indice {
+  list-style: none;
+  margin: 0;
+  padding: 0 20px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 0 20px 20px;
+  gap: 6px;
 }
 
-.propuesta-tarjeta {
+.propuestas-indice-fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
   border: 1px solid var(--color-border);
-  border-left: 5px solid #94a3b8;
-  border-radius: 12px;
-  padding: 12px 14px;
+  border-left: 4px solid #94a3b8;
+  border-radius: 10px;
   background: #fff;
+  font-size: 13px;
+}
+
+.propuestas-indice-nombre { font-weight: 700; }
+
+.propuestas-indice-detalle {
+  color: var(--color-text-secondary);
+  white-space: pre;
 }
 
 .propuesta-rojo { border-left-color: var(--color-danger); }
 .propuesta-ambar { border-left-color: var(--color-orange); }
 .propuesta-verde { border-left-color: var(--color-success); }
 .propuesta-sin-datos { border-left-color: #cbd5e1; opacity: 0.75; }
-
-.propuesta-tarjeta-cabecera {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
-}
-
-.propuesta-tarjeta-estado {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
 
 .propuesta-ver-semana {
   margin-left: auto;
@@ -7036,84 +7027,82 @@ button.onb-chip { cursor: pointer; }
   cursor: pointer;
 }
 
-.propuesta-grupo {
-  margin-top: 8px;
-}
-
-.propuesta-grupo-titulo {
-  font-size: 12px;
+/* Badge junto al nombre en la rejilla: propuestas sin responder esa semana. */
+.propuestas-pendientes-badge {
+  display: inline-block;
+  margin-left: 6px;
+  margin-top: 3px;
+  font-size: 10.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-secondary);
-  margin-bottom: 4px;
-  cursor: help;
+  color: #1e3a8a;
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 1px 7px;
+  vertical-align: middle;
 }
 
-.propuesta-grupo ul {
+/* Debajo de la sesión: botón plegado + lista al abrir. */
+.propuestas-sesion { margin-top: 3px; }
+
+.propuestas-sesion-toggle {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.propuestas-sesion-dolor { border-color: #fecaca; background: #fee2e2; color: #991b1b; }
+.propuestas-sesion-hecho { border-color: var(--color-border); background: #f8fafc; color: var(--color-text-secondary); font-weight: 600; }
+
+.propuestas-sesion-lista {
   list-style: none;
-  margin: 0;
+  margin: 4px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.propuesta-grupo li {
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  font-size: 13px;
-  padding: 6px 8px;
-  border-radius: 8px;
+.propuestas-sesion-item {
+  padding: 5px 7px;
+  border-radius: 7px;
   background: #f8fafc;
+  font-size: 11.5px;
+  line-height: 1.35;
 }
 
-.propuesta-grupo-dolor li { background: #fef2f2; }
-.propuesta-grupo-molestia li { background: #fffbeb; }
-.propuesta-grupo-subir li,
-.propuesta-grupo-propioPeso li { background: #f0fdf4; }
+.propuesta-tipo-dolor { background: #fef2f2; }
+.propuesta-tipo-molestia { background: #fffbeb; }
+.propuesta-tipo-subir,
+.propuesta-tipo-propioPeso { background: #f0fdf4; }
 
 .propuesta-respondida { opacity: 0.6; }
 
-.propuesta-texto {
-  flex: 1 1 320px;
-  min-width: 0;
-  line-height: 1.4;
-}
-
-/* Lo que escribió el cliente: mismo ámbar que DetalleHarbiz, para que se
-   reconozca como "palabras del cliente" en todo el panel. */
-.propuesta-cita {
-  display: block;
-  margin-top: 2px;
-  font-size: 12px;
-  color: #78350f;
-  font-style: italic;
+.propuestas-sesion-acciones {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
 }
 
 .propuesta-lista-ejercicios {
   display: block;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-text-secondary);
-  quotes: none;
-}
-
-.propuesta-acciones {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-wrap: wrap;
 }
 
 .propuesta-btn {
   border: 1px solid var(--color-border);
   background: #fff;
-  border-radius: 8px;
-  padding: 3px 9px;
+  border-radius: 7px;
+  padding: 2px 8px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -7126,32 +7115,28 @@ button.onb-chip { cursor: pointer; }
   background: none;
   border: none;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   text-decoration: underline;
   cursor: pointer;
 }
 
 .propuesta-respuesta {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .propuesta-motivo {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
+  margin-top: 4px;
 }
 
 .propuesta-motivo input {
-  min-width: 220px;
-  font-size: 12px;
-  padding: 4px 8px;
+  flex: 1 1 100px;
+  min-width: 0;
+  font-size: 11.5px;
+  padding: 3px 6px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-}
-
-.propuesta-vacia {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--color-text-secondary);
+  border-radius: 7px;
 }
