@@ -2229,6 +2229,37 @@ tbody td {
   text-decoration: none;
 }
 
+/* Lista "💬 Todos los mensajes": aquí no hay casilla, así que sin la sangría. */
+.protocolo-mensajes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.protocolo-mensajes .protocolo-paso {
+  margin-top: 6px;
+}
+
+.protocolo-mensajes .protocolo-paso-ayuda,
+.protocolo-mensajes .protocolo-paso-acciones {
+  margin-left: 0;
+}
+
+.protocolo-mensajes-grupo {
+  font-size: 13px;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.protocolo-mensaje-texto {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .protocolo-guion-pasos {
   font-size: 13px;
   color: var(--color-text-primary);

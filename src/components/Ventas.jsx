@@ -11,7 +11,7 @@ import { construirComisionCobro } from '../utils/comisionesHelpers'
 import { generarPlazosPorNumero, generarPlazosDesdeFecha } from '../lib/plazos'
 import { calcularEmbudo, semaforo } from '../utils/embudoVentas'
 import { enlaceOnboarding, onboardingDesdeVenta } from '../utils/contrato'
-import ProtocoloLlamada, { GuionLlamada } from './ProtocoloLlamada'
+import ProtocoloLlamada, { GuionLlamada, MensajesWhatsApp } from './ProtocoloLlamada'
 import { PASOS_PRELLAMADA, PASOS_SEGUIMIENTO, progresoPrellamada } from '../utils/protocoloLlamada'
 
 const ETAPAS = [
@@ -999,6 +999,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
                     <ProtocoloLlamada pasos={PASOS_PRELLAMADA} estado={activeLead.preLlamada} onToggle={toggleCheck} lead={activeLead} />
                   </div>
                   <GuionLlamada />
+                  <MensajesWhatsApp lead={activeLead} />
                   <div className="lead-detail-actions">
                     <button type="button" className="primary-action" onClick={marcarLlamadaRealizada}>Llamada realizada →</button>
                     <button type="button" className="secondary-action" onClick={() => setShowResultadoNoRealizada(true)}>Llamada no realizada…</button>
@@ -1067,6 +1068,10 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
                       <ProtocoloLlamada pasos={PASOS_SEGUIMIENTO} estado={activeLead.seguimiento?.pasos} onToggle={toggleSeguimientoPaso} lead={activeLead} />
                     </div>
                   )}
+                  {/* También al reagendar: ahí hacen falta los mensajes de no show. */}
+                  <div style={{ marginBottom: 10 }}>
+                    <MensajesWhatsApp lead={activeLead} />
+                  </div>
                   {activeLead.origenSeguimiento === 'reagendar' && (
                     <p className="lead-detail-label" style={{ marginBottom: 8 }}>
                       La llamada se marcó como "{RESULTADO_NO_REALIZADA.find((r) => r.id === activeLead.resultadoLlamada)?.label || 'no realizada'}". Fecha de aviso en la pestaña 🔁 Recontactar.
