@@ -296,8 +296,11 @@ las páginas del cliente son públicas), Operaciones
   estuvo en verde → llegar a verde, + SPADI < 10. Fase 2: fuerza con la
   referencia %BW pasada a kg (peso × reps a ~10RM, comparado con Epley),
   tests en s/reps por sexo, simetría > 90 % por par y SPADI 0. Fase 3: press
-  militar al 50 % BW (RM) + las exigencias de su deporte (`DEPORTES`, se
-  rellenan deporte por deporte). Fase 4: a mano (+ press militar 80 % en
+  militar al 50 % BW (RM) + las exigencias de su deporte (`DEPORTES`,
+  primera versión con referencias publicadas — Wilk 2020, Högberg 2026,
+  Kelley 2022, Pontillo 2014 — y consenso; se construyen con los moldes
+  `minimo()`, `simetria()` y `unaDe()`). Dominadas y dead hang se miden en
+  la valoración pero aún no tienen umbral (lo pone Raúl). Fase 4: a mano (+ press militar 80 % en
   hombres). Sin SPADI no hay objetivo de SPADI (no a todos se les pasa). El
   peso corporal, sexo y deporte van en la valoración (migración 74) y se
   arrastran de la anterior. Los objetivos escritos a mano siguen como

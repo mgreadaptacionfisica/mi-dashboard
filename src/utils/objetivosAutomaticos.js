@@ -36,21 +36,6 @@ export const SEXOS = [
   { valor: 'hombre', label: 'Hombre' },
 ]
 
-// Deporte del cliente: decide los objetivos de Fase 3. Las exigencias de
-// cada uno se rellenan con Raúl, deporte por deporte (`exigencias` vacías
-// = todavía sin definir). Añadir deportes es seguro; no cambiar los ids
-// ya guardados en valoraciones_clientes.deporte.
-export const DEPORTES = [
-  { id: 'gym', label: 'Gimnasio / musculación', exigencias: [] },
-  { id: 'crossfit', label: 'CrossFit', exigencias: [] },
-  { id: 'padel', label: 'Pádel', exigencias: [] },
-  { id: 'contacto', label: 'Deportes de contacto', exigencias: [] },
-  { id: 'calistenia', label: 'Calistenia', exigencias: [] },
-  { id: 'escalada', label: 'Escalada', exigencias: [] },
-  { id: 'otro', label: 'Otro', exigencias: [] },
-  { id: 'ninguno', label: 'No hace deporte', exigencias: [] },
-]
-export const deporteInfo = (id) => DEPORTES.find((d) => d.id === id) || null
 
 export const REGLAS_OBJETIVOS = {
   // Fase 1: SPADI por debajo de esto (mismo corte que faseTopeSpadi).
@@ -147,6 +132,109 @@ function objetivoPesoReps({ id, fase, etiqueta, medicion, objetivo, reps }) {
   }
 }
 
+// ── Exigencias de Fase 3 por deporte ─────────────────────────────────────
+// Cada exigencia es { id, texto, evaluar(historial, datos) → { cumplido,
+// detalle } }. Se construyen con estos dos moldes para que la regla se lea
+// en una línea dentro de DEPORTES.
+
+// Valor de un test: el número, o el peso si es de peso × reps.
+const valorDe = (m) => (m ? Number(typeof m.valor === 'object' ? m.valor.peso : m.valor) : null)
+
+// Un test tiene que llegar a un mínimo (por sexo si se da { mujer, hombre }).
+// `ambos`: [izq, dx] → los dos lados tienen que llegar.
+function minimo(id, bloque, items, etiqueta, umbral, unidad) {
+  return {
+    id,
+    texto: (datos) => {
+      const u = typeof umbral === 'object' ? umbral[datos.sexo] : umbral
+      return `${etiqueta} ≥ ${u === undefined ? '?' : fmt(u)} ${unidad}`
+    },
+    evaluar: (h, datos) => {
+      const u = typeof umbral === 'object' ? umbral[datos.sexo] : umbral
+      if (u === undefined) return { cumplido: false, detalle: 'falta el sexo en la valoración' }
+      const valores = items.map((it) => valorDe(ultimo(h, bloque, it)))
+      if (valores.some((v) => v === null)) return { cumplido: false, detalle: 'sin medir' }
+      return { cumplido: valores.every((v) => v >= u), detalle: `último: ${valores.map((v) => `${fmt(v)} ${unidad}`).join(' / ')}` }
+    },
+  }
+}
+
+// Los dos lados tienen que estar a ≥ pct % el uno del otro.
+function simetria(id, bloque, izq, dx, etiqueta, pct) {
+  return {
+    id,
+    texto: () => `${etiqueta}: simetría ≥ ${pct} %`,
+    evaluar: (h) => {
+      const indice = indiceSimetria(valorDe(ultimo(h, bloque, dx)), valorDe(ultimo(h, bloque, izq)))
+      if (indice === null) return { cumplido: false, detalle: 'falta medir los dos lados' }
+      return { cumplido: indice >= pct, detalle: `ahora: ${fmt(indice)} %` }
+    },
+  }
+}
+
+// "A o B": vale con que se cumpla una de las dos.
+function unaDe(id, texto, a, b) {
+  return {
+    id,
+    texto: () => texto,
+    evaluar: (h, datos) => {
+      const ra = a.evaluar(h, datos)
+      const rb = b.evaluar(h, datos)
+      return { cumplido: ra.cumplido || rb.cumplido, detalle: `${ra.detalle} · ${rb.detalle}` }
+    },
+  }
+}
+
+const SIM_RE = simetria('simRE', 'fuerza', 'reMancuernaIzq', 'reMancuernaDx', 'Rotación externa', 90)
+const CKCUEST_21 = minimo('ckcuest21', 'pliometria', ['plioCkcuest'], 'CKCUEST', 21, 'toques')
+const CKCUEST_25 = minimo('ckcuest25', 'pliometria', ['plioCkcuest'], 'CKCUEST', 25, 'toques')
+const COLGADO_FLEX = minimo('flexedArmHang', 'fuerza', ['flexedArmHang'], 'Colgado con brazos flexionados', 15, 's')
+const SIM_PSET_85 = simetria('simPset', 'fuerza', 'posteriorShoulderEnduranceIzq', 'posteriorShoulderEnduranceDx', 'Posterior shoulder endurance', 85)
+
+// Deporte del cliente: decide los objetivos de Fase 3. Primera versión
+// (2026-11-10), a pulir con Raúl. Casi no hay normas publicadas por deporte:
+// salen de Wilk 2020 (IJSPT), Högberg 2026 (KSSTA), Kelley 2022 y Pontillo
+// 2014 (Sports Health), Domenech 2011 (PM&R); pádel extrapolado de tenis
+// (Tooth 2024). Dominadas y dead hang se miden pero aún no tienen umbral
+// (no hay norma; lo pone Raúl). Añadir deportes es seguro; no cambiar los
+// ids ya guardados en valoraciones_clientes.deporte.
+export const DEPORTES = [
+  { id: 'gym', label: 'Gimnasio / musculación', exigencias: [
+    CKCUEST_21,
+    SIM_RE,
+    simetria('simPressV', 'fuerza', 'pressVerticalUnilateralIzq', 'pressVerticalUnilateralDx', 'Press vertical unilateral', 95),
+  ] },
+  { id: 'crossfit', label: 'CrossFit', exigencias: [
+    CKCUEST_25,
+    unaDe('pset', 'Posterior shoulder endurance ≥ 58 s (mujeres) / 68 s (hombres) en los dos lados, o simetría ≥ 85 %',
+      minimo('psetAbs', 'fuerza', ['posteriorShoulderEnduranceIzq', 'posteriorShoulderEnduranceDx'], 'Posterior shoulder endurance', { mujer: 58, hombre: 68 }, 's'),
+      SIM_PSET_85),
+    simetria('simYB', 'pliometria', 'yBalanceIzq', 'yBalanceDx', 'Y-Balance', 90),
+  ] },
+  { id: 'padel', label: 'Pádel', exigencias: [
+    simetria('simLanz', 'pliometria', 'plioLanzUniIzq', 'plioLanzUniDx', 'Lanzamiento unilateral', 90),
+    CKCUEST_21,
+    SIM_RE,
+  ] },
+  { id: 'contacto', label: 'Deportes de contacto', exigencias: [
+    SIM_RE,
+    CKCUEST_21,
+    minimo('cervFlex', 'fuerzaCervical', ['cervFlexionProfundaIso'], 'Flexión cervical profunda ISO', { mujer: 29, hombre: 39 }, 's'),
+  ] },
+  { id: 'calistenia', label: 'Calistenia', exigencias: [
+    CKCUEST_25,
+    COLGADO_FLEX,
+  ] },
+  { id: 'escalada', label: 'Escalada', exigencias: [
+    COLGADO_FLEX,
+    SIM_RE,
+    SIM_PSET_85,
+  ] },
+  { id: 'otro', label: 'Otro', exigencias: [] },
+  { id: 'ninguno', label: 'No hace deporte', exigencias: [] },
+]
+export const deporteInfo = (id) => DEPORTES.find((d) => d.id === id) || null
+
 // Todos los objetivos automáticos de un cliente:
 // [{ id, fase, texto, cumplido, detalle, auto: true }].
 export function objetivosAutomaticos(valoraciones, clienteNombre) {
@@ -240,8 +328,7 @@ export function objetivosAutomaticos(valoraciones, clienteNombre) {
   // Fase 3: lo que exija su deporte (cuando esté definido en DEPORTES).
   const deporte = deporteInfo(datos.deporte)
   ;(deporte?.exigencias || []).forEach((e) => {
-    const o = e.evaluar ? e.evaluar(h, datos) : { cumplido: false, detalle: '' }
-    add({ id: `auto-dep-${deporte.id}-${e.id}`, fase: 3, texto: e.texto, ...o })
+    add({ id: `auto-dep-${deporte.id}-${e.id}`, fase: 3, texto: `${deporte.label}: ${e.texto(datos)}`, ...e.evaluar(h, datos) })
   })
 
   return out

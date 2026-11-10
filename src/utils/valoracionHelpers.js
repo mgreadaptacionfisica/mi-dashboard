@@ -24,6 +24,21 @@ export const ITEMS_FUERZA = [
     pesoReps: true,
     nota: 'Evaluar solo cuando el press vertical unilateral ya no muestre asimetría (índice de simetría >90%, ver más abajo).',
   },
+  // 🎯 Tests de vuelta al deporte (Fase 3, 2026-11-10): solo hace falta
+  // medirlos si su deporte los pide (ver DEPORTES en objetivosAutomaticos.js).
+  {
+    id: 'flexedArmHang',
+    label: 'Colgado con brazos flexionados',
+    unidad: 's',
+    nota: 'Barbilla por encima de la barra; se cronometra hasta que baja. Calistenia y escalada.',
+  },
+  {
+    id: 'deadHang',
+    label: 'Dead hang (colgado con brazos estirados)',
+    unidad: 's',
+    nota: 'Colgado con los brazos estirados, cronometrado. Escalada.',
+  },
+  { id: 'dominadas', label: 'Dominadas (máximo)', unidad: 'reps', nota: 'Calistenia y escalada.' },
 ]
 
 // Valores de referencia en % de peso corporal (BW). Se muestran como texto
@@ -64,6 +79,12 @@ export const ITEMS_PLIOMETRIA = [
   { id: 'plioOneArmHopIzq', label: 'One arm hop test Izq', unidad: 's' },
   { id: 'plioOneArmHopDx', label: 'One arm hop test Dcha', unidad: 's' },
   { id: 'plioCkcuest', label: 'CKCUEST', unidad: 'reps' },
+  // 🎯 Upper Quarter Y-Balance (Fase 3: CrossFit, escalada). Se apunta la
+  // puntuación compuesta de cada lado en % de la longitud del brazo
+  // (posición de flexión, alcance en 3 direcciones); lo que se pide es que
+  // los dos lados estén a ≥90 %.
+  { id: 'yBalanceIzq', label: 'Upper Quarter Y-Balance Izq (compuesto)', unidad: '%' },
+  { id: 'yBalanceDx', label: 'Upper Quarter Y-Balance Dcho (compuesto)', unidad: '%' },
 ]
 
 export const REFERENCIA_PLIOMETRIA = {
@@ -71,7 +92,9 @@ export const REFERENCIA_PLIOMETRIA = {
   plioLanzUniDx: { mujeres: '350cm (1kg)', hombres: '350cm (3kg)' },
   plioOneArmHopIzq: { mujeres: '3-5s', hombres: '7s' },
   plioOneArmHopDx: { mujeres: '3-5s', hombres: '7s' },
-  plioCkcuest: { mujeres: '20 reps', hombres: '30 reps' },
+  // Hombres 30 → 25 (2026-11-10): lo publicado es ≥21 para volver y ≥25
+  // para el alta (Wilk 2020); 30 era más exigente que cualquier norma.
+  plioCkcuest: { mujeres: '20 reps', hombres: '25 reps' },
 }
 
 export const ITEMS_FUERZA_CERVICAL = [
