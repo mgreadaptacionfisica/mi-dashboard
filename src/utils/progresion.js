@@ -43,6 +43,13 @@ export const REGLAS = {
   // Opción "subir el rango" (Raúl, 2026-11-10): el rango nuevo empieza en
   // el tope del anterior y sube esto (8-12 → 12-15, 6-8 → 8-11).
   RANGO_SUBE: 3,
+  // Opción "subir peso y bajar el rango" (Raúl, 2026-11-10): lo contrario,
+  // el rango nuevo termina en el inicio del anterior y baja esto (8-12 →
+  // 5-8, 12-15 → 9-12). El peso sube lo mismo que en "subir peso" (10–15 %).
+  // No se ofrece si el rango nuevo empezaría por debajo de REPS_MIN (son
+  // sobre todo hombros en readaptación); si hace falta, a mano.
+  RANGO_BAJA: 3,
+  REPS_MIN: 5,
   // Opción "más cerca del fallo": el RIR (el número entre paréntesis del
   // objetivo, "8-12 (3)") baja de uno en uno y nunca por debajo de esto.
   // Si el objetivo no trae RIR, la opción no sale.
@@ -75,6 +82,7 @@ export const ORDEN_TIPOS = ['dolor', 'molestia', 'subir', 'propioPeso', 'reps', 
 // `manual`: no se escribe nada en Harbiz (lo hace o lo habla el fisio).
 export const OPCIONES = {
   peso: { emoji: '🏋️', titulo: 'Subir peso, mismo rango' },
+  pesoRango: { emoji: '⬇️', titulo: 'Subir peso y bajar el rango' },
   reps: { emoji: '🔁', titulo: 'Mismo peso, buscar más repeticiones' },
   carga: { emoji: '🟡', titulo: 'Misma carga' },
   rango: { emoji: '📈', titulo: 'Mismo peso, subir el rango' },
@@ -132,6 +140,19 @@ export function objetivoSubeRango(objetivo) {
   return `${r.hi}-${r.hi + REGLAS.RANGO_SUBE}${resto ? ` ${resto}` : ''}`
 }
 
+// "8-12 (3)" → "5-8 (3)"; "10" → "7-10". null si el rango nuevo
+// empezaría por debajo de REGLAS.REPS_MIN o el objetivo no es de reps.
+export function objetivoBajaRango(objetivo) {
+  const t = String(objetivo || '').trim()
+  const r = rangoDeObjetivo(t)
+  if (!r) return null
+  const lo = r.lo - REGLAS.RANGO_BAJA
+  if (lo < REGLAS.REPS_MIN) return null
+  const m = t.match(/^\d+\s*(?:-\s*\d+)?\s*(?:reps?)?/i)
+  const resto = t.slice(m[0].length).trim()
+  return `${lo}-${r.lo}${resto ? ` ${resto}` : ''}`
+}
+
 // "8-12 (3)" → { objetivo: "8-12 (2)", rir: 2 }. null si no trae RIR o ya
 // está en el mínimo.
 export function objetivoBajaRir(objetivo) {
@@ -159,6 +180,11 @@ function construirOpciones(claves, u, notas = {}) {
     const o = { clave, ...OPCIONES[clave], nota: '', objetivo: null, series: null, objetivoActual, seriesActual }
     if (clave === 'peso') {
       if (!(kg > 0)) return
+      o.nota = `Sube a ${notas.peso || rangoCargaNueva(kg).texto}.`
+    } else if (clave === 'pesoRango') {
+      const obj = objetivoBajaRango(objetivoActual)
+      if (!(kg > 0) || !obj) return
+      o.objetivo = obj
       o.nota = `Sube a ${notas.peso || rangoCargaNueva(kg).texto}.`
     } else if (clave === 'reps' || clave === 'carga') {
       if (!notas[clave]) return
@@ -348,7 +374,7 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
         // Ya no se repite el rango en la nota ("(8-12 repeticiones)"): está
         // en su casilla de Harbiz, y si cambia es con la opción "rango".
         propone('subir', `${fmtKg(u.kgMax)} kg → ${nuevo} (${motivo}: ${hecho})`, '',
-          ['peso', 'rango', 'rir', 'serie', 'libre', 'cambio'], { peso: nuevo })
+          ['peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio'], { peso: nuevo })
       }
       else propone('propioPeso', `Sin carga, ${motivo} (${hecho}): subir reps o ejercicio más difícil.`, '',
         ['rango', 'rir', 'serie', 'libre', 'cambio'])
@@ -377,7 +403,7 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     // Siempre tiene que haber progresión: aquí salen todas las formas de
     // progresar, y "hablarlo" como una más.
     if (igual) propone('igual', `${hecho} dos semanas seguidas: hablar con la persona.`, '',
-      ['peso', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'])
+      ['peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'])
   })
 
   // Hay clientes que no comentan por ejercicio sino al final de la sesión

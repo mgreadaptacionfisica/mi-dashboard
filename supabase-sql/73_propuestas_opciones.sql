@@ -11,7 +11,7 @@
 -- (OPCIONES en src/utils/progresion.js).
 --
 -- Columnas nuevas en propuestas_progresion:
---   opcion           → la opción elegida (peso, rango, rir, serie, libre,
+--   opcion           → la opción elegida (peso, pesoRango, rango, rir, serie, libre,
 --                      cambio, hablar, reps, carga). Para ver con el tiempo
 --                      cuál elige el equipo y ordenarlas con datos.
 --   objetivo_harbiz  → objetivo nuevo del ejercicio en Harbiz (null = no se toca)

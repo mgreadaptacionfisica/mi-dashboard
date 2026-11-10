@@ -218,7 +218,9 @@ las páginas del cliente son públicas), Operaciones
     final de semana. **Opciones** (2026-11-10, `OPCIONES` y
     `construirOpciones()` en `progresion.js`): cada propuesta de un
     ejercicio trae varias formas de progresar y el fisio elige una y la
-    retoca antes del ✅ — subir peso (la primera, recomendada), mismo peso y
+    retoca antes del ✅ — subir peso (la primera, recomendada), subir peso y
+    bajar el rango (inicio−`RANGO_BAJA` → inicio, 8-12 → 5-8; no si baja de
+    `REPS_MIN` = 5), mismo peso y
     subir el rango (tope → tope+`RANGO_SUBE`, 8-12 → 12-15), más cerca del
     fallo (RIR −1 hasta `RIR_MIN`; sin RIR entre paréntesis no sale), añadir
     una serie, indicación propia, cambio de ejercicio u hablarlo (estas dos
