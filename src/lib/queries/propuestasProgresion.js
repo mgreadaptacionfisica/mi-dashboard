@@ -17,9 +17,14 @@ function fromRow(row) {
     motivo: row.motivo || '',
     respondidoPor: row.respondido_por || '',
     respondidoEn: row.respondido_en || null,
+    // 🧭 Opción elegida y lo que cambia (migración 73). Vacío en las
+    // respuestas sin opciones y en las de antes.
+    opcion: row.opcion || '',
+    notaHarbiz: row.nota_harbiz || '',
+    objetivoHarbiz: row.objetivo_harbiz || '',
+    seriesHarbiz: row.series_harbiz || '',
     // 📲 Escritura en Harbiz (migración 71). Todo null si no va a Harbiz.
     harbizClienteId: row.harbiz_cliente_id || '',
-    notaHarbiz: row.nota_harbiz || '',
     harbizEstado: row.harbiz_estado || null,
     harbizDetalle: row.harbiz_detalle || '',
     harbizEn: row.harbiz_en || null,
@@ -39,15 +44,25 @@ function toRow(r) {
     respondido_por: r.respondidoPor || null,
     respondido_en: r.respondidoEn || new Date().toISOString(),
   }
-  // 📲 Solo si va a Harbiz (migración 71). Fuera de ese caso las columnas no
-  // se mandan, para que el resto del equipo pueda responder aunque la
-  // migración aún no esté ejecutada. Después solo las toca el robot
-  // (marcar_propuestas_harbiz). Para volver a responder hay que deshacer,
-  // que borra la fila, así que no quedan restos de una escritura anterior.
+  // 🧭 Opción elegida (migración 73): solo si la hay, igual que lo de
+  // Harbiz de abajo, para no mandar columnas que una respuesta sin opciones
+  // no necesita. Se guarda lo que cambia aunque no vaya al robot, para
+  // saber qué hay que pasar a mano.
+  if (r.opcion) {
+    Object.assign(fila, {
+      opcion: r.opcion,
+      nota_harbiz: r.notaHarbiz || null,
+      objetivo_harbiz: r.objetivoHarbiz || null,
+      series_harbiz: r.seriesHarbiz || null,
+    })
+  }
+  // 📲 Solo si va a Harbiz (migración 71). Después estas columnas solo las
+  // toca el robot (marcar_propuestas_harbiz). Para volver a responder hay
+  // que deshacer, que borra la fila, así que no quedan restos de una
+  // escritura anterior.
   if (r.harbizEstado) {
     Object.assign(fila, {
       harbiz_cliente_id: r.harbizClienteId || null,
-      nota_harbiz: r.notaHarbiz || null,
       harbiz_estado: r.harbizEstado,
       harbiz_detalle: null,
       harbiz_en: null,

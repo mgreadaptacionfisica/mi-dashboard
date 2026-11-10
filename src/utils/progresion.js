@@ -40,6 +40,13 @@ export const REGLAS = {
   // dolor, y de que toca cambiarla cuando lleva estas semanas igual.
   MOVILIDAD_SEMANAS_PRONTO: 3,
   MOVILIDAD_SEMANAS_CAMBIAR: 4,
+  // Opción "subir el rango" (Raúl, 2026-11-10): el rango nuevo empieza en
+  // el tope del anterior y sube esto (8-12 → 12-15, 6-8 → 8-11).
+  RANGO_SUBE: 3,
+  // Opción "más cerca del fallo": el RIR (el número entre paréntesis del
+  // objetivo, "8-12 (3)") baja de uno en uno y nunca por debajo de esto.
+  // Si el objetivo no trae RIR, la opción no sale.
+  RIR_MIN: 1,
 }
 
 // Tipos de propuesta, en el orden en que se enseñan (lo urgente primero).
@@ -55,16 +62,37 @@ export const TIPOS = {
 }
 export const ORDEN_TIPOS = ['dolor', 'molestia', 'subir', 'propioPeso', 'reps', 'igual', 'movilidad', 'nota']
 
+// 🧭 OPCIONES (2026-11-10). Cada propuesta de un ejercicio trae varias
+// formas de progresar y el fisio elige la que le cuadra a ESE ejercicio (no
+// es lo mismo un press que un ejercicio de control): "esto depende mucho
+// del ejercicio", y eso no lo sabe la regla. La primera de la lista es la
+// que se recomienda; de momento, subir peso siempre que se pueda. Se guarda
+// cuál se eligió (`opcion` en propuestas_progresion, migración 73) para ver
+// más adelante qué elige el equipo y ordenarlas con datos.
+// Cada opción dice qué cambia en Harbiz: `objetivo` (la casilla de reps,
+// con el RIR entre paréntesis), `series` y la `nota` para el cliente. El
+// peso no tiene casilla en Harbiz, por eso los kilos van en la nota.
+// `manual`: no se escribe nada en Harbiz (lo hace o lo habla el fisio).
+export const OPCIONES = {
+  peso: { emoji: '🏋️', titulo: 'Subir peso, mismo rango' },
+  reps: { emoji: '🔁', titulo: 'Mismo peso, buscar más repeticiones' },
+  carga: { emoji: '🟡', titulo: 'Misma carga' },
+  rango: { emoji: '📈', titulo: 'Mismo peso, subir el rango' },
+  rir: { emoji: '🎯', titulo: 'Más cerca del fallo (baja el RIR)' },
+  serie: { emoji: '➕', titulo: 'Añadir una serie' },
+  libre: { emoji: '✍️', titulo: 'Mismo ejercicio, con una indicación mía' },
+  cambio: { emoji: '🔄', titulo: 'Cambio de ejercicio (lo cambio yo en Harbiz)', manual: true },
+  hablar: { emoji: '🗣️', titulo: 'Lo hablo con la persona', manual: true },
+}
+
 // 📲 Escribir en Harbiz lo aceptado (prueba desde el 2026-11-08). Cuando el
-// fisio da ✅ a una propuesta de estos tipos, el texto de `notaHarbiz` se
-// escribe en la NOTA de ese ejercicio en las sesiones de la semana siguiente
-// (rutina en la nube "Panel → Harbiz", migración 71). Solo estos tipos
-// porque son los únicos con una instrucción clara para el cliente: dolor,
-// "2 semanas igual" y propio peso piden criterio del fisio o hablar con la
-// persona, y eso no se le escribe al cliente en una nota.
+// fisio elige una opción y da ✅, lo que cambia esa opción (nota, objetivo,
+// series) se escribe en ese ejercicio en las sesiones de la semana
+// siguiente (rutina en la nube "Panel → Harbiz", migraciones 71-73). Las
+// propuestas sin opciones (movilidad, comentario general de la sesión) no
+// van: no son de un ejercicio concreto.
 // De momento solo con los clientes de estos trabajadores: para comprobar
 // que funciona antes de abrirlo al equipo, se amplía añadiendo nombres.
-export const TIPOS_A_HARBIZ = ['subir', 'reps', 'molestia']
 export const HARBIZ_PRUEBA_TRABAJADORES = ['Raúl Morales']
 
 // Si el robot no trajo `clase` (sesiones viejas), se deduce del nombre. Es
@@ -92,6 +120,73 @@ export function rangoDeObjetivo(objetivo) {
 }
 
 const fmtKg = (kg) => String(kg).replace('.', ',')
+
+// "8-12 (3)" → "12-15 (3)"; "10reps" → "10-13". Conserva lo que va detrás
+// del rango (el RIR). null si el objetivo no es de reps.
+export function objetivoSubeRango(objetivo) {
+  const t = String(objetivo || '').trim()
+  const r = rangoDeObjetivo(t)
+  if (!r) return null
+  const m = t.match(/^\d+\s*(?:-\s*\d+)?\s*(?:reps?)?/i)
+  const resto = t.slice(m[0].length).trim()
+  return `${r.hi}-${r.hi + REGLAS.RANGO_SUBE}${resto ? ` ${resto}` : ''}`
+}
+
+// "8-12 (3)" → { objetivo: "8-12 (2)", rir: 2 }. null si no trae RIR o ya
+// está en el mínimo.
+export function objetivoBajaRir(objetivo) {
+  const t = String(objetivo || '').trim()
+  if (!rangoDeObjetivo(t)) return null
+  const m = t.match(/\((\d+)\)/)
+  if (!m) return null
+  const rir = Number(m[1]) - 1
+  if (rir < REGLAS.RIR_MIN) return null
+  return { objetivo: t.replace(m[0], `(${rir})`), rir }
+}
+
+// Las opciones de un ejercicio, en el orden de `claves`. Las que no se
+// pueden calcular (subir peso sin carga, RIR sin paréntesis…) no salen.
+// `notas` trae las frases ya hechas de las opciones que vienen de la regla
+// de siempre (reps, carga) y el peso nuevo.
+function construirOpciones(claves, u, notas = {}) {
+  const kg = u.kgMax
+  const mantener = kg > 0 ? `Mantén el peso (${fmtKg(kg)} kg)` : ''
+  const con = (txt) => (mantener ? `${mantener} y ${txt}.` : `${txt.charAt(0).toUpperCase()}${txt.slice(1)}.`)
+  const objetivoActual = u.objetivo || ''
+  const seriesActual = u.series.length ? String(u.series.length) : ''
+  const out = []
+  claves.forEach((clave) => {
+    const o = { clave, ...OPCIONES[clave], nota: '', objetivo: null, series: null, objetivoActual, seriesActual }
+    if (clave === 'peso') {
+      if (!(kg > 0)) return
+      o.nota = `Sube a ${notas.peso || rangoCargaNueva(kg).texto}.`
+    } else if (clave === 'reps' || clave === 'carga') {
+      if (!notas[clave]) return
+      o.nota = notas[clave]
+    } else if (clave === 'rango') {
+      const obj = objetivoSubeRango(objetivoActual)
+      if (!obj) return
+      o.objetivo = obj
+      o.nota = mantener ? `${mantener}.` : 'Mismo ejercicio, con más repeticiones.'
+    } else if (clave === 'rir') {
+      const x = objetivoBajaRir(objetivoActual)
+      if (!x) return
+      o.objetivo = x.objetivo
+      o.nota = con(`quédate a ${x.rir} repetici${x.rir === 1 ? 'ón' : 'ones'} del fallo`)
+    } else if (clave === 'serie') {
+      if (!seriesActual) return
+      o.series = String(u.series.length + 1)
+      o.nota = con('añade una serie')
+    } else if (clave === 'libre') {
+      // Lo escribe el fisio: más lento, más rango de movimiento… El
+      // objetivo sale relleno con el de ahora por si también lo quiere tocar.
+      o.libre = true
+      o.objetivo = objetivoActual || null
+    }
+    out.push(o)
+  })
+  return out
+}
 
 // Rango de la carga nueva: +10 % redondeado hacia abajo y +15 % redondeado
 // al paso más cercano, siempre por encima de la carga actual.
@@ -137,6 +232,7 @@ export function historialEjercicios(sesionesDelCliente) {
         fecha: s.fecha,
         hechaEn: s.hechaEn || '',
         rango: rangoDeObjetivo(e.objetivo),
+        objetivo: String(e.objetivo || '').trim(),
         series,
         kgMax: Math.max(0, ...series.map((x) => x.kg)),
         comentario: String(e.comentario || '').trim(),
@@ -163,7 +259,7 @@ function semanasSeguidas(apariciones, semana) {
 // Propuestas de UN cliente para la semana que viene, mirando lo que hizo en
 // `semana` (lunes ISO) y la anterior. Devuelve:
 //   { nivel: 'rojo' | 'ambar' | 'verde' | 'sin-datos', propuestas: [...] }
-// Cada propuesta: { id, tipo, ejercicio, texto, cita, sesionId }. El id es
+// Cada propuesta: { id, tipo, ejercicio, texto, cita, sesionId, opciones }. El id es
 // estable (cliente|semana|tipo|ejercicio) para casarla con su respuesta
 // guardada. `sesionId` es la sesión de Harbiz de la que sale (la ÚLTIMA de la
 // semana con ese ejercicio): es donde se enseña en ⚡ Registro, porque la
@@ -179,12 +275,12 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
   const movilidad = { cambiar: [], pronto: [] }
   // `clave` solo hace falta cuando el nombre no basta para que el id sea
   // único (dos sesiones el mismo día con comentario general).
-  // `notaHarbiz` es lo que leería el CLIENTE en la nota del ejercicio si se
-  // acepta (ver TIPOS_A_HARBIZ): va en segunda persona y sin la explicación
-  // de la regla, que es para el fisio.
-  const nueva = (tipo, ejercicio, texto, cita = '', clave = ejercicio, sesionId = null, notaHarbiz = null) => propuestas.push({
+  // `opciones` (ver OPCIONES): entre qué elige el fisio. Las notas de cada
+  // opción son lo que leería el CLIENTE en Harbiz: en segunda persona y sin
+  // la explicación de la regla, que es para el fisio.
+  const nueva = (tipo, ejercicio, texto, cita = '', clave = ejercicio, sesionId = null, opciones = null) => propuestas.push({
     id: `${clienteNombre}|${semana}|${tipo}|${clave.toLowerCase()}`,
-    tipo, ejercicio, texto, cita, sesionId, notaHarbiz,
+    tipo, ejercicio, texto, cita, sesionId, opciones,
   })
 
   historial.forEach(({ nombre, apariciones }) => {
@@ -192,7 +288,7 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     if (esta.length === 0) return
     const u = esta[esta.length - 1]
     // Todas las propuestas de este ejercicio cuelgan de su última sesión.
-    const propone = (tipo, texto, cita = '', notaHarbiz = null) => nueva(tipo, nombre, texto, cita, nombre, u.sesionId, notaHarbiz)
+    const propone = (tipo, texto, cita = '', claves = null, notas = {}) => nueva(tipo, nombre, texto, cita, nombre, u.sesionId, claves ? construirOpciones(claves, u, notas) : null)
     const previa = apariciones.filter((a) => a.semana === anterior)
     const p = previa[previa.length - 1] || null
     const valoraciones = esta.map((a) => a.valoracion)
@@ -205,13 +301,13 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
 
     // Dolor: siempre al fisio, sea fuerza o movilidad.
     if (valoraciones.includes('dolor')) {
-      propone('dolor', 'Dolor: decide el fisio (cambio de ejercicio, rango o carga).', conCita(['dolor']))
+      propone('dolor', 'Dolor: decide el fisio (cambio de ejercicio, rango o carga).', conCita(['dolor']), ['libre', 'cambio', 'hablar'])
       return
     }
 
     if (clase === 'movilidad') {
       if (valoraciones.includes('molestia')) {
-        propone('molestia', 'Movilidad con molestia: revisar.', conCita(['molestia']))
+        propone('molestia', 'Movilidad con molestia: revisar.', conCita(['molestia']), ['libre', 'cambio', 'hablar'])
         return
       }
       const n = semanasSeguidas(apariciones, semana)
@@ -228,8 +324,8 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
       const carga = u.kgMax > 0 ? ` (${fmtKg(u.kgMax)} kg)` : ''
       propone('molestia',
         sigue ? `Misma carga${carga}. 2ª semana con molestia: preguntar cómo va.` : `Misma carga${carga}. Preguntar si sigue la semana que viene.`,
-        conCita(['molestia']),
-        `${u.kgMax > 0 ? `Mantén el peso (${fmtKg(u.kgMax)} kg).` : 'Mantén la misma carga.'} Si sigues notando molestia, cuéntanoslo en el comentario.`)
+        conCita(['molestia']), ['carga', 'libre', 'cambio', 'hablar'],
+        { carga: `${u.kgMax > 0 ? `Mantén el peso (${fmtKg(u.kgMax)} kg).` : 'Mantén la misma carga.'} Si sigues notando molestia, cuéntanoslo en el comentario.` })
       return
     }
 
@@ -249,10 +345,13 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
       const motivo = llegaAlTope ? `llega al tope de ${rango}` : `2 semanas cerca del tope de ${rango}`
       if (u.kgMax > 0) {
         const nuevo = rangoCargaNueva(u.kgMax).texto
+        // Ya no se repite el rango en la nota ("(8-12 repeticiones)"): está
+        // en su casilla de Harbiz, y si cambia es con la opción "rango".
         propone('subir', `${fmtKg(u.kgMax)} kg → ${nuevo} (${motivo}: ${hecho})`, '',
-          `Sube a ${nuevo}${fijo ? '' : ` (${rango} repeticiones)`}.`)
+          ['peso', 'rango', 'rir', 'serie', 'libre', 'cambio'], { peso: nuevo })
       }
-      else propone('propioPeso', `Sin carga, ${motivo} (${hecho}): subir reps o ejercicio más difícil.`)
+      else propone('propioPeso', `Sin carga, ${motivo} (${hecho}): subir reps o ejercicio más difícil.`, '',
+        ['rango', 'rir', 'serie', 'libre', 'cambio'])
       return
     }
 
@@ -267,14 +366,18 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     if (antes && u.kgMax > antes.kgMax) {
       const objetivo = fijo ? `cumplir las ${hi} reps` : `llegar a ${hi} reps en todas las series`
       propone('reps', `Subió de ${fmtKg(antes.kgMax)} a ${fmtKg(u.kgMax)} kg (${hecho}): mantener ${fmtKg(u.kgMax)} kg y ${objetivo}.`, '',
-        fijo
+        ['reps', 'rir', 'serie', 'libre', 'cambio'],
+        { reps: fijo
           ? `Mantén el peso (${fmtKg(u.kgMax)} kg) y completa las ${hi} repeticiones en todas las series.`
-          : `Mantén el peso (${fmtKg(u.kgMax)} kg) y busca más repeticiones, hasta ${hi} en todas las series.`)
+          : `Mantén el peso (${fmtKg(u.kgMax)} kg) y busca más repeticiones, hasta ${hi} en todas las series.` })
       return
     }
 
     const igual = p && JSON.stringify(p.series) === JSON.stringify(u.series)
-    if (igual) propone('igual', `${hecho} dos semanas seguidas: hablar con la persona.`)
+    // Siempre tiene que haber progresión: aquí salen todas las formas de
+    // progresar, y "hablarlo" como una más.
+    if (igual) propone('igual', `${hecho} dos semanas seguidas: hablar con la persona.`, '',
+      ['peso', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'])
   })
 
   // Hay clientes que no comentan por ejercicio sino al final de la sesión

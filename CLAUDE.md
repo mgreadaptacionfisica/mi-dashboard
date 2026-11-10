@@ -45,7 +45,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 71; la siguiente sería la 72). Deben ser **idempotentes**
+  (la última es la 73; la siguiente sería la 74). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -215,18 +215,29 @@ las páginas del cliente son públicas), Operaciones
     70): qué cambiar la semana que viene en cada ejercicio. **Se responden
     en ⚡ Registro, debajo de la sesión de la que salen** (botón 🤖 plegado,
     ✅/❌): Raúl quiere hacerlas al revisar cada sesión, no acumularlas al
-    final de semana. Cada propuesta lleva `sesionId` = la ÚLTIMA sesión de
+    final de semana. **Opciones** (2026-11-10, `OPCIONES` y
+    `construirOpciones()` en `progresion.js`): cada propuesta de un
+    ejercicio trae varias formas de progresar y el fisio elige una y la
+    retoca antes del ✅ — subir peso (la primera, recomendada), mismo peso y
+    subir el rango (tope → tope+`RANGO_SUBE`, 8-12 → 12-15), más cerca del
+    fallo (RIR −1 hasta `RIR_MIN`; sin RIR entre paréntesis no sale), añadir
+    una serie, indicación propia, cambio de ejercicio u hablarlo (estas dos
+    no escriben nada). Se guarda `opcion` + `objetivo_harbiz` /
+    `series_harbiz` / `nota_harbiz` (migración 73) aunque no vaya al robot,
+    para decir qué pasar a mano. Movilidad y el comentario general de la
+    sesión no tienen opciones (✅/❌ de siempre). Cada propuesta lleva `sesionId` = la ÚLTIMA sesión de
     la semana con ese ejercicio (si se repite el jueves, se muda; el id no
     lleva la sesión, así que lo respondido el lunes sigue respondido salvo
     que cambie el tipo). **📲 Lo aceptado se escribe solo en Harbiz**
-    (migración 71, prueba desde el 2026-11-08 solo con los clientes de
-    `HARBIZ_PRUEBA_TRABAJADORES` y los tipos de `TIPOS_A_HARBIZ`, ambos en
-    `progresion.js`): al dar ✅ la fila queda `harbiz_estado = 'pendiente'`
-    con `nota_harbiz` (el texto para el CLIENTE, distinto del del fisio) y la
+    (migraciones 71-73, prueba desde el 2026-11-08 solo con los clientes de
+    `HARBIZ_PRUEBA_TRABAJADORES` en `progresion.js`): al dar ✅ a una opción
+    que cambia algo, la fila queda `harbiz_estado = 'pendiente'` y la
     rutina "Panel → Harbiz" (trig_01FAfie6VkUQ5dTwvemqSrKQ, 7:30 y 20:30) lo
-    escribe en la **nota del ejercicio** de las sesiones sin hacer de la
-    semana siguiente (sustituye la nota vieja; la anterior queda en
-    `harbiz_detalle`) y marca escrita / sin_sesion / error. Es la ÚNICA
+    escribe en ese ejercicio de las sesiones sin hacer de la semana
+    siguiente: **nota** (texto para el CLIENTE; el peso va aquí porque
+    Harbiz no tiene casilla de kilos), **objetivo** (`target`, "12-15 (3)")
+    y **series** (`sets`); un campo vacío no se toca. Lo anterior queda en
+    `harbiz_detalle` y marca escrita / sin_sesion / error. Es la ÚNICA
     rutina que escribe en Harbiz; la de las 6:00/18:00 sigue siendo de solo
     lectura. Deshacer en el panel no borra lo ya escrito en Harbiz.
     La pestaña 🤖 Propuestas es solo un **índice** de lo
