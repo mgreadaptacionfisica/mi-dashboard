@@ -227,7 +227,11 @@ las páginas del cliente son públicas), Operaciones
     no escriben nada). Se guarda `opcion` + `objetivo_harbiz` /
     `series_harbiz` / `nota_harbiz` (migración 73) aunque no vaya al robot,
     para decir qué pasar a mano. Movilidad y el comentario general de la
-    sesión no tienen opciones (✅/❌ de siempre). Cada propuesta lleva `sesionId` = la ÚLTIMA sesión de
+    sesión no tienen opciones (✅/❌ de siempre). **Asistidos** (dominada
+    o fondos asistidos, `esAsistido()` por el nombre): el kilo es la AYUDA,
+    así que todo se da la vuelta — progresar es bajar la asistencia un
+    10–15 % (`rangoAsistenciaNueva()`) y la doble progresión salta cuando
+    BAJA, no cuando sube. Cada propuesta lleva `sesionId` = la ÚLTIMA sesión de
     la semana con ese ejercicio (si se repite el jueves, se muda; el id no
     lleva la sesión, así que lo respondido el lunes sigue respondido salvo
     que cambie el tipo). **📲 Lo aceptado se escribe solo en Harbiz**

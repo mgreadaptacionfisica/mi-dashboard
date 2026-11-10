@@ -103,6 +103,15 @@ export const OPCIONES = {
 // que funciona antes de abrirlo al equipo, se amplía añadiendo nombres.
 export const HARBIZ_PRUEBA_TRABAJADORES = ['Raúl Morales']
 
+// 🔃 Ejercicios ASISTIDOS (dominada asistida, fondos asistidos…; Raúl,
+// 2026-11-10): el peso que apunta el cliente es la AYUDA de la máquina o la
+// goma, así que progresar es BAJARLO. Todas las reglas que hablan de "subir
+// peso" se dan la vuelta (también la doble progresión: lo que cuenta es que
+// haya bajado la asistencia) y las notas hablan de "asistencia". Se detecta
+// por el nombre del ejercicio en Harbiz.
+const PATRON_ASISTIDO = /asistid|asistencia/i
+export const esAsistido = (nombre) => PATRON_ASISTIDO.test(String(nombre || ''))
+
 // Si el robot no trajo `clase` (sesiones viejas), se deduce del nombre. Es
 // solo un respaldo: en cuanto un ejercicio lleva carga, es de fuerza.
 const PATRON_MOVILIDAD = /estiramiento|movilidad|moviliza|gato|camello|rotaci[oó]n|respira|asistid|isom[eé]tric|anteversi|retroversi|90.?90|expansi[oó]n|estabilidad|^test /i
@@ -171,7 +180,10 @@ export function objetivoBajaRir(objetivo) {
 // de siempre (reps, carga) y el peso nuevo.
 function construirOpciones(claves, u, notas = {}) {
   const kg = u.kgMax
-  const mantener = kg > 0 ? `Mantén el peso (${fmtKg(kg)} kg)` : ''
+  const asistido = Boolean(notas.asistido)
+  const mantener = kg > 0 ? `Mantén ${asistido ? 'la asistencia' : 'el peso'} (${fmtKg(kg)} kg)` : ''
+  const nuevoPeso = notas.peso || cargaNueva(kg, asistido).texto
+  const subePeso = asistido ? `Baja la asistencia a ${nuevoPeso}.` : `Sube a ${nuevoPeso}.`
   const con = (txt) => (mantener ? `${mantener} y ${txt}.` : `${txt.charAt(0).toUpperCase()}${txt.slice(1)}.`)
   const objetivoActual = u.objetivo || ''
   const seriesActual = u.series.length ? String(u.series.length) : ''
@@ -180,20 +192,24 @@ function construirOpciones(claves, u, notas = {}) {
     const o = { clave, ...OPCIONES[clave], nota: '', objetivo: null, series: null, objetivoActual, seriesActual }
     if (clave === 'peso') {
       if (!(kg > 0)) return
-      o.nota = `Sube a ${notas.peso || rangoCargaNueva(kg).texto}.`
+      o.nota = subePeso
+      if (asistido) o.titulo = 'Bajar asistencia, mismo rango'
     } else if (clave === 'pesoRango') {
       const obj = objetivoBajaRango(objetivoActual)
       if (!(kg > 0) || !obj) return
       o.objetivo = obj
-      o.nota = `Sube a ${notas.peso || rangoCargaNueva(kg).texto}.`
+      o.nota = subePeso
+      if (asistido) o.titulo = 'Bajar asistencia y bajar el rango'
     } else if (clave === 'reps' || clave === 'carga') {
       if (!notas[clave]) return
       o.nota = notas[clave]
+      if (asistido && clave === 'reps') o.titulo = 'Misma asistencia, buscar más repeticiones'
     } else if (clave === 'rango') {
       const obj = objetivoSubeRango(objetivoActual)
       if (!obj) return
       o.objetivo = obj
       o.nota = mantener ? `${mantener}.` : 'Mismo ejercicio, con más repeticiones.'
+      if (asistido) o.titulo = 'Misma asistencia, subir el rango'
     } else if (clave === 'rir') {
       const x = objetivoBajaRir(objetivoActual)
       if (!x) return
@@ -224,6 +240,22 @@ export function rangoCargaNueva(kg) {
   if (hi < lo) hi = lo
   return { lo, hi, texto: lo === hi ? `${fmtKg(lo)} kg` : `${fmtKg(lo)}–${fmtKg(hi)} kg` }
 }
+
+// 🔃 Asistidos: la asistencia BAJA lo mismo que sube el peso normal (10–15
+// %), con el mismo redondeo, siempre por debajo de la actual. Se enseña de
+// menos a más ("13–14 kg"). Si se quedaría en 0, es "sin asistencia".
+export function rangoAsistenciaNueva(kg) {
+  const paso = kg < REGLAS.KG_PASO_FINO ? 0.5 : 1
+  let hi = Math.ceil((kg * (1 - REGLAS.SUBIDA_MIN)) / paso) * paso
+  let lo = Math.round((kg * (1 - REGLAS.SUBIDA_MAX)) / paso) * paso
+  if (hi >= kg) hi = kg - paso
+  if (lo > hi) lo = hi
+  if (hi <= 0) return { lo: 0, hi: 0, texto: '0 kg (sin asistencia)' }
+  if (lo <= 0) lo = paso
+  return { lo, hi, texto: lo === hi ? `${fmtKg(lo)} kg` : `${fmtKg(lo)}–${fmtKg(hi)} kg` }
+}
+
+const cargaNueva = (kg, asistido) => (asistido ? rangoAsistenciaNueva(kg) : rangoCargaNueva(kg))
 
 // Semana anterior a una dada, con la misma clave que la rejilla. Ojo: según
 // la zona horaria esa clave puede caer en domingo (ver formatRangoSemana), y
@@ -321,6 +353,7 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     // La cita es el último comentario que importa de la semana.
     const conCita = (tipos) => [...esta].reverse().find((a) => tipos.includes(a.valoracion) && a.comentario)?.comentario || ''
     const conCarga = apariciones.some((a) => a.kgMax > 0)
+    const asistido = esAsistido(nombre)
     const clase = conCarga ? 'fuerza' : (u.clase || (PATRON_MOVILIDAD.test(nombre) ? 'movilidad' : 'fuerza'))
 
     if (valoraciones.includes('nota')) propone('nota', '', conCita(['nota']))
@@ -347,11 +380,11 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     // toca preguntar.
     if (valoraciones.includes('molestia')) {
       const sigue = previa.some((a) => a.valoracion === 'molestia')
-      const carga = u.kgMax > 0 ? ` (${fmtKg(u.kgMax)} kg)` : ''
+      const carga = u.kgMax > 0 ? ` (${asistido ? 'asistencia ' : ''}${fmtKg(u.kgMax)} kg)` : ''
       propone('molestia',
         sigue ? `Misma carga${carga}. 2ª semana con molestia: preguntar cómo va.` : `Misma carga${carga}. Preguntar si sigue la semana que viene.`,
         conCita(['molestia']), ['carga', 'libre', 'cambio', 'hablar'],
-        { carga: `${u.kgMax > 0 ? `Mantén el peso (${fmtKg(u.kgMax)} kg).` : 'Mantén la misma carga.'} Si sigues notando molestia, cuéntanoslo en el comentario.` })
+        { asistido, carga: `${u.kgMax > 0 ? `Mantén ${asistido ? 'la asistencia' : 'el peso'} (${fmtKg(u.kgMax)} kg).` : 'Mantén la misma carga.'} Si sigues notando molestia, cuéntanoslo en el comentario.` })
       return
     }
 
@@ -365,16 +398,16 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     // SEMANAS_CERCA = 2: esta semana y la anterior.
     const dosSemanasCerca = !fijo && cerca(u) && cerca(p)
     const rango = fijo ? `${hi} reps` : `${u.rango.lo}-${u.rango.hi}`
-    const hecho = `${reps.join('/')}${u.kgMax > 0 ? ` × ${fmtKg(u.kgMax)} kg` : ''}`
+    const hecho = `${reps.join('/')}${u.kgMax > 0 ? ` × ${fmtKg(u.kgMax)} kg${asistido ? ' de asistencia' : ''}` : ''}`
 
     if (llegaAlTope || dosSemanasCerca) {
       const motivo = llegaAlTope ? `llega al tope de ${rango}` : `2 semanas cerca del tope de ${rango}`
       if (u.kgMax > 0) {
-        const nuevo = rangoCargaNueva(u.kgMax).texto
+        const nuevo = cargaNueva(u.kgMax, asistido).texto
         // Ya no se repite el rango en la nota ("(8-12 repeticiones)"): está
         // en su casilla de Harbiz, y si cambia es con la opción "rango".
-        propone('subir', `${fmtKg(u.kgMax)} kg → ${nuevo} (${motivo}: ${hecho})`, '',
-          ['peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio'], { peso: nuevo })
+        propone('subir', `${asistido ? 'Asistencia ' : ''}${fmtKg(u.kgMax)} kg → ${nuevo} (${motivo}: ${hecho})`, '',
+          ['peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio'], { peso: nuevo, asistido })
       }
       else propone('propioPeso', `Sin carga, ${motivo} (${hecho}): subir reps o ejercicio más difícil.`, '',
         ['rango', 'rir', 'serie', 'libre', 'cambio'])
@@ -389,13 +422,15 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     // carga, sea de la semana pasada o de antes en esta misma semana (si
     // el lunes hizo 15 y el jueves 16, la subida es del jueves).
     const antes = [...apariciones].filter((a) => (a.fecha + a.hechaEn) < (u.fecha + u.hechaEn) && a.kgMax > 0).pop()
-    if (antes && u.kgMax > antes.kgMax) {
+    // En un asistido, lo que cuenta es que haya BAJADO la asistencia.
+    if (antes && (asistido ? u.kgMax < antes.kgMax : u.kgMax > antes.kgMax)) {
       const objetivo = fijo ? `cumplir las ${hi} reps` : `llegar a ${hi} reps en todas las series`
-      propone('reps', `Subió de ${fmtKg(antes.kgMax)} a ${fmtKg(u.kgMax)} kg (${hecho}): mantener ${fmtKg(u.kgMax)} kg y ${objetivo}.`, '',
+      const queMantiene = asistido ? 'la asistencia' : 'el peso'
+      propone('reps', `${asistido ? 'Bajó la asistencia' : 'Subió'} de ${fmtKg(antes.kgMax)} a ${fmtKg(u.kgMax)} kg (${hecho}): mantener ${fmtKg(u.kgMax)} kg y ${objetivo}.`, '',
         ['reps', 'rir', 'serie', 'libre', 'cambio'],
-        { reps: fijo
-          ? `Mantén el peso (${fmtKg(u.kgMax)} kg) y completa las ${hi} repeticiones en todas las series.`
-          : `Mantén el peso (${fmtKg(u.kgMax)} kg) y busca más repeticiones, hasta ${hi} en todas las series.` })
+        { asistido, reps: fijo
+          ? `Mantén ${queMantiene} (${fmtKg(u.kgMax)} kg) y completa las ${hi} repeticiones en todas las series.`
+          : `Mantén ${queMantiene} (${fmtKg(u.kgMax)} kg) y busca más repeticiones, hasta ${hi} en todas las series.` })
       return
     }
 
@@ -403,7 +438,7 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     // Siempre tiene que haber progresión: aquí salen todas las formas de
     // progresar, y "hablarlo" como una más.
     if (igual) propone('igual', `${hecho} dos semanas seguidas: hablar con la persona.`, '',
-      ['peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'])
+      ['peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'], { asistido })
   })
 
   // Hay clientes que no comentan por ejercicio sino al final de la sesión
