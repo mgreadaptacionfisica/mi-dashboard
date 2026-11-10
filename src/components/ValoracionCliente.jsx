@@ -36,6 +36,7 @@ import RespuestasCuestionario, { EnlaceCuestionario } from './RespuestasCuestion
 import { cuestionarioDeCliente } from '../utils/cuestionarioPrevio'
 import { marcarCuestionarioRevisado } from '../lib/queries/cuestionariosPrevios'
 import { gravedadesSugeridas, nodosDe } from '../utils/redDeterminantes'
+import { objetivosDelClienteCompletos, datosCliente, objetivoKg, SEXOS, DEPORTES, REGLAS_OBJETIVOS } from '../utils/objetivosAutomaticos'
 import { insertValoracionRemote, updateValoracionRemote, deleteValoracionRemote } from '../lib/queries/valoracionesClientes'
 
 function todayISO() {
@@ -271,7 +272,8 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
   // de cada cliente) — se calcula sola a partir de sus objetivos, y aquí
   // solo se muestra en modo lectura como contexto (y para la referencia de
   // fuerza por fase, más abajo).
-  const objetivosDelCliente = objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre)
+  // (Con los objetivos automáticos, que salen de las valoraciones.)
+  const objetivosDelCliente = objetivosDelClienteCompletos(objetivosClienteFase, valoraciones, cliente.Nombre)
   const spadiTope = faseTopeSpadi(ultimoSpadiCliente(valoraciones, cliente.Nombre))
   const faseActual = faseAutomatica(objetivosDelCliente, spadiTope)
   const faseActualInfo = faseInfo(faseActual)
@@ -383,11 +385,17 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     // Las preferencias de entrenamiento (días, material, gustos) casi nunca
     // cambian de una valoración a otra, así que se arrastran automáticamente
     // de la última — el técnico solo las edita si algo ha cambiado.
+    // Lo mismo con peso corporal, sexo y deporte (🎯 objetivos automáticos):
+    // se arrastra el último apuntado y se corrige si ha cambiado.
     const anterior = historialDesc[0]
+    const datos = datosCliente(valoraciones, cliente.Nombre)
     const inicial = {
       fecha: todayISO(),
       ...valoracionVacia(),
       notasPreferenciasEntrenamiento: anterior?.notasPreferenciasEntrenamiento || '',
+      pesoCorporal: datos.pesoCorporal ?? '',
+      sexo: datos.sexo,
+      deporte: datos.deporte,
     }
     setFormData(inicial)
     setFormInicial(inicial)
@@ -410,6 +418,9 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
     base.objetivoAnteriorConfirmado = valoracion.objetivoAnteriorConfirmado || false
     base.objetivosSeleccionados = valoracion.objetivosSeleccionados || []
     base.objetivosCumplidos = valoracion.objetivosCumplidos || []
+    base.pesoCorporal = valoracion.pesoCorporal ?? ''
+    base.sexo = valoracion.sexo || null
+    base.deporte = valoracion.deporte || null
     setEditingId(valoracion.id)
     setFormData(base)
     setFormInicial(base)
@@ -750,6 +761,31 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                 <input type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
               </label>
 
+              {/* 🎯 Para los objetivos automáticos de Fases y objetivos: el
+                  peso y el sexo pasan las referencias de fuerza (%BW) a kilos
+                  y el deporte decide los de Fase 3. Vienen rellenos con lo
+                  último apuntado. */}
+              <div className="valoracion-datos-cliente">
+                <label className="valoracion-campo">
+                  <span>Peso corporal (kg)</span>
+                  <input type="number" min="20" max="250" step="0.1" value={formData.pesoCorporal ?? ''} onChange={(e) => setFormData({ ...formData, pesoCorporal: e.target.value })} />
+                </label>
+                <label className="valoracion-campo">
+                  <span>Sexo</span>
+                  <select value={formData.sexo || ''} onChange={(e) => setFormData({ ...formData, sexo: e.target.value || null })}>
+                    <option value="">—</option>
+                    {SEXOS.map((s) => <option key={s.valor} value={s.valor}>{s.label}</option>)}
+                  </select>
+                </label>
+                <label className="valoracion-campo">
+                  <span>Deporte</span>
+                  <select value={formData.deporte || ''} onChange={(e) => setFormData({ ...formData, deporte: e.target.value || null })}>
+                    <option value="">—</option>
+                    {DEPORTES.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+                  </select>
+                </label>
+              </div>
+
               {/* Diagnóstico diferencial: va el primero porque es lo que se
                   hace antes de nada — decide si el cuadro es RCSRP o si hay
                   que descartar/derivar antes de ponerse a medir fuerza. */}
@@ -853,6 +889,12 @@ export default function ValoracionCliente({ cliente, valoraciones, setValoracion
                             onChange={(v) => setCampo(bloque.id, item.id, v)}
                             nota={[
                               item.nota,
+                              (() => {
+                                // 🎯 El objetivo en kilos con el peso y sexo del formulario.
+                                if (item.id === 'pressMilitar') return null
+                                const o = objetivoKg(item.id, formData)
+                                return o ? `🎯 Objetivo Fase 2: ${String(o.kg).replace('.', ',')} kg × ${REGLAS_OBJETIVOS.REPS_REFERENCIA}.` : null
+                              })(),
                               faseActual && REFERENCIA_FUERZA_POR_FASE[item.id]?.[faseActual]
                                 ? `Referencia para Fase ${faseActual}: ${REFERENCIA_FUERZA_POR_FASE[item.id][faseActual]}`
                                 : null,

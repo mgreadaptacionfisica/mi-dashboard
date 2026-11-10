@@ -33,11 +33,15 @@ function fromRow(row) {
     objetivoAnteriorConfirmado: row.objetivo_anterior_confirmado || false,
     objetivosSeleccionados: row.objetivos_seleccionados || [],
     objetivosCumplidos: row.objetivos_cumplidos || [],
+    // 🎯 Para los objetivos automáticos (migración 74).
+    pesoCorporal: row.peso_corporal ?? null,
+    sexo: row.sexo || null,
+    deporte: row.deporte || null,
   }
 }
 
 function toRow(v) {
-  return {
+  const fila = {
     id: v.id,
     cliente_nombre: v.clienteNombre,
     fecha: v.fecha,
@@ -64,6 +68,12 @@ function toRow(v) {
     objetivos_seleccionados: v.objetivosSeleccionados || [],
     objetivos_cumplidos: v.objetivosCumplidos || [],
   }
+  // 🎯 Migración 74: solo se mandan si están puestos, para que guardar una
+  // valoración sin ellos funcione igual que antes.
+  if (v.pesoCorporal !== null && v.pesoCorporal !== undefined && v.pesoCorporal !== '') fila.peso_corporal = Number(v.pesoCorporal)
+  if (v.sexo) fila.sexo = v.sexo
+  if (v.deporte) fila.deporte = v.deporte
+  return fila
 }
 
 export async function fetchValoraciones() {

@@ -388,6 +388,10 @@ export function valoracionVacia() {
     // los tenían rellenos — el formulario ya no los usa.
     objetivosSeleccionados: [],
     objetivosCumplidos: [],
+    // 🎯 Objetivos automáticos (ver utils/objetivosAutomaticos.js).
+    pesoCorporal: '',
+    sexo: null,
+    deporte: null,
   }
   BLOQUES.forEach((b) => { base[b.id] = {} })
   return base

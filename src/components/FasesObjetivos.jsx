@@ -12,6 +12,7 @@ import {
   updateObjetivoClienteFaseRemote,
   deleteObjetivoClienteFaseRemote,
 } from '../lib/queries/objetivosClienteFase'
+import { objetivosAutomaticos, datosCliente, deporteInfo } from '../utils/objetivosAutomaticos'
 
 // Sección separada de Valoración (a petición de Raúl): cada cliente tiene
 // su propia lista de objetivos, agrupados por fase (1-4), en vez de un
@@ -21,10 +22,19 @@ import {
 // todo — lo que hace que la fase "oficial" avance sola es que TODOS los
 // objetivos de una fase estén marcados como cumplidos (ver faseAutomatica
 // en valoracionHelpers.js).
+//
+// 🎯 Desde el 2026-11-10 cada fase trae además objetivos AUTOMÁTICOS que
+// salen de la valoración y se marcan solos (ver objetivosAutomaticos.js):
+// movilidad y SPADI en Fase 1, fuerza en kilos en Fase 2, press militar y
+// deporte en la 3. Aquí solo se leen (se cambian valorando); los escritos a
+// mano siguen debajo como "objetivos personales".
 export default function FasesObjetivos({ cliente, objetivosClienteFase = [], setObjetivosClienteFase, valoraciones = [], onClose }) {
   const [nuevoTexto, setNuevoTexto] = useState({})
 
-  const objetivosDelCliente = objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre)
+  const manuales = objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre)
+  const automaticos = objetivosAutomaticos(valoraciones, cliente.Nombre)
+  const objetivosDelCliente = [...automaticos, ...manuales]
+  const datos = datosCliente(valoraciones, cliente.Nombre)
   const spadiActual = ultimoSpadiCliente(valoraciones, cliente.Nombre)
   const spadiTope = faseTopeSpadi(spadiActual)
   const faseConfirmada = faseAutomatica(objetivosDelCliente, spadiTope)
@@ -38,7 +48,7 @@ export default function FasesObjetivos({ cliente, objetivosClienteFase = [], set
   const addObjetivo = (faseNumero) => {
     const texto = (nuevoTexto[faseNumero] || '').trim()
     if (!texto || typeof setObjetivosClienteFase !== 'function') return
-    const ordenActual = objetivosDeFase(objetivosDelCliente, faseNumero).length
+    const ordenActual = objetivosDeFase(manuales, faseNumero).length
     const nuevo = {
       id: `objc-${Date.now()}`,
       clienteNombre: cliente.Nombre,
@@ -88,10 +98,20 @@ export default function FasesObjetivos({ cliente, objetivosClienteFase = [], set
           )}
         </div>
 
+        <p className="valoracion-referencia" style={{ margin: '6px 0' }}>
+          🤖 Los objetivos con 🤖 salen solos de la valoración
+          {datos.pesoCorporal ? ` (peso ${String(datos.pesoCorporal).replace('.', ',')} kg` : ' (sin peso corporal'}
+          {datos.sexo ? `, ${datos.sexo}` : ', sin sexo'}
+          {`, deporte: ${deporteInfo(datos.deporte)?.label || 'sin apuntar'})`}
+          {' '}y se marcan solos con la última medición. Para cambiarlos, valora de nuevo.
+        </p>
+
         <div className="fases-objetivos-grid">
           {FASES.map((f) => {
-            const items = objetivosDeFase(objetivosDelCliente, f.numero)
-            const completa = items.length > 0 && items.every((o) => o.cumplido)
+            const autos = automaticos.filter((o) => o.fase === f.numero)
+            const items = objetivosDeFase(manuales, f.numero)
+            const todos = [...autos, ...items]
+            const completa = todos.length > 0 && todos.every((o) => o.cumplido)
             return (
               <div key={f.numero} className={`fases-objetivos-columna${completa ? ' fases-objetivos-columna-completa' : ''}`}>
                 <div className="fases-objetivos-columna-header">
@@ -99,8 +119,24 @@ export default function FasesObjetivos({ cliente, objetivosClienteFase = [], set
                   {completa && <span className="status-pill status-activo">Completa</span>}
                 </div>
                 <p className="valoracion-referencia">{f.criterio}</p>
+                {autos.length > 0 && (
+                  <ul className="fases-objetivos-lista fases-objetivos-auto">
+                    {autos.map((o) => (
+                      <li key={o.id} className={o.cumplido ? 'fases-objetivo-cumplido' : ''} title="Automático: sale de la valoración">
+                        <label>
+                          <input type="checkbox" checked={o.cumplido} readOnly disabled />
+                          <span>
+                            🤖 {o.texto}
+                            {o.detalle && <span className="fases-objetivo-detalle"> · {o.detalle}</span>}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {autos.length > 0 && <div className="fases-objetivos-subtitulo">Objetivos personales</div>}
                 <ul className="fases-objetivos-lista">
-                  {items.length === 0 && <li className="lead-log-empty">Sin objetivos todavía.</li>}
+                  {items.length === 0 && <li className="lead-log-empty">{autos.length > 0 ? 'Ninguno.' : 'Sin objetivos todavía.'}</li>}
                   {items.map((o) => (
                     <li key={o.id} className={o.cumplido ? 'fases-objetivo-cumplido' : ''}>
                       <label>

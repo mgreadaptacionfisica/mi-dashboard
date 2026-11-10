@@ -20,6 +20,7 @@ import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { upsertRevisionSemanalRemote } from '../lib/queries/revisionesSemanales'
 import { faseAutomatica, faseInfo, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
+import { objetivosDelClienteCompletos } from '../utils/objetivosAutomaticos'
 
 // Datos "fríos" del cliente (servicio, fecha de inicio, contacto): antes
 // eran columnas de la tabla de clientes de Seguimiento y Valoración, que se
@@ -136,7 +137,7 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
 
   const faseActual = useMemo(() => {
     const spadiTope = faseTopeSpadi(ultimoSpadiCliente(valoraciones, cliente.Nombre))
-    return faseAutomatica(objetivosClienteFase.filter((o) => o.clienteNombre === cliente.Nombre), spadiTope)
+    return faseAutomatica(objetivosDelClienteCompletos(objetivosClienteFase, valoraciones, cliente.Nombre), spadiTope)
   }, [objetivosClienteFase, valoraciones, cliente])
   const faseActualInfo = faseInfo(faseActual)
 

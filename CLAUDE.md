@@ -45,7 +45,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 73; la siguiente sería la 74). Deben ser **idempotentes**
+  (la última es la 74; la siguiente sería la 75). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -289,6 +289,20 @@ las páginas del cliente son públicas), Operaciones
     (`/cuestionario?c=Nombre`) para que coincida exacto. La búsqueda es
     tolerante (sin tildes ni mayúsculas) y los que no casan salen en un aviso
     arriba de Clientes para asignarlos a mano.
+- **🎯 Objetivos automáticos por fase** (`utils/objetivosAutomaticos.js`,
+  2026-11-10): en Fases y objetivos cada fase trae objetivos que salen de la
+  valoración y se marcan solos con la ÚLTIMA medición de cada ítem (no se
+  guardan, se recalculan). Fase 1: cada test de movilidad que alguna vez no
+  estuvo en verde → llegar a verde, + SPADI < 10. Fase 2: fuerza con la
+  referencia %BW pasada a kg (peso × reps a ~10RM, comparado con Epley),
+  tests en s/reps por sexo, simetría > 90 % por par y SPADI 0. Fase 3: press
+  militar al 50 % BW (RM) + las exigencias de su deporte (`DEPORTES`, se
+  rellenan deporte por deporte). Fase 4: a mano (+ press militar 80 % en
+  hombres). Sin SPADI no hay objetivo de SPADI (no a todos se les pasa). El
+  peso corporal, sexo y deporte van en la valoración (migración 74) y se
+  arrastran de la anterior. Los objetivos escritos a mano siguen como
+  "objetivos personales" y cuentan igual: `faseAutomatica()` recibe
+  `objetivosDelClienteCompletos()` en los tres sitios que la calculan.
 - **Red de determinantes** (`utils/redDeterminantes.js` +
   `components/RedDeterminantes.jsx`, columna `red_determinantes` de
   `valoraciones_clientes`): mapa bio-psico-social del cliente como grafo
