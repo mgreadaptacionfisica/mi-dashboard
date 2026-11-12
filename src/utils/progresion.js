@@ -310,6 +310,9 @@ export function historialEjercicios(sesionesDelCliente) {
 
 const repsValidas = (ap) => ap.series.map((x) => x.reps).filter((r) => r > 0)
 
+// "10/10/9 × 12 kg" (o "de asistencia"): lo hecho en una aparición.
+const hecho_ = (u, reps, asistido) => `${reps.join('/')}${u.kgMax > 0 ? ` × ${fmtKg(u.kgMax)} kg${asistido ? ' de asistencia' : ''}` : ''}`
+
 // Semanas seguidas (contando la actual hacia atrás) en las que aparece.
 function semanasSeguidas(apariciones, semana) {
   const semanas = new Set(apariciones.map((a) => a.semana))
@@ -403,6 +406,15 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
       ['seguir', 'peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'], { asistido })
 
     const reps = repsValidas(u)
+    // "Probar" en el objetivo de Harbiz = ejercicio nuevo a prueba. Lo que
+    // toca es decidir si se queda y ponerle un objetivo de verdad, así que
+    // la primera opción es la indicación propia (con el objetivo editable).
+    if (/prob/i.test(u.objetivo)) {
+      const hizo = reps.length > 0 ? `hizo ${hecho_(u, reps, asistido)}` : 'sin reps apuntadas'
+      propone('revisar', `Era para probar (${hizo}): ¿se queda? Ponle objetivo y carga.`, '',
+        ['libre', 'seguir', 'cambio', 'hablar'], { asistido })
+      return
+    }
     if (!u.rango || reps.length === 0) {
       const falta = !u.rango
         ? (u.objetivo ? `el objetivo «${u.objetivo}» no es de repeticiones` : 'no tiene objetivo en Harbiz')
