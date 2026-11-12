@@ -7112,6 +7112,7 @@ button.onb-chip { cursor: pointer; }
 .propuesta-tipo-subir,
 .propuesta-tipo-propioPeso { background: #f0fdf4; }
 .propuesta-tipo-reps { background: #eff6ff; }
+.propuesta-tipo-revisar { background: var(--color-surface-alt, #f8fafc); }
 
 /* 📲 Escritura en Harbiz de lo aceptado (prueba con los clientes de Raúl). */
 .propuesta-harbiz {

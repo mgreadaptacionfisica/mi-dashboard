@@ -64,10 +64,11 @@ export const TIPOS = {
   propioPeso: { emoji: '🟢', titulo: 'Propio peso: progresar', ayuda: 'Llega al tope sin carga: subir reps o un ejercicio más difícil (criterio del fisio).' },
   reps: { emoji: '🔵', titulo: 'Mantener carga: más reps', ayuda: 'Acaba de subir de peso y aún no llega al tope: se mantiene el peso nuevo y se buscan más reps (doble progresión).' },
   igual: { emoji: '⚪', titulo: '2 semanas igual', ayuda: 'Mismas reps y misma carga dos semanas: hablar con la persona. Siempre tiene que haber progresión.' },
+  revisar: { emoji: '🔍', titulo: 'Revisar', ayuda: 'Ninguna regla pide cambiar nada (va dentro del rango o faltan datos): el fisio confirma que sigue igual o elige un cambio.' },
   movilidad: { emoji: '🔁', titulo: 'Cambiar la movilidad', ayuda: 'La movilidad lleva semanas igual.' },
   nota: { emoji: '📝', titulo: 'Notas del cliente', ayuda: 'Sustituciones, máquina distinta, peso que no había… Ese día el dato no es comparable.' },
 }
-export const ORDEN_TIPOS = ['dolor', 'molestia', 'subir', 'propioPeso', 'reps', 'igual', 'movilidad', 'nota']
+export const ORDEN_TIPOS = ['dolor', 'molestia', 'subir', 'propioPeso', 'reps', 'igual', 'movilidad', 'revisar', 'nota']
 
 // 🧭 OPCIONES (2026-11-10). Cada propuesta de un ejercicio trae varias
 // formas de progresar y el fisio elige la que le cuadra a ESE ejercicio (no
@@ -81,6 +82,10 @@ export const ORDEN_TIPOS = ['dolor', 'molestia', 'subir', 'propioPeso', 'reps', 
 // peso no tiene casilla en Harbiz, por eso los kilos van en la nota.
 // `manual`: no se escribe nada en Harbiz (lo hace o lo habla el fisio).
 export const OPCIONES = {
+  // Solo en las de 🔍 Revisar (2026-11-12): confirmar que ese ejercicio
+  // sigue como está. No escribe nada en Harbiz, pero deja constancia de que
+  // alguien lo ha mirado (antes, sin propuesta, no se sabía).
+  seguir: { emoji: '✔️', titulo: 'Seguir igual (no cambio nada)', manual: true },
   peso: { emoji: '🏋️', titulo: 'Subir peso, mismo rango' },
   pesoRango: { emoji: '⬇️', titulo: 'Subir peso y bajar el rango' },
   reps: { emoji: '🔁', titulo: 'Mismo peso, buscar más repeticiones' },
@@ -330,7 +335,7 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
   const historial = historialEjercicios(sesionesDelCliente)
   const anterior = semanaMenos(semana)
   const propuestas = []
-  const movilidad = { cambiar: [], pronto: [] }
+  const movilidad = { cambiar: [], pronto: [], resto: [] }
   // `clave` solo hace falta cuando el nombre no basta para que el id sea
   // único (dos sesiones el mismo día con comentario general).
   // `opciones` (ver OPCIONES): entre qué elige el fisio. Las notas de cada
@@ -373,6 +378,7 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
       const m = { nombre, semanas: n, ultima: u }
       if (n >= REGLAS.MOVILIDAD_SEMANAS_CAMBIAR) movilidad.cambiar.push(m)
       else if (n >= REGLAS.MOVILIDAD_SEMANAS_PRONTO) movilidad.pronto.push(m)
+      else movilidad.resto.push(m)
       return
     }
 
@@ -388,8 +394,22 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
       return
     }
 
+    // 🔍 Revisar (Raúl, 2026-11-12): TODOS los ejercicios llevan propuesta
+    // y el fisio decide si cambia algo. Antes, un ejercicio que no cumplía
+    // ninguna regla se quedaba sin nada y nadie lo miraba: pasaban semanas
+    // sin cambios. Aquí caen los que van dentro del rango y los que no
+    // traen datos para aplicar las reglas. "Seguir igual" va la primera.
+    const revisar = (texto) => propone('revisar', texto, '',
+      ['seguir', 'peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'], { asistido })
+
     const reps = repsValidas(u)
-    if (!u.rango || reps.length === 0) return
+    if (!u.rango || reps.length === 0) {
+      const falta = !u.rango
+        ? (u.objetivo ? `el objetivo «${u.objetivo}» no es de repeticiones` : 'no tiene objetivo en Harbiz')
+        : 'no apuntó las repeticiones'
+      revisar(`Sin propuesta automática (${falta}). ¿Cambiar algo?`)
+      return
+    }
     const { hi, fijo } = u.rango
     // Con reps fijas solo progresa si las supera; con rango, al llegar al
     // tope o al estar 2 semanas a MARGEN_CERCA de él.
@@ -437,8 +457,17 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     const igual = p && JSON.stringify(p.series) === JSON.stringify(u.series)
     // Siempre tiene que haber progresión: aquí salen todas las formas de
     // progresar, y "hablarlo" como una más.
-    if (igual) propone('igual', `${hecho} dos semanas seguidas: hablar con la persona.`, '',
-      ['peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'], { asistido })
+    if (igual) {
+      propone('igual', `${hecho} dos semanas seguidas: hablar con la persona.`, '',
+        ['peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'], { asistido })
+      return
+    }
+
+    // Va dentro del rango y progresando: no hay regla que pida cambio.
+    const previo = p && repsValidas(p).length > 0
+      ? `semana pasada ${repsValidas(p).join('/')}${p.kgMax > 0 ? ` × ${fmtKg(p.kgMax)} kg` : ''}`
+      : 'sin semana anterior para comparar'
+    revisar(`${hecho} en ${rango} (${previo}): dentro del rango. ¿Cambiar algo?`)
   })
 
   // Hay clientes que no comentan por ejercicio sino al final de la sesión
@@ -470,12 +499,21 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
       movilidad.pronto.map((m) => m.nombre).join(' · '), 'movilidad', ultimaSesion(movilidad.pronto))
   }
 
+  // El resto de la movilidad (sin molestia y sin semanas de más), también
+  // en UNA línea: el fisio confirma con ✅ que sigue o lo cambia.
+  if (movilidad.resto.length > 0) {
+    nueva('revisar', 'Movilidad',
+      `${movilidad.resto.length} ejercicio${movilidad.resto.length === 1 ? '' : 's'} sin cambios pendientes: ¿seguir igual? (${movilidad.resto.map((m) => m.nombre).join(' · ')})`,
+      '', 'movilidad-revisar', ultimaSesion(movilidad.resto))
+  }
+
   propuestas.sort((a, b) => ORDEN_TIPOS.indexOf(a.tipo) - ORDEN_TIPOS.indexOf(b.tipo))
   const hayDatos = [...historial.values()].some((h) => h.apariciones.some((a) => a.semana === semana))
   let nivel = 'sin-datos'
   if (hayDatos) {
     if (propuestas.some((x) => x.tipo === 'dolor')) nivel = 'rojo'
-    else if (propuestas.some((x) => x.tipo !== 'nota')) nivel = 'ambar'
+    // 🔍 Revisar no pone al cliente en ámbar: es confirmar, no un aviso.
+    else if (propuestas.some((x) => x.tipo !== 'nota' && x.tipo !== 'revisar')) nivel = 'ambar'
     else nivel = 'verde'
   }
   return { nivel, propuestas }

@@ -138,7 +138,7 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
                     }}
                   >
                     {opcionEditada.manual ? (
-                      <div className="propuesta-harbiz">No se escribe nada en Harbiz: queda apuntado que {opcionEditada.clave === 'cambio' ? 'cambias tú el ejercicio' : 'lo hablas con la persona'}.</div>
+                      <div className="propuesta-harbiz">No se escribe nada en Harbiz: queda apuntado que {opcionEditada.clave === 'cambio' ? 'cambias tú el ejercicio' : opcionEditada.clave === 'seguir' ? 'lo has revisado y sigue igual' : 'lo hablas con la persona'}.</div>
                     ) : (
                       <>
                         {(opcionEditada.objetivo !== null || opcionEditada.libre) && (
