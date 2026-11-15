@@ -282,7 +282,10 @@ las páginas del cliente son públicas), Operaciones
     imports). **📊 Qué elige el equipo** (plegable, solo admin, en 🤖
     Propuestas): por tipo, qué opción se elige; para reordenar `OPCIONES`
     con datos en vez de "subir peso" siempre la primera. **El conector de Harbiz no deja editar
-    ejercicios dentro de una superserie**: esos siempre van a mano.
+    ejercicios dentro de una superserie**: esos siempre van a mano, y se
+    avisa ANTES de aceptar (`enSuperserie()`: marca `superserie` del robot
+    en `detalle.registro` o, para lo de antes, un fallo previo "superserie"
+    de ese cliente y ejercicio); no se mandan a la rutina.
     La pestaña 🤖 Propuestas es solo un **índice** de lo
     que queda sin responder (no responde, como 🚨 Pendientes). Desde ahí se
     **apagan por cliente** (⏸️ Desactivar / ▶️ Activar, columna

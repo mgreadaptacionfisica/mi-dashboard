@@ -301,6 +301,10 @@ export function historialEjercicios(sesionesDelCliente) {
         comentario: String(e.comentario || '').trim(),
         valoracion: ['sin', 'molestia', 'dolor', 'nota'].includes(e.valoracion) ? e.valoracion : null,
         clase: e.clase === 'fuerza' || e.clase === 'movilidad' ? e.clase : null,
+        // Va dentro de una superserie en Harbiz (el robot lo marca desde el
+        // 2026-11-15). El conector de Harbiz no deja escribir dentro de una
+        // superserie, así que lo aceptado de este ejercicio va a mano.
+        superserie: e.superserie === true,
       })
     })
   })
@@ -344,9 +348,9 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
   // `opciones` (ver OPCIONES): entre qué elige el fisio. Las notas de cada
   // opción son lo que leería el CLIENTE en Harbiz: en segunda persona y sin
   // la explicación de la regla, que es para el fisio.
-  const nueva = (tipo, ejercicio, texto, cita = '', clave = ejercicio, sesionId = null, opciones = null) => propuestas.push({
+  const nueva = (tipo, ejercicio, texto, cita = '', clave = ejercicio, sesionId = null, opciones = null, superserie = false) => propuestas.push({
     id: `${clienteNombre}|${semana}|${tipo}|${clave.toLowerCase()}`,
-    tipo, ejercicio, texto, cita, sesionId, opciones,
+    tipo, ejercicio, texto, cita, sesionId, opciones, superserie,
   })
 
   historial.forEach(({ nombre, apariciones }) => {
@@ -354,7 +358,7 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     if (esta.length === 0) return
     const u = esta[esta.length - 1]
     // Todas las propuestas de este ejercicio cuelgan de su última sesión.
-    const propone = (tipo, texto, cita = '', claves = null, notas = {}) => nueva(tipo, nombre, texto, cita, nombre, u.sesionId, claves ? construirOpciones(claves, u, notas) : null)
+    const propone = (tipo, texto, cita = '', claves = null, notas = {}) => nueva(tipo, nombre, texto, cita, nombre, u.sesionId, claves ? construirOpciones(claves, u, notas) : null, u.superserie)
     const previa = apariciones.filter((a) => a.semana === anterior)
     const p = previa[previa.length - 1] || null
     const valoraciones = esta.map((a) => a.valoracion)
@@ -605,6 +609,21 @@ export function pendientesHarbizDeCliente(clienteNombre, respuestas, semanaActua
     }
   })
   return items
+}
+
+// 🔗 ¿Va este ejercicio dentro de una superserie en Harbiz? (Raúl,
+// 2026-11-15, caso de Rubén Guirado: mientras Harbiz no deje escribir ahí,
+// que se avise ANTES de aceptar y no se mande a la rutina, que fallaría).
+// Dos fuentes: la marca del robot (`superserie`, desde el 2026-11-15) y,
+// para lo de antes, que ya fallara alguna vez por eso con ese cliente y
+// ese ejercicio (el detalle de la rutina dice "superserie").
+export function enSuperserie(clienteNombre, propuesta, respuestas) {
+  if (!propuesta) return false
+  if (propuesta.superserie) return true
+  const ej = String(propuesta.ejercicio || '').trim().toLowerCase()
+  return (respuestas || []).some((r) => r.clienteNombre === clienteNombre
+    && String(r.ejercicio || '').trim().toLowerCase() === ej
+    && r.harbizEstado === 'error' && /superserie/i.test(r.harbizDetalle || ''))
 }
 
 // Una propuesta está "pendiente" si nadie le ha respondido todavía. Las

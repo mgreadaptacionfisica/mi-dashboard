@@ -106,7 +106,7 @@ function quedaEnHarbiz(r, eleccion) {
   return quedan
 }
 
-export default function PropuestasSesion({ propuestas = [], respuestas = [], onResponder, onResponderVarias, onDeshacer, onMarcarEnHarbiz, aHarbiz = () => false }) {
+export default function PropuestasSesion({ propuestas = [], respuestas = [], onResponder, onResponderVarias, onDeshacer, onMarcarEnHarbiz, aHarbiz = () => false, enSuperserie = () => false }) {
   const [abierto, setAbierto] = useState(false)
   const [descartando, setDescartando] = useState(null)
   const [motivo, setMotivo] = useState('')
@@ -139,7 +139,9 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
     && !p.opciones[0].libre)
   const aceptarRecomendadas = () => {
     const resumen = recomendables.map((p) => `· ${p.ejercicio}: ${p.opciones[0].emoji} ${p.opciones[0].titulo}`).join('\n')
-    const harbiz = recomendables.some((p) => aHarbiz(p)) ? '\n\n📲 Lo que cambie algo se escribirá solo en Harbiz.' : ''
+    const enSS = recomendables.filter((p) => enSuperserie(p) && !p.opciones[0].manual)
+    const harbiz = (recomendables.some((p) => aHarbiz(p)) ? '\n\n📲 Lo que cambie algo se escribirá solo en Harbiz.' : '')
+      + (enSS.length ? `\n\n⚠️ ${enSS.map((p) => p.ejercicio).join(', ')}: va${enSS.length === 1 ? '' : 'n'} en superserie y Harbiz no deja escribirlo solo. Tendrás que pasarlo a mano.` : '')
     if (!window.confirm(`¿Aceptar la opción recomendada de ${recomendables.length} propuestas?\n\n${resumen}${harbiz}`)) return
     const items = recomendables.map((p) => {
       const o = p.opciones[0]
@@ -193,10 +195,13 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
                   {p.tipo !== 'movilidad' && <strong>{p.ejercicio}: </strong>}
                   {p.texto}
                   {p.tipo === 'movilidad' && p.cita && <div className="propuesta-lista-ejercicios">{p.cita}</div>}
+                  {opciones.length > 0 && enSuperserie(p) && (!r || modificando) && (
+                    <div className="propuesta-harbiz propuesta-harbiz-aviso">⚠️ Va en superserie: Harbiz no deja escribirlo solo. Si eliges un cambio, pásalo tú a mano.</div>
+                  )}
                   {estadoHarbiz && <div className={`propuesta-harbiz propuesta-harbiz-${estadoHarbiz.clase}`}>{estadoHarbiz.texto(r.harbizDetalle)}</div>}
                   {enH === 'a_mano' && !modificando && (
                     <div className="propuesta-harbiz propuesta-harbiz-amano">
-                      {!r.harbizEstado && <>✍️ Pásalo a Harbiz: {cambios}</>}
+                      {!r.harbizEstado && <>{enSuperserie(p) ? '⚠️ Va en superserie, pásalo tú a Harbiz' : '✍️ Pásalo a Harbiz'}: {cambios}</>}
                       {r.harbizEstado && <>✍️ Cambios: {cambios}</>}
                       {onMarcarEnHarbiz && (
                         <button type="button" className="propuesta-btn propuesta-btn-ok propuesta-check-harbiz" onClick={() => onMarcarEnHarbiz(p.id)} title="Márcalo cuando lo hayas cambiado en Harbiz">
@@ -267,7 +272,7 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
                           />
                         </label>
                         <div className="propuesta-harbiz propuesta-harbiz-previa">
-                          {irAHarbiz ? '📲 Al aceptar se escribe sola en Harbiz (semana que viene).' : '✍️ Esto lo pasas tú a Harbiz.'}
+                          {irAHarbiz ? '📲 Al aceptar se escribe sola en Harbiz (semana que viene).' : enSuperserie(p) ? '⚠️ Va en superserie: esto lo pasas tú a Harbiz.' : '✍️ Esto lo pasas tú a Harbiz.'}
                         </div>
                       </>
                     )}

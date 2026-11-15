@@ -7,7 +7,7 @@ import PendientesSeguimiento from './PendientesSeguimiento'
 import ResumenesSemanales from './ResumenesSemanales'
 import PropuestasProgresion from './PropuestasProgresion'
 import PropuestasSesion from './PropuestasSesion'
-import { propuestasCliente, sesionesHarbizDeCliente, HARBIZ_PRUEBA_TRABAJADORES, estadoEnHarbiz, falloEnHarbiz, esRespondible, pendientesHarbizDeCliente } from '../utils/progresion'
+import { propuestasCliente, sesionesHarbizDeCliente, HARBIZ_PRUEBA_TRABAJADORES, estadoEnHarbiz, falloEnHarbiz, esRespondible, pendientesHarbizDeCliente, enSuperserie } from '../utils/progresion'
 import { upsertRespuestaPropuestaRemote, deleteRespuestaPropuestaRemote, marcarEnHarbizRemote } from '../lib/queries/propuestasProgresion'
 import {
   semanaActualISO,
@@ -422,6 +422,8 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
     if (!propuesta?.opciones?.length) return null
     const cliente = clientes.find((c) => c.Nombre === clienteNombre)
     if (!cliente || !trabajadoresDe(cliente).some((t) => HARBIZ_PRUEBA_TRABAJADORES.includes(t))) return null
+    // En superserie la rutina no puede escribir: va a mano desde el principio.
+    if (enSuperserie(clienteNombre, propuesta, propuestasProgresion)) return null
     const sesion = (sesionesHarbiz || []).find((s) => s.id === propuesta.sesionId)
     return sesion?.harbizClienteId || null
   }
@@ -957,6 +959,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                           propuestas={(propuestasRegistro.get(cliente.Nombre) || []).filter((p) => p.sesionId === t.harbizId)}
                                           respuestas={propuestasProgresion}
                                           aHarbiz={(p) => Boolean(vaAHarbiz(cliente.Nombre, p))}
+                                          enSuperserie={(p) => enSuperserie(cliente.Nombre, p, propuestasProgresion)}
                                           onResponder={(p, estado, motivo, eleccion) => responderPropuesta(cliente.Nombre, p, estado, motivo, eleccion)}
                                           onResponderVarias={(items) => responderPropuestas(cliente.Nombre, items)}
                                           onDeshacer={deshacerPropuesta}
