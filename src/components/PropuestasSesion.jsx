@@ -124,13 +124,15 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
         <ul className="propuestas-sesion-lista">
           {lista.map((p) => {
             const r = respuestaDe(p.id)
-            const irAHarbiz = (!r || editando?.modificar) && aHarbiz(p)
             const estadoHarbiz = r?.estado === 'aplicada' && r.harbizEstado ? ESTADO_HARBIZ[r.harbizEstado] : null
             const opciones = p.opciones || []
             const editando = eligiendo?.propuestaId === p.id ? eligiendo : null
             const opcionEditada = editando ? opciones.find((o) => o.clave === editando.clave) : null
             // ✏️ Reescribiendo una respuesta ya dada (ver arriba).
             const modificando = Boolean(r && editando?.modificar)
+            // Va detrás de `editando`: antes estaba arriba y lo usaba sin existir aún
+            // (pantalla en blanco al abrir el 🤖).
+            const irAHarbiz = (!r || modificando) && aHarbiz(p)
             const elegida = r?.opcion ? OPCIONES[r.opcion] : null
             // Aplicada con opción, sin pasar por el robot: hay que pasarlo a mano.
             const aMano = r?.estado === 'aplicada' && !r.harbizEstado && !elegida?.manual && resumenCambios({ nota: r.notaHarbiz, objetivo: r.objetivoHarbiz, series: r.seriesHarbiz })
