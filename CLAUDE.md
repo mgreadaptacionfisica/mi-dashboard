@@ -228,10 +228,14 @@ las páginas del cliente son públicas), Operaciones
     `series_harbiz` / `nota_harbiz` (migración 73) aunque no vaya al robot,
     para decir qué pasar a mano. Movilidad y el comentario general de la
     sesión no tienen opciones (✅/❌ de siempre). **🔍 Revisar**
-    (2026-11-12): TODO ejercicio lleva propuesta; el que no cumple ninguna
-    regla (dentro del rango, o sin reps/objetivo de reps) sale como
+    (2026-11-12): TODO ejercicio lleva propuesta; el que no tiene datos
+    para las reglas (sin reps/objetivo de reps) sale como
     `revisar` con "✔️ Seguir igual" (`seguir`, manual, no escribe en
-    Harbiz) la primera, y la movilidad restante en una línea. No pone al
+    Harbiz) la primera, y la movilidad restante en una línea. **Dentro del
+    rango NO es "seguir igual"** (2026-11-15): sale `reps` (mantener peso y
+    sumar reps hasta el tope, nota nueva para el cliente) con subir peso de
+    segunda, haya subido esta semana o antes; si no, en Harbiz se queda la
+    nota vieja de "Sube a…". No pone al
     cliente en ámbar. **Asistidos** (dominada
     o fondos asistidos, `esAsistido()` por el nombre): el kilo es la AYUDA,
     así que todo se da la vuelta — progresar es bajar la asistencia un

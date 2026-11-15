@@ -62,7 +62,7 @@ export const TIPOS = {
   molestia: { emoji: '🟡', titulo: 'Misma carga: molestia', ayuda: 'Cualquier molestia → misma carga, y preguntar si sigue.' },
   subir: { emoji: '🟢', titulo: 'Subir carga', ayuda: 'Llega al tope del rango (o lleva 2 semanas cerca) y sin molestias.' },
   propioPeso: { emoji: '🟢', titulo: 'Propio peso: progresar', ayuda: 'Llega al tope sin carga: subir reps o un ejercicio más difícil (criterio del fisio).' },
-  reps: { emoji: '🔵', titulo: 'Mantener carga: más reps', ayuda: 'Acaba de subir de peso y aún no llega al tope: se mantiene el peso nuevo y se buscan más reps (doble progresión).' },
+  reps: { emoji: '🔵', titulo: 'Mantener carga: más reps', ayuda: 'Va dentro del rango (o acaba de subir de peso) y aún no llega al tope: se mantiene el peso y se buscan más reps (doble progresión). Al llegar al tope, sale subir.' },
   igual: { emoji: '⚪', titulo: '2 semanas igual', ayuda: 'Mismas reps y misma carga dos semanas: hablar con la persona. Siempre tiene que haber progresión.' },
   revisar: { emoji: '🔍', titulo: 'Revisar', ayuda: 'Ninguna regla pide cambiar nada (va dentro del rango o faltan datos): el fisio confirma que sigue igual o elige un cambio.' },
   movilidad: { emoji: '🔁', titulo: 'Cambiar la movilidad', ayuda: 'La movilidad lleva semanas igual.' },
@@ -447,39 +447,48 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     }
 
     // Doble progresión (caso de Alicia, 2026-11-07): se le propuso subir,
-    // subió de peso y, como es normal, las reps bajan del tope. Sin esta
-    // regla el ejercicio se quedaba sin propuesta. Lo que toca es mantener
-    // el peso nuevo y buscar reps hasta el tope; al llegar, ya saldrá
-    // "subir" otra vez. Se compara con la aparición anterior que tenga
-    // carga, sea de la semana pasada o de antes en esta misma semana (si
-    // el lunes hizo 15 y el jueves 16, la subida es del jueves).
+    // subió de peso y, como es normal, las reps bajan del tope. Lo que toca
+    // es mantener el peso nuevo y buscar reps hasta el tope; al llegar, ya
+    // saldrá "subir" otra vez. Se compara con la aparición anterior que
+    // tenga carga, sea de la semana pasada o de antes en esta misma semana
+    // (si el lunes hizo 15 y el jueves 16, la subida es del jueves).
     const antes = [...apariciones].filter((a) => (a.fecha + a.hechaEn) < (u.fecha + u.hechaEn) && a.kgMax > 0).pop()
     // En un asistido, lo que cuenta es que haya BAJADO la asistencia.
-    if (antes && (asistido ? u.kgMax < antes.kgMax : u.kgMax > antes.kgMax)) {
-      const objetivo = fijo ? `cumplir las ${hi} reps` : `llegar a ${hi} reps en todas las series`
-      const queMantiene = asistido ? 'la asistencia' : 'el peso'
-      propone('reps', `${asistido ? 'Bajó la asistencia' : 'Subió'} de ${fmtKg(antes.kgMax)} a ${fmtKg(u.kgMax)} kg (${hecho}): mantener ${fmtKg(u.kgMax)} kg y ${objetivo}.`, '',
-        ['reps', 'rir', 'serie', 'libre', 'cambio'],
-        { asistido, reps: fijo
-          ? `Mantén ${queMantiene} (${fmtKg(u.kgMax)} kg) y completa las ${hi} repeticiones en todas las series.`
-          : `Mantén ${queMantiene} (${fmtKg(u.kgMax)} kg) y busca más repeticiones, hasta ${hi} en todas las series.` })
-      return
-    }
+    const acabaDeSubir = antes && (asistido ? u.kgMax < antes.kgMax : u.kgMax > antes.kgMax)
 
     const igual = p && JSON.stringify(p.series) === JSON.stringify(u.series)
     // Siempre tiene que haber progresión: aquí salen todas las formas de
     // progresar, y "hablarlo" como una más.
-    if (igual) {
+    if (!acabaDeSubir && igual) {
       propone('igual', `${hecho} dos semanas seguidas: hablar con la persona.`, '',
         ['peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'], { asistido })
       return
     }
 
-    // Va dentro del rango y progresando: no hay regla que pida cambio.
+    // Dentro del rango y sin llegar al tope (Raúl, 2026-11-15, caso de
+    // Gerai): antes esto salía como 🔍 Revisar con "Seguir igual" primero,
+    // y no es verdad que no cambie nada. Si la semana pasada se le subió el
+    // peso, en Harbiz se queda la nota de entonces ("Sube a 16–17 kg") y la
+    // persona no sabe qué buscar ahora. Lo normal es mantener el peso y
+    // sumar repeticiones hasta el tope (doble progresión), así que esa es
+    // la recomendada y la nota se reescribe; subir peso va de segunda por
+    // si el fisio lo ve claro. Vale tanto si la subida es de esta semana
+    // como si ya lleva más semanas con ese peso.
+    const meta = fijo ? `cumplir las ${hi} reps` : `llegar a ${hi} reps en todas las series`
+    const queMantiene = asistido ? 'la asistencia' : 'el peso'
+    const mantiene = u.kgMax > 0 ? `Mantén ${queMantiene} (${fmtKg(u.kgMax)} kg) y ` : ''
+    const notaReps = fijo
+      ? `${mantiene}completa las ${hi} repeticiones en todas las series.`
+      : `${mantiene}busca más repeticiones, hasta ${hi} en todas las series.`
     const previo = p && repsValidas(p).length > 0
       ? `semana pasada ${repsValidas(p).join('/')}${p.kgMax > 0 ? ` × ${fmtKg(p.kgMax)} kg` : ''}`
       : 'sin semana anterior para comparar'
-    revisar(`${hecho} en ${rango} (${previo}): dentro del rango. ¿Cambiar algo?`)
+    const porQue = acabaDeSubir
+      ? `${asistido ? 'Bajó la asistencia' : 'Subió'} de ${fmtKg(antes.kgMax)} a ${fmtKg(u.kgMax)} kg (${hecho})`
+      : `${hecho} en ${rango} (${previo})`
+    propone('reps', `${porQue}: ${u.kgMax > 0 ? `mantener ${fmtKg(u.kgMax)} kg y ` : ''}${meta}.`, '',
+      ['reps', 'peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio', 'hablar'],
+      { asistido, reps: `${notaReps.charAt(0).toUpperCase()}${notaReps.slice(1)}` })
   })
 
   // Hay clientes que no comentan por ejercicio sino al final de la sesión
