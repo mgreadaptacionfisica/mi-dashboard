@@ -349,18 +349,26 @@ function puntosContactoPendientes(contacto) {
 // = se puede cerrar. Cada motivo lleva `donde` para decir en qué pestaña se
 // arregla (el modal no deja editar sesiones ni contacto: solo cambios y
 // comentario).
+// "✔️ Nada que comentar" (Raúl, 2026-11-15): hay semanas en las que el
+// trabajador no tiene nada que contarle a Raúl. En vez de quitar la
+// obligación del comentario (y no saber si fue un olvido), un botón deja
+// este texto fijo: es un clic, queda apuntado y se lee así en 📝 Resúmenes.
+// NO vale para una semana sin sesiones: ahí hay que explicar por qué.
+export const NADA_QUE_COMENTAR = 'Nada que comentar.'
+
 export function motivosNoCierre({ seguimiento, contacto, problemas = [], clienteNombre, semana }) {
   const motivos = []
   const progreso = progresoSemana(seguimiento)
   const comentario = (seguimiento?.comentarios || '').trim()
+  const nadaQueComentar = comentario === NADA_QUE_COMENTAR
   const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`
 
   // Una semana sin ninguna sesión se puede cerrar (vacaciones, parón…), pero
   // solo explicándolo en el comentario semanal: así no se cierra "en blanco"
   // por olvido de registrar.
   if (progreso.total === 0) {
-    if (!comentario) {
-      motivos.push({ donde: 'comentario', texto: 'No hay ninguna sesión registrada. Si no ha entrenado esta semana (vacaciones, parón…), explícalo en el comentario semanal.' })
+    if (!comentario || nadaQueComentar) {
+      motivos.push({ donde: 'comentario', texto: 'No hay ninguna sesión registrada. Si no ha entrenado esta semana (vacaciones, parón…), explícalo en el comentario semanal («Nada que comentar» no vale aquí).' })
     }
   } else if (progreso.revisadas < progreso.total) {
     const faltan = progreso.total - progreso.revisadas
@@ -402,8 +410,9 @@ export function motivosNoCierre({ seguimiento, contacto, problemas = [], cliente
     }
   }
 
-  if (!comentario) {
-    motivos.push({ donde: 'comentario', texto: 'Falta el comentario semanal para Raúl (aquí abajo).' })
+  // (La semana sin sesiones ya lo ha pedido arriba, con su motivo.)
+  if (!comentario && progreso.total > 0) {
+    motivos.push({ donde: 'comentario', texto: 'Falta el comentario semanal para Raúl (aquí abajo). Si no hay nada que contar, pulsa «✔️ Nada que comentar».' })
   }
   return motivos
 }

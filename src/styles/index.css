@@ -6107,6 +6107,9 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
   white-space: pre-wrap;
 }
 
+/* ✔️ Nada que comentar: debajo del comentario semanal vacío. */
+.seguimiento-nada-comentar { margin-top: 6px; font-size: 12px; }
+
 .seguimiento-comentario-semanal {
   margin-top: 12px;
 }

@@ -9,8 +9,7 @@ import {
   semanaVacia,
   progresoSemana,
   motivosNoCierre,
-  resumenSemanaCliente,
-} from '../utils/seguimientoHelpers'
+  resumenSemanaCliente, NADA_QUE_COMENTAR } from '../utils/seguimientoHelpers'
 import ResumenSemanaCliente from './ResumenSemanaCliente'
 import HistorialCliente from './HistorialCliente'
 import ProblemasCliente from './ProblemasCliente'
@@ -338,6 +337,16 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
             onChange={(e) => setComentarioDraft(e.target.value)}
             onBlur={guardarComentario}
           />
+          {!comentarioDraft.trim() && progreso.total > 0 && (
+            <button
+              type="button"
+              className="secondary-action seguimiento-nada-comentar"
+              title="Si esta semana no hay nada que contarle a Raúl. Se guarda el texto «Nada que comentar.» (no vale para una semana sin sesiones)."
+              onClick={() => { setComentarioDraft(NADA_QUE_COMENTAR); actualizarSemana({ comentarios: NADA_QUE_COMENTAR }) }}
+            >
+              ✔️ Nada que comentar
+            </button>
+          )}
         </div>
 
         <div className="seguimiento-resumen-semanal">
@@ -372,7 +381,7 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
             <span>Semana revisada y cerrada para {cliente.Nombre}</span>
           </label>
           <p className="valoracion-referencia">
-            ℹ️ Solo se puede cerrar con todas las sesiones marcadas, los cambios hechos, el contacto semanal completo (3/3) y el comentario semanal escrito. Márcalo cuando además tengas preparada la semana que viene.
+            ℹ️ Solo se puede cerrar con todas las sesiones marcadas, los cambios hechos, el contacto semanal completo (3/3) y el comentario semanal escrito (o «Nada que comentar»). Márcalo cuando además tengas preparada la semana que viene.
           </p>
           {semanaRevisada && revisionSemana?.revisadoEn && (
             <p className="valoracion-referencia">

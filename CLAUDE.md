@@ -145,7 +145,9 @@ las páginas del cliente son públicas), Operaciones
     `seguimientoHelpers`): todas las sesiones marcadas, cambios hechos,
     contacto semanal 3/3, ningún problema nuevo de esa semana sin un cambio
     apuntado, y comentario semanal escrito (una semana sin sesiones
-    solo se cierra explicándolo en el comentario). Si falta algo, el check sale
+    solo se cierra explicándolo en el comentario). Si no hay nada que
+    contar, el botón **✔️ Nada que comentar** deja `NADA_QUE_COMENTAR`
+    (2026-11-15); no vale para la semana sin sesiones. Si falta algo, el check sale
     deshabilitado y se lista qué falta. Reabrir siempre se puede. Por eso el
     modal necesita `contactosSemanales` en los tres sitios donde se abre
     (ClientesEquipo, ClientesAdmin, Equipo).
