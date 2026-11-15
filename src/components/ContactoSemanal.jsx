@@ -6,8 +6,12 @@ import {
   contactoVacio,
   progresoContacto,
   PUNTOS_CONTACTO,
+  normalizarParaCliente,
+  alternarExplicado,
 } from '../utils/seguimientoHelpers'
 import { upsertContactoSemanalRemote } from '../lib/queries/contactosSemanales'
+import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
+import ParaClienteChecklist, { contarExplicados } from './ParaClienteChecklist'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -15,7 +19,7 @@ function todayISO() {
 
 // Tabla de contacto semanal (3 checks por cliente: inicio / mitad / fin de semana)
 // para el equipo técnico. Se embebe en el detalle de cada técnico dentro de Equipo.jsx.
-export default function ContactoSemanal({ clientes, contactos, setContactos, seguimientos = [] }) {
+export default function ContactoSemanal({ clientes, contactos, setContactos, seguimientos = [], setSeguimientos }) {
   const [weekOffset, setWeekOffset] = useState(0)
 
   const mondayISO = useMemo(() => {
@@ -33,20 +37,29 @@ export default function ContactoSemanal({ clientes, contactos, setContactos, seg
   }, [clientes, contactos, mondayISO])
 
   // 📣 Lo que se apuntó al cerrar la semana anterior para explicárselo al
-  // cliente (migración 76). Se enseña aquí porque es en el contacto de
-  // inicio de semana cuando se le cuenta. Misma cuenta de semanas que
-  // mondayISO.
+  // cliente (migraciones 76 y 77), con un check por punto para marcarlo
+  // según se le explica. Se enseña aquí porque es en el contacto de inicio
+  // de semana cuando se le cuenta. Misma cuenta de semanas que mondayISO.
   const paraClientePorCliente = useMemo(() => {
     const base = mondayOf(new Date())
     base.setDate(base.getDate() + (weekOffset - 1) * 7)
     const anterior = toISO(base)
     const map = {}
     clientes.forEach((cliente) => {
-      const texto = (seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === anterior)?.paraCliente || '').trim()
-      if (texto) map[cliente.Nombre] = texto
+      const registro = seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === anterior)
+      const lista = normalizarParaCliente(registro?.paraClienteLista)
+      if (lista.length) map[cliente.Nombre] = { registro, lista }
     })
     return map
   }, [clientes, seguimientos, weekOffset])
+
+  const marcarExplicado = (clienteNombre, index) => {
+    const entrada = paraClientePorCliente[clienteNombre]
+    if (!entrada || typeof setSeguimientos !== 'function') return
+    const actualizado = alternarExplicado(entrada.registro, index)
+    setSeguimientos((prev) => prev.map((s) => (s.clienteNombre === actualizado.clienteNombre && s.semana === actualizado.semana ? actualizado : s)))
+    upsertSeguimientoRemote(actualizado)
+  }
 
   const resumenSemana = useMemo(() => {
     let hechos = 0
@@ -114,12 +127,19 @@ export default function ContactoSemanal({ clientes, contactos, setContactos, seg
             <div className="contacto-semanal-row" key={cliente.Nombre}>
               <span className="contacto-semanal-nombre">
                 {cliente.Nombre}
-                {paraClientePorCliente[cliente.Nombre] && (
-                  <details className="contacto-para-cliente">
-                    <summary>📣 Para explicarle</summary>
-                    <div className="seguimiento-para-cliente-texto">{paraClientePorCliente[cliente.Nombre]}</div>
-                  </details>
-                )}
+                {paraClientePorCliente[cliente.Nombre] && (() => {
+                  const { lista } = paraClientePorCliente[cliente.Nombre]
+                  const { hechos, total } = contarExplicados(lista)
+                  return (
+                    <details className="contacto-para-cliente">
+                      <summary>📣 Para explicarle ({hechos}/{total}){hechos === total ? ' ✅' : ''}</summary>
+                      <ParaClienteChecklist
+                        lista={lista}
+                        onToggle={typeof setSeguimientos === 'function' ? (i) => marcarExplicado(cliente.Nombre, i) : undefined}
+                      />
+                    </details>
+                  )
+                })()}
               </span>
               {PUNTOS_CONTACTO.map((p) => {
                 const punto = registro?.[p.id]

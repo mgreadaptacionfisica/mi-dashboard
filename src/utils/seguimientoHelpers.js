@@ -574,3 +574,57 @@ export function historialCliente({ clienteNombre, seguimientos = [], contactos =
     })
     .filter((s) => s.entradas.length > 0)
 }
+
+// 📣 Para explicar al cliente (migraciones 76 y 77). Raúl, 2026-11-15: que
+// sea una lista con check, como 🔧 Cambios de la semana, para ir marcando lo
+// que ya se le ha explicado, y que cada punto diga en qué SESIÓN está.
+// Cada punto: { texto, sesion, explicado, explicadoEn }. sesion '' = general.
+// Se guarda en la semana que se cierra y se marca la semana siguiente.
+//
+// Acepta lo que venga de la columna `para_cliente`: la lista (jsonb, desde
+// la 77), la lista como texto JSON (si aún es text) o el texto libre de la
+// 76, que se trocea por líneas respetando los grupos «Sesión:» que dejaba
+// el botón ✨ para no perder lo ya apuntado.
+export function normalizarParaCliente(valor) {
+  if (Array.isArray(valor)) {
+    return valor
+      .filter((p) => p && String(p.texto || '').trim())
+      .map((p) => ({ texto: String(p.texto).trim(), sesion: String(p.sesion || '').trim(), explicado: Boolean(p.explicado), explicadoEn: p.explicadoEn || null }))
+  }
+  const texto = String(valor || '').trim()
+  if (!texto) return []
+  if (texto.startsWith('[')) {
+    try { return normalizarParaCliente(JSON.parse(texto)) } catch { /* texto libre */ }
+  }
+  const puntos = []
+  let sesion = ''
+  texto.split('\n').forEach((linea) => {
+    const l = linea.trim()
+    if (!l) { sesion = ''; return }
+    if (!l.startsWith('•') && l.endsWith(':')) { sesion = l.slice(0, -1).trim() === 'Otros cambios' ? '' : l.slice(0, -1).trim(); return }
+    puntos.push({ texto: l.replace(/^•\s*/, ''), sesion, explicado: false, explicadoEn: null })
+  })
+  return puntos
+}
+
+// Agrupa los puntos por sesión (los generales al final), conservando el
+// índice original para poder marcarlos.
+export function agruparParaCliente(lista = []) {
+  const grupos = new Map()
+  lista.forEach((p, index) => {
+    const clave = p.sesion || ''
+    if (!grupos.has(clave)) grupos.set(clave, [])
+    grupos.get(clave).push({ ...p, index })
+  })
+  return [...grupos.entries()]
+    .sort(([a], [b]) => (a === '' ? 1 : 0) - (b === '' ? 1 : 0))
+    .map(([sesion, puntos]) => ({ sesion, puntos }))
+}
+
+// Marca o desmarca un punto como explicado y devuelve el registro nuevo.
+export function alternarExplicado(registro, index) {
+  const lista = normalizarParaCliente(registro?.paraClienteLista).map((p, i) =>
+    i === index ? { ...p, explicado: !p.explicado, explicadoEn: !p.explicado ? new Date().toISOString() : null } : p
+  )
+  return { ...registro, paraClienteLista: lista }
+}

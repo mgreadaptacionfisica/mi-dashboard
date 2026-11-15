@@ -6113,6 +6113,16 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
 .seguimiento-para-cliente-texto { white-space: pre-wrap; margin-top: 4px; font-size: 13px; }
 .contacto-para-cliente { margin-top: 4px; font-weight: 400; font-size: 12px; }
 .contacto-para-cliente summary { cursor: pointer; color: #1d4ed8; font-weight: 600; }
+/* 📣 Lista con check (migración 77): agrupada por sesión, tachado lo ya explicado. */
+.para-cliente-lista { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.para-cliente-sesion { font-size: 12px; font-weight: 700; color: #1e3a8a; margin-bottom: 2px; }
+.para-cliente-punto { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; font-weight: 400; padding: 2px 0 2px 4px; cursor: pointer; }
+.para-cliente-punto input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; }
+.para-cliente-punto span { flex: 1; white-space: pre-wrap; }
+.para-cliente-punto button { border: none; background: none; color: #94a3b8; cursor: pointer; padding: 0 4px; }
+.para-cliente-explicado span { text-decoration: line-through; color: #64748b; }
+.para-cliente-add { margin-top: 6px; }
+.para-cliente-add select { max-width: 200px; flex-shrink: 0; }
 
 /* ✔️ Nada que comentar: debajo del comentario semanal vacío. */
 .seguimiento-nada-comentar { margin-top: 6px; font-size: 12px; }

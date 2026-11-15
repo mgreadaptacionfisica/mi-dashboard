@@ -1,6 +1,7 @@
 import { supabase } from '../supabaseClient'
 import { leerTodo } from './leerTodo'
 import { avisaErrorGuardado } from '../avisosGuardado'
+import { normalizarParaCliente } from '../../utils/seguimientoHelpers'
 
 function fromRow(row) {
   return {
@@ -10,10 +11,10 @@ function fromRow(row) {
     comentarios: row.comentarios || '',
     cambiosPendientes: row.cambios_pendientes || [],
     revisiones: row.revisiones || [],
-    // 📣 Qué explicar al cliente la semana que viene (migración 76). Solo
-    // se pone la clave si viene la columna: así, antes de correr la
-    // migración, nunca se manda y el guardado de la semana no falla.
-    ...(row.para_cliente !== undefined ? { paraCliente: row.para_cliente || '' } : {}),
+    // 📣 Qué explicar al cliente la semana que viene (migraciones 76 y 77):
+    // lista de puntos con check y sesión. Solo se pone la clave si viene la
+    // columna, para no mandarla nunca si no existe.
+    ...(row.para_cliente !== undefined ? { paraClienteLista: normalizarParaCliente(row.para_cliente) } : {}),
   }
 }
 
@@ -28,7 +29,9 @@ function toRow(registro) {
   }
   // Solo si el registro la trae (ver fromRow). Si no la trae, el upsert no
   // la toca y se conserva lo que hubiera.
-  if (registro.paraCliente !== undefined) fila.para_cliente = registro.paraCliente || null
+  // Con la 77 la columna es jsonb; si aún fuera text, se guarda el JSON como
+  // texto y normalizarParaCliente lo lee igual.
+  if (registro.paraClienteLista !== undefined) fila.para_cliente = registro.paraClienteLista.length ? registro.paraClienteLista : null
   return fila
 }
 
