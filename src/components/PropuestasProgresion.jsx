@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { propuestasCliente, sesionesHarbizDeCliente, esRespondible, TIPOS, ORDEN_TIPOS } from '../utils/progresion'
+import { propuestasCliente, sesionesHarbizDeCliente, esRespondible, estadoEnHarbiz, TIPOS, ORDEN_TIPOS } from '../utils/progresion'
 import { semanaYDiaDeFecha } from '../utils/sesionesHarbiz'
 import { formatRangoSemana } from '../utils/seguimientoHelpers'
 
@@ -43,13 +43,19 @@ export default function PropuestasProgresion({ clientes, todosLosClientes, sesio
         const { nivel, propuestas } = propuestasCliente(cliente.Nombre, sesiones, semana)
         const respondibles = propuestas.filter(esRespondible)
         const pendientes = respondibles.filter((p) => !respondidas.has(p.id))
+        // ☐ Aceptadas que aún no están en Harbiz (ver estadoEnHarbiz).
+        const ids = new Set(respondibles.map((p) => p.id))
+        const estados = (respuestas || []).filter((r) => ids.has(r.id)).map(estadoEnHarbiz)
+        const aMano = estados.filter((e) => e === 'a_mano').length
+        const esperando = estados.filter((e) => e === 'esperando').length
         // Cuántas de cada tipo quedan, para decir de un vistazo qué hay.
         const porTipo = ORDEN_TIPOS
           .map((tipo) => ({ tipo, n: pendientes.filter((p) => p.tipo === tipo).length }))
           .filter((x) => x.n > 0)
-        return { cliente, nivel, total: respondibles.length, pendientes: pendientes.length, porTipo }
+        return { cliente, nivel, total: respondibles.length, pendientes: pendientes.length, porTipo, aMano, esperando }
       })
       .sort((a, b) => (b.pendientes > 0) - (a.pendientes > 0)
+        || (b.aMano > 0) - (a.aMano > 0)
         || NIVELES[a.nivel].orden - NIVELES[b.nivel].orden
         || a.cliente.Nombre.localeCompare(b.cliente.Nombre))
   }, [clientes, todosLosClientes, sesionesHarbiz, respuestas, semana])
@@ -63,7 +69,8 @@ export default function PropuestasProgresion({ clientes, todosLosClientes, sesio
 
   const totalPendientes = filas.reduce((n, f) => n + f.pendientes, 0)
   const conPendientes = filas.filter((f) => f.pendientes > 0).length
-  const visibles = verTodos ? filas : filas.filter((f) => f.pendientes > 0)
+  const totalAMano = filas.reduce((n, f) => n + f.aMano, 0)
+  const visibles = verTodos ? filas : filas.filter((f) => f.pendientes > 0 || f.aMano > 0)
 
   return (
     <div className="table-card">
@@ -86,6 +93,7 @@ export default function PropuestasProgresion({ clientes, todosLosClientes, sesio
         <span className="propuestas-resumen-pendientes">
           {totalPendientes === 0 ? '✓ Todo respondido' : `${totalPendientes} sin responder en ${conPendientes} cliente${conPendientes === 1 ? '' : 's'}`}
         </span>
+        {totalAMano > 0 && <span className="propuestas-resumen-pendientes">✍️ {totalAMano} aceptada{totalAMano === 1 ? '' : 's'} por pasar a Harbiz a mano</span>}
         <label className="propuestas-ver-verdes">
           <input type="checkbox" checked={verTodos} onChange={(e) => setVerTodos(e.target.checked)} /> Ver también los que ya están al día
         </label>
@@ -105,6 +113,8 @@ export default function PropuestasProgresion({ clientes, todosLosClientes, sesio
               {f.pendientes > 0
                 ? f.porTipo.map((x) => `${TIPOS[x.tipo].emoji} ${x.n}`).join('  ')
                 : f.nivel === 'sin-datos' ? 'Sin datos de Harbiz' : f.total > 0 ? '✓ Respondidas' : 'Sin cambios'}
+              {f.aMano > 0 ? `  ✍️ ${f.aMano} a Harbiz` : ''}
+              {f.esperando > 0 ? `  ⏳ ${f.esperando}` : ''}
             </span>
             {onIrSesiones && (
               <button type="button" className="propuesta-ver-semana" onClick={() => onIrSesiones(f.cliente, offset)}>Ir a sus sesiones →</button>

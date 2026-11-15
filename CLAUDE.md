@@ -259,6 +259,14 @@ las páginas del cliente son públicas), Operaciones
     guardado precargado (misma fila, upsert; vuelve a `pendiente` y el robot
     la reescribe). Por eso `toRow` manda SIEMPRE las columnas de opción y de
     Harbiz, vacías si no hay: si no, quedarían las de la respuesta anterior.
+    **☐ Check de Harbiz** (2026-11-15, `estadoEnHarbiz()` en `progresion.js`):
+    aceptar no cierra la propuesta; lo que cambia algo queda ⏳ hasta que la
+    rutina lo escribe (✅ solo) o, si va a mano (superserie, error, cliente
+    fuera de la prueba), con "☐ Ya está en Harbiz", que guarda
+    `harbiz_estado = 'escrita'` + detalle "✍️ pasado a mano por …" (sin
+    migración). El 🤖 no se pone en ✓ hasta entonces; badge ✍️ en la rejilla
+    y contador en el índice. **El conector de Harbiz no deja editar
+    ejercicios dentro de una superserie**: esos siempre van a mano.
     La pestaña 🤖 Propuestas es solo un **índice** de lo
     que queda sin responder (no responde, como 🚨 Pendientes). Desde ahí se
     **apagan por cliente** (⏸️ Desactivar / ▶️ Activar, columna

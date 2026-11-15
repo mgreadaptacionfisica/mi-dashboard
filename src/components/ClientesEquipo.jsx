@@ -7,8 +7,8 @@ import PendientesSeguimiento from './PendientesSeguimiento'
 import ResumenesSemanales from './ResumenesSemanales'
 import PropuestasProgresion from './PropuestasProgresion'
 import PropuestasSesion from './PropuestasSesion'
-import { propuestasCliente, sesionesHarbizDeCliente, HARBIZ_PRUEBA_TRABAJADORES } from '../utils/progresion'
-import { upsertRespuestaPropuestaRemote, deleteRespuestaPropuestaRemote } from '../lib/queries/propuestasProgresion'
+import { propuestasCliente, sesionesHarbizDeCliente, HARBIZ_PRUEBA_TRABAJADORES, estadoEnHarbiz } from '../utils/progresion'
+import { upsertRespuestaPropuestaRemote, deleteRespuestaPropuestaRemote, marcarEnHarbizRemote } from '../lib/queries/propuestasProgresion'
 import {
   semanaActualISO,
   formatRangoSemana,
@@ -446,6 +446,13 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
     }
     updateClienteRemote(cliente.id, { 'Sin propuestas': apagar })
   }
+  // ✍️ "Ya está en Harbiz": lo aceptado que se ha pasado a mano.
+  const marcarEnHarbiz = (id) => {
+    if (typeof setPropuestasProgresion !== 'function') return
+    const detalle = `✍️ pasado a mano${miIdentidad ? ` por ${miIdentidad}` : ''}`
+    setPropuestasProgresion((prev) => (prev || []).map((x) => (x.id === id ? { ...x, harbizEstado: 'escrita', harbizDetalle: detalle } : x)))
+    marcarEnHarbizRemote(id, detalle)
+  }
   const deshacerPropuesta = (id) => {
     if (typeof setPropuestasProgresion !== 'function') return
     setPropuestasProgresion((prev) => (prev || []).filter((x) => x.id !== id))
@@ -454,6 +461,11 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   const pendientesPropuestas = (clienteNombre) => {
     const respondidas = new Set((propuestasProgresion || []).map((r) => r.id))
     return (propuestasRegistro.get(clienteNombre) || []).filter((p) => p.tipo !== 'nota' && !respondidas.has(p.id)).length
+  }
+  // Aceptadas de esta semana que aún hay que pasar a Harbiz a mano.
+  const aManoPropuestas = (clienteNombre) => {
+    const ids = new Set((propuestasRegistro.get(clienteNombre) || []).map((p) => p.id))
+    return (propuestasProgresion || []).filter((r) => ids.has(r.id) && estadoEnHarbiz(r) === 'a_mano').length
   }
 
   // Abre un problema a partir de una sesión. Se guarda una foto del origen
@@ -792,6 +804,11 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                 🤖 {pendientesPropuestas(cliente.Nombre)}
                               </span>
                             )}
+                            {aManoPropuestas(cliente.Nombre) > 0 && (
+                              <span className="propuestas-pendientes-badge propuestas-amano-badge" title="Propuestas aceptadas que hay que pasar a Harbiz a mano (y marcar «Ya está en Harbiz» debajo de la sesión)">
+                                ✍️ {aManoPropuestas(cliente.Nombre)}
+                              </span>
+                            )}
                             {semPend && (
                               <button
                                 type="button"
@@ -895,6 +912,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                           aHarbiz={(p) => Boolean(vaAHarbiz(cliente.Nombre, p))}
                                           onResponder={(p, estado, motivo, eleccion) => responderPropuesta(cliente.Nombre, p, estado, motivo, eleccion)}
                                           onDeshacer={deshacerPropuesta}
+                                          onMarcarEnHarbiz={marcarEnHarbiz}
                                         />
                                       )}
                                       {notaCell === notaKey ? (

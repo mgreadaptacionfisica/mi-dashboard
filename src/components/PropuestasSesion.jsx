@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TIPOS, OPCIONES, esRespondible } from '../utils/progresion'
+import { TIPOS, OPCIONES, esRespondible, estadoEnHarbiz } from '../utils/progresion'
 
 // 🤖 Propuestas de UNA sesión, debajo de su chip en ⚡ Registro de sesiones.
 //
@@ -32,11 +32,17 @@ import { TIPOS, OPCIONES, esRespondible } from '../utils/progresion'
 // opción; al aceptar se reescribe la misma fila. Antes solo había
 // "Deshacer", que volvía a la nota que propone el panel y había que
 // reescribirla entera. Las descartadas reabren el motivo.
+//
+// ☐ Check de Harbiz (Raúl, 2026-11-15): aceptar no cierra la propuesta. Lo
+// aceptado que cambia algo se queda ⏳ hasta que la rutina lo escribe (y
+// entonces ✅ solo) o, si hay que pasarlo a mano, con "☐ Ya está en Harbiz".
+// Hasta entonces el 🤖 no se pone en ✓. Ver estadoEnHarbiz() en progresion.js.
 const ESTADO_HARBIZ = {
-  pendiente: { clase: 'pendiente', texto: () => '📲 Se escribe en Harbiz en la próxima pasada (7:30 o 20:30)' },
-  escrita: { clase: 'ok', texto: (d) => `📲 Escrita en Harbiz${d ? `: ${d}` : ''}` },
-  sin_sesion: { clase: 'aviso', texto: (d) => `⚠️ No escrita en Harbiz${d ? `: ${d}` : ''}. Pásalo a mano.` },
-  error: { clase: 'aviso', texto: (d) => `⚠️ No escrita en Harbiz${d ? `: ${d}` : ''}. Pásalo a mano.` },
+  pendiente: { clase: 'pendiente', texto: () => '⏳ Esperando a Harbiz: se escribe sola en la próxima pasada (7:30 o 20:30) y entonces queda ✅' },
+  // "escrita" es también lo marcado a mano ("✍️ pasado a mano por …").
+  escrita: { clase: 'ok', texto: (d) => (String(d || '').startsWith('✍️') ? `✅ En Harbiz (${d})` : `✅ Escrita en Harbiz${d ? `: ${d}` : ''}`) },
+  sin_sesion: { clase: 'aviso', texto: (d) => `⚠️ La rutina no la pudo escribir${d ? `: ${d}` : ''}. Pásala a mano y márcala.` },
+  error: { clase: 'aviso', texto: (d) => `⚠️ La rutina no la pudo escribir${d ? `: ${d}` : ''}. Pásala a mano y márcala.` },
 }
 
 // Qué se cambia en Harbiz con una elección, en una línea ("objetivo 8-12
@@ -93,7 +99,7 @@ function quedaEnHarbiz(r, eleccion) {
   return quedan
 }
 
-export default function PropuestasSesion({ propuestas = [], respuestas = [], onResponder, onDeshacer, aHarbiz = () => false }) {
+export default function PropuestasSesion({ propuestas = [], respuestas = [], onResponder, onDeshacer, onMarcarEnHarbiz, aHarbiz = () => false }) {
   const [abierto, setAbierto] = useState(false)
   const [descartando, setDescartando] = useState(null)
   const [motivo, setMotivo] = useState('')
@@ -106,17 +112,25 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
   const respuestaDe = (id) => respuestas.find((r) => r.id === id)
   const pendientes = lista.filter((p) => !respuestaDe(p.id)).length
   const hayDolor = lista.some((p) => p.tipo === 'dolor' && !respuestaDe(p.id))
-  const etiqueta = pendientes === 0
-    ? '🤖 ✓'
-    : `${hayDolor ? '🔴' : '🤖'} ${pendientes} propuesta${pendientes === 1 ? '' : 's'}`
+  const enHarbiz = lista.map((p) => estadoEnHarbiz(respuestaDe(p.id)))
+  const aMano = enHarbiz.filter((e) => e === 'a_mano').length
+  const esperando = enHarbiz.filter((e) => e === 'esperando').length
+  const etiqueta = pendientes > 0
+    ? `${hayDolor ? '🔴' : '🤖'} ${pendientes} propuesta${pendientes === 1 ? '' : 's'}`
+    : aMano > 0 ? `✍️ ${aMano} a Harbiz`
+      : esperando > 0 ? '🤖 ⏳' : '🤖 ✓'
+  const todoHecho = pendientes === 0 && aMano === 0 && esperando === 0
 
   return (
     <div className="propuestas-sesion">
       <button
         type="button"
-        className={`propuestas-sesion-toggle${hayDolor ? ' propuestas-sesion-dolor' : ''}${pendientes === 0 ? ' propuestas-sesion-hecho' : ''}`}
+        className={`propuestas-sesion-toggle${hayDolor ? ' propuestas-sesion-dolor' : ''}${todoHecho ? ' propuestas-sesion-hecho' : ''}`}
         onClick={() => setAbierto((v) => !v)}
-        title={pendientes === 0 ? 'Propuestas para la semana que viene: todas respondidas' : 'Qué cambiar la semana que viene según lo que apuntó el cliente'}
+        title={pendientes > 0 ? 'Qué cambiar la semana que viene según lo que apuntó el cliente'
+          : aMano > 0 ? 'Respondidas, pero hay cambios que pasar a Harbiz a mano: márcalos al hacerlo'
+            : esperando > 0 ? 'Respondidas: falta que la rutina las escriba en Harbiz (7:30 o 20:30)'
+              : 'Propuestas para la semana que viene: todas respondidas y en Harbiz'}
       >
         {etiqueta} {abierto ? '▾' : '▸'}
       </button>
@@ -134,8 +148,9 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
             // (pantalla en blanco al abrir el 🤖).
             const irAHarbiz = (!r || modificando) && aHarbiz(p)
             const elegida = r?.opcion ? OPCIONES[r.opcion] : null
-            // Aplicada con opción, sin pasar por el robot: hay que pasarlo a mano.
-            const aMano = r?.estado === 'aplicada' && !r.harbizEstado && !elegida?.manual && resumenCambios({ nota: r.notaHarbiz, objetivo: r.objetivoHarbiz, series: r.seriesHarbiz })
+            // ☐ Check de Harbiz de lo aceptado (ver arriba).
+            const enH = estadoEnHarbiz(r)
+            const cambios = enH ? resumenCambios({ nota: r.notaHarbiz, objetivo: r.objetivoHarbiz, series: r.seriesHarbiz }) : ''
             return (
               <li key={p.id} className={`propuestas-sesion-item propuesta-tipo-${p.tipo}${r ? ` propuesta-respondida propuesta-${r.estado}` : ''}`}>
                 <div className="propuestas-sesion-texto" title={TIPOS[p.tipo]?.ayuda}>
@@ -144,7 +159,17 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
                   {p.texto}
                   {p.tipo === 'movilidad' && p.cita && <div className="propuesta-lista-ejercicios">{p.cita}</div>}
                   {estadoHarbiz && <div className={`propuesta-harbiz propuesta-harbiz-${estadoHarbiz.clase}`}>{estadoHarbiz.texto(r.harbizDetalle)}</div>}
-                  {aMano && <div className="propuesta-harbiz">✍️ Pásalo a Harbiz: {aMano}</div>}
+                  {enH === 'a_mano' && !modificando && (
+                    <div className="propuesta-harbiz propuesta-harbiz-amano">
+                      {!r.harbizEstado && <>✍️ Pásalo a Harbiz: {cambios}</>}
+                      {r.harbizEstado && <>✍️ Cambios: {cambios}</>}
+                      {onMarcarEnHarbiz && (
+                        <button type="button" className="propuesta-btn propuesta-btn-ok propuesta-check-harbiz" onClick={() => onMarcarEnHarbiz(p.id)} title="Márcalo cuando lo hayas cambiado en Harbiz">
+                          ☐ Ya está en Harbiz
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {(!r || modificando) && opciones.length > 0 && descartando !== p.id && (
                   <div className="propuesta-opciones">

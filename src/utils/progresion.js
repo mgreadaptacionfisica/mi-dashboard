@@ -546,6 +546,27 @@ export function sesionesHarbizDeCliente(cliente, sesionesHarbiz, clientes) {
   return (sesionesHarbiz || []).filter((s) => clienteDeHarbiz(clientes, s.harbizClienteId, s.harbizEmail)?.Nombre === cliente.Nombre)
 }
 
+// 📲 ¿Está ya en Harbiz lo aceptado? (Raúl, 2026-11-15). Aceptar no es el
+// final: el cambio tiene que llegar a la sesión de la semana que viene. El
+// check se queda abierto hasta entonces:
+//   null       → no hay nada que pasar (descartada, opción manual como
+//                "lo hablo", o sin nota/objetivo/series)
+//   'hecho'    → está en Harbiz: lo escribió la rutina o alguien marcó
+//                "☐ Ya está en Harbiz" (harbiz_estado = 'escrita' en los dos
+//                casos; el detalle dice quién)
+//   'esperando'→ la rutina Panel → Harbiz lo escribirá en la próxima pasada
+//   'a_mano'   → la rutina no puede o no le toca (superserie, sin sesión,
+//                error, cliente fuera de la prueba): hay que pasarlo a mano
+//                y marcarlo
+export function estadoEnHarbiz(r) {
+  if (!r || r.estado !== 'aplicada') return null
+  if (r.opcion && OPCIONES[r.opcion]?.manual) return null
+  if (!(r.notaHarbiz || r.objetivoHarbiz || r.seriesHarbiz)) return null
+  if (r.harbizEstado === 'escrita') return 'hecho'
+  if (r.harbizEstado === 'pendiente') return 'esperando'
+  return 'a_mano'
+}
+
 // Una propuesta está "pendiente" si nadie le ha respondido todavía. Las
 // notas del cliente son informativas: no se responden.
 export function esRespondible(propuesta) {

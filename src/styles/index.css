@@ -7038,6 +7038,11 @@ button.onb-chip { cursor: pointer; }
 
 .propuestas-indice-nombre { font-weight: 700; }
 
+/* ☐ Check de Harbiz: lo aceptado que hay que pasar a mano. */
+.propuesta-harbiz-amano { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.propuesta-check-harbiz { font-size: 12px; padding: 2px 8px; }
+.propuestas-pendientes-badge.propuestas-amano-badge { background: #fef3c7; color: #92400e; }
+
 /* ⏸️ Clientes con las propuestas apagadas (migración 75): al final del
    índice, más apagados, con su botón para volver a activarlas. */
 .propuestas-apagadas { padding: 4px 20px 20px; }

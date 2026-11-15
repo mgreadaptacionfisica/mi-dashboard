@@ -89,6 +89,18 @@ export async function upsertRespuestaPropuestaRemote(respuesta) {
   if (error) avisaErrorGuardado('[propuestasProgresion] upsert error:', error)
 }
 
+// "☐ Ya está en Harbiz": el fisio lo ha pasado a mano (superserie, error,
+// cliente sin escritura automática). Se reutiliza harbiz_estado = 'escrita'
+// (el check de la migración 71 no admite otro valor) y el detalle dice que
+// fue a mano y quién, para distinguirlo de lo que escribe la rutina.
+export async function marcarEnHarbizRemote(id, detalle) {
+  if (!supabase) return
+  const { error } = await supabase.from('propuestas_progresion')
+    .update({ harbiz_estado: 'escrita', harbiz_detalle: detalle, harbiz_en: new Date().toISOString() })
+    .eq('id', id)
+  if (error) avisaErrorGuardado('[propuestasProgresion] marcar en Harbiz error:', error)
+}
+
 // "Deshacer": la propuesta vuelve a quedar pendiente.
 export async function deleteRespuestaPropuestaRemote(id) {
   if (!supabase) return
