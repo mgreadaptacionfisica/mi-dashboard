@@ -255,6 +255,10 @@ las páginas del cliente son públicas), Operaciones
     `harbiz_detalle` y marca escrita / sin_sesion / error. Es la ÚNICA
     rutina que escribe en Harbiz; la de las 6:00/18:00 sigue siendo de solo
     lectura. Deshacer en el panel no borra lo ya escrito en Harbiz.
+    **✏️ Modificar** (2026-11-15) reescribe una respuesta ya dada con lo
+    guardado precargado (misma fila, upsert; vuelve a `pendiente` y el robot
+    la reescribe). Por eso `toRow` manda SIEMPRE las columnas de opción y de
+    Harbiz, vacías si no hay: si no, quedarían las de la respuesta anterior.
     La pestaña 🤖 Propuestas es solo un **índice** de lo
     que queda sin responder (no responde, como 🚨 Pendientes). Existe porque decidir la
     progresión/regresión es lo que más tiempo le cuesta al equipo. Reparto:

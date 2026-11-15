@@ -44,30 +44,25 @@ function toRow(r) {
     respondido_por: r.respondidoPor || null,
     respondido_en: r.respondidoEn || new Date().toISOString(),
   }
-  // 🧭 Opción elegida (migración 73): solo si la hay, igual que lo de
-  // Harbiz de abajo, para no mandar columnas que una respuesta sin opciones
-  // no necesita. Se guarda lo que cambia aunque no vaya al robot, para
-  // saber qué hay que pasar a mano.
-  if (r.opcion) {
-    Object.assign(fila, {
-      opcion: r.opcion,
-      nota_harbiz: r.notaHarbiz || null,
-      objetivo_harbiz: r.objetivoHarbiz || null,
-      series_harbiz: r.seriesHarbiz || null,
-    })
-  }
-  // 📲 Solo si va a Harbiz (migración 71). Después estas columnas solo las
-  // toca el robot (marcar_propuestas_harbiz). Para volver a responder hay
-  // que deshacer, que borra la fila, así que no quedan restos de una
-  // escritura anterior.
-  if (r.harbizEstado) {
-    Object.assign(fila, {
-      harbiz_cliente_id: r.harbizClienteId || null,
-      harbiz_estado: r.harbizEstado,
-      harbiz_detalle: null,
-      harbiz_en: null,
-    })
-  }
+  // 🧭 Opción elegida (migración 73) y 📲 escritura en Harbiz (migración
+  // 71). Van SIEMPRE, vacías si no hay, porque una respuesta se puede
+  // reescribir con ✏️ Modificar (upsert sobre la misma fila): si se pasa de
+  // "subir peso" (a Harbiz) a "lo hablo" (manual) y no se mandaran, la fila
+  // se quedaría con la nota y el estado de Harbiz de antes y el robot o el
+  // "pásalo a mano" seguirían con lo viejo. Se guarda lo que cambia aunque
+  // no vaya al robot, para saber qué hay que pasar a mano. Después, las de
+  // Harbiz solo las toca el robot (marcar_propuestas_harbiz); al volver a
+  // responder se reinician el detalle y la fecha de la escritura anterior.
+  Object.assign(fila, {
+    opcion: r.opcion || null,
+    nota_harbiz: r.opcion ? (r.notaHarbiz || null) : null,
+    objetivo_harbiz: r.opcion ? (r.objetivoHarbiz || null) : null,
+    series_harbiz: r.opcion ? (r.seriesHarbiz || null) : null,
+    harbiz_cliente_id: r.harbizEstado ? (r.harbizClienteId || null) : null,
+    harbiz_estado: r.harbizEstado || null,
+    harbiz_detalle: null,
+    harbiz_en: null,
+  })
   return fila
 }
 
