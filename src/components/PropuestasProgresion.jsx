@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { propuestasCliente, sesionesHarbizDeCliente, esRespondible, estadoEnHarbiz, TIPOS, ORDEN_TIPOS } from '../utils/progresion'
+import { propuestasCliente, sesionesHarbizDeCliente, esRespondible, estadoEnHarbiz, TIPOS, ORDEN_TIPOS, OPCIONES } from '../utils/progresion'
 import { semanaYDiaDeFecha } from '../utils/sesionesHarbiz'
 import { formatRangoSemana } from '../utils/seguimientoHelpers'
 
@@ -29,7 +29,7 @@ function lunesDeHoyMas(semanas) {
   return semanaYDiaDeFecha(local).semana
 }
 
-export default function PropuestasProgresion({ clientes, todosLosClientes, sesionesHarbiz, respuestas, onIrSesiones, onCambiarPropuestasCliente }) {
+export default function PropuestasProgresion({ clientes, todosLosClientes, sesionesHarbiz, respuestas, onIrSesiones, onCambiarPropuestasCliente, esAdmin = false }) {
   const [offset, setOffset] = useState(0)
   const [verTodos, setVerTodos] = useState(false)
   const semana = lunesDeHoyMas(offset)
@@ -66,6 +66,30 @@ export default function PropuestasProgresion({ clientes, todosLosClientes, sesio
     () => (clientes || []).filter((c) => c['Sin propuestas']).sort((a, b) => a.Nombre.localeCompare(b.Nombre)),
     [clientes]
   )
+
+  // 📊 Qué opción elige el equipo en cada tipo de propuesta (Raúl,
+  // 2026-11-15): las opciones salen en un orden fijo ("subir peso" primero)
+  // hasta tener datos. Esto los da, con las respuestas cargadas (las de las
+  // últimas 6 semanas, ver DIAS_ATRAS en la query), para decidir después
+  // qué poner la primera. Solo lectura y solo admin.
+  const estadisticas = useMemo(() => {
+    const porTipo = new Map()
+    ;(respuestas || []).forEach((r) => {
+      if (!TIPOS[r.tipo] || r.tipo === 'nota') return
+      const clave = r.estado === 'descartada' ? '__descartada' : (r.opcion || '__sin_opcion')
+      const t = porTipo.get(r.tipo) || { total: 0, opciones: new Map() }
+      t.total += 1
+      t.opciones.set(clave, (t.opciones.get(clave) || 0) + 1)
+      porTipo.set(r.tipo, t)
+    })
+    return ORDEN_TIPOS.filter((tipo) => porTipo.has(tipo)).map((tipo) => {
+      const t = porTipo.get(tipo)
+      return { tipo, total: t.total, opciones: [...t.opciones.entries()].sort((a, b) => b[1] - a[1]) }
+    })
+  }, [respuestas])
+  const nombreOpcion = (clave) => (clave === '__descartada' ? '❌ Descartada'
+    : clave === '__sin_opcion' ? '✅ Aceptada (sin opciones)'
+      : `${OPCIONES[clave]?.emoji || ''} ${OPCIONES[clave]?.titulo || clave}`)
 
   const totalPendientes = filas.reduce((n, f) => n + f.pendientes, 0)
   const conPendientes = filas.filter((f) => f.pendientes > 0).length
@@ -134,6 +158,23 @@ export default function PropuestasProgresion({ clientes, todosLosClientes, sesio
           </li>
         ))}
       </ul>
+
+      {esAdmin && estadisticas.length > 0 && (
+        <details className="propuestas-estadisticas">
+          <summary>📊 Qué elige el equipo (últimas 6 semanas)</summary>
+          <p className="card-subtitle">Por tipo de propuesta, qué opción se ha elegido y cuántas veces. Sirve para decidir qué opción poner la primera (la recomendada).</p>
+          {estadisticas.map((e) => (
+            <div key={e.tipo} className="propuestas-estadisticas-tipo">
+              <strong>{TIPOS[e.tipo].emoji} {TIPOS[e.tipo].titulo}</strong> <span className="card-subtitle">({e.total})</span>
+              <ul>
+                {e.opciones.map(([clave, n], i) => (
+                  <li key={clave}>{i === 0 ? '⭐ ' : ''}{nombreOpcion(clave)}: {n} ({Math.round((n / e.total) * 100)} %)</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </details>
+      )}
 
       {apagados.length > 0 && (
         <div className="propuestas-apagadas">

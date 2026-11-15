@@ -1111,6 +1111,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
             sesionesHarbiz={sesionesHarbiz}
             respuestas={propuestasProgresion}
             onCambiarPropuestasCliente={cambiarPropuestasCliente}
+            esAdmin={esAdmin}
             onIrSesiones={(cliente, offset) => {
               // Lleva a la rejilla, en esa semana y con el cliente buscado,
               // que es donde se responden.

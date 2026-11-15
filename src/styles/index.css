@@ -7048,6 +7048,12 @@ button.onb-chip { cursor: pointer; }
 /* ⚠️ La rutina intentó pasarlo a Harbiz y no pudo: naranja, más fuerte. */
 .propuestas-pendientes-badge.propuestas-fallo-badge { background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }
 
+/* 📊 Qué opción elige el equipo (solo admin). */
+.propuestas-estadisticas { margin: 0 20px 16px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 10px; font-size: 13px; }
+.propuestas-estadisticas summary { cursor: pointer; font-weight: 700; }
+.propuestas-estadisticas-tipo { margin-top: 10px; }
+.propuestas-estadisticas-tipo ul { margin: 4px 0 0; padding-left: 18px; }
+
 /* ⏸️ Clientes con las propuestas apagadas (migración 75): al final del
    índice, más apagados, con su botón para volver a activarlas. */
 .propuestas-apagadas { padding: 4px 20px 20px; }

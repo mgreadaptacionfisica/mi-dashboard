@@ -279,7 +279,9 @@ las páginas del cliente son públicas), Operaciones
     vea todas. **Lo que falta en Harbiz** sale en 🚨 Pendientes y en el
     Dashboard (`pendientesHarbizDeCliente()` en progresion.js, que se pasa
     a `pendientesDeCliente()` como `extra` para no hacer un círculo de
-    imports). **El conector de Harbiz no deja editar
+    imports). **📊 Qué elige el equipo** (plegable, solo admin, en 🤖
+    Propuestas): por tipo, qué opción se elige; para reordenar `OPCIONES`
+    con datos en vez de "subir peso" siempre la primera. **El conector de Harbiz no deja editar
     ejercicios dentro de una superserie**: esos siempre van a mano.
     La pestaña 🤖 Propuestas es solo un **índice** de lo
     que queda sin responder (no responde, como 🚨 Pendientes). Desde ahí se
