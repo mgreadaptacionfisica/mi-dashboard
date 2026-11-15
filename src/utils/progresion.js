@@ -474,12 +474,12 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
     // la recomendada y la nota se reescribe; subir peso va de segunda por
     // si el fisio lo ve claro. Vale tanto si la subida es de esta semana
     // como si ya lleva más semanas con ese peso.
-    const meta = fijo ? `cumplir las ${hi} reps` : `llegar a ${hi} reps en todas las series`
+    // La nota NO marca hasta cuántas reps (Raúl, 2026-11-15): solo que haga
+    // más que la última semana. El tope ya está en el objetivo de Harbiz.
+    const meta = 'sumar repeticiones respecto a la última semana'
     const queMantiene = asistido ? 'la asistencia' : 'el peso'
-    const mantiene = u.kgMax > 0 ? `Mantén ${queMantiene} (${fmtKg(u.kgMax)} kg) y ` : ''
-    const notaReps = fijo
-      ? `${mantiene}completa las ${hi} repeticiones en todas las series.`
-      : `${mantiene}busca más repeticiones, hasta ${hi} en todas las series.`
+    const mantiene = u.kgMax > 0 ? `Mantén ${queMantiene} (${fmtKg(u.kgMax)} kg) e ` : ''
+    const notaReps = `${mantiene}intenta hacer más repeticiones que la última semana.`
     const previo = p && repsValidas(p).length > 0
       ? `semana pasada ${repsValidas(p).join('/')}${p.kgMax > 0 ? ` × ${fmtKg(p.kgMax)} kg` : ''}`
       : 'sin semana anterior para comparar'
