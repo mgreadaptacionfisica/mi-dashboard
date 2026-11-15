@@ -7038,6 +7038,9 @@ button.onb-chip { cursor: pointer; }
 
 .propuestas-indice-nombre { font-weight: 700; }
 
+/* ⚡ Aceptar de golpe la recomendada de cada propuesta de la sesión. */
+.propuestas-aceptar-todas { margin: 6px 0 4px; font-size: 12px; }
+
 /* ☐ Check de Harbiz: lo aceptado que hay que pasar a mano. */
 .propuesta-harbiz-amano { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .propuesta-check-harbiz { font-size: 12px; padding: 2px 8px; }

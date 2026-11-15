@@ -7,7 +7,7 @@ import PendientesSeguimiento from './PendientesSeguimiento'
 import ResumenesSemanales from './ResumenesSemanales'
 import PropuestasProgresion from './PropuestasProgresion'
 import PropuestasSesion from './PropuestasSesion'
-import { propuestasCliente, sesionesHarbizDeCliente, HARBIZ_PRUEBA_TRABAJADORES, estadoEnHarbiz, falloEnHarbiz, esRespondible } from '../utils/progresion'
+import { propuestasCliente, sesionesHarbizDeCliente, HARBIZ_PRUEBA_TRABAJADORES, estadoEnHarbiz, falloEnHarbiz, esRespondible, pendientesHarbizDeCliente } from '../utils/progresion'
 import { upsertRespuestaPropuestaRemote, deleteRespuestaPropuestaRemote, marcarEnHarbizRemote } from '../lib/queries/propuestasProgresion'
 import {
   semanaActualISO,
@@ -322,14 +322,17 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   // entera con actualizarSeguimientoSemana), buscando la sesión por su
   // harbizId. Las sesiones sin propuestas (movilidad, cardio, sin datos,
   // clientes ⏸️) se siguen marcando a mano.
-  const marcarSesionRevisadaAuto = (clienteNombre, harbizId) => {
+  // Recibe VARIOS harbizId y los marca en un solo guardado: dos guardados
+  // seguidos partirían de la misma semana y el segundo pisaría al primero.
+  const marcarSesionRevisadaAuto = (clienteNombre, harbizIds) => {
+    const ids = new Set(harbizIds)
     const seg = seguimientos.find((x) => x.clienteNombre === clienteNombre && x.semana === semanaRegistro)
-    const pendiente = Object.values(seg?.dias || {}).some((d) => (d?.tareas || []).some((t) => t.harbizId === harbizId && !t.revisado))
+    const pendiente = Object.values(seg?.dias || {}).some((d) => (d?.tareas || []).some((t) => ids.has(t.harbizId) && !t.revisado))
     if (!pendiente) return
     const ahora = new Date().toISOString()
     actualizarSeguimientoSemana(clienteNombre, (dias) => Object.fromEntries(Object.entries(dias).map(([id, d]) => [id, {
       ...d,
-      tareas: (d?.tareas || []).map((t) => (t.harbizId === harbizId && !t.revisado ? { ...t, revisado: true, revisadoEn: ahora, revisadoAuto: true } : t)),
+      tareas: (d?.tareas || []).map((t) => (ids.has(t.harbizId) && !t.revisado ? { ...t, revisado: true, revisadoEn: ahora, revisadoAuto: true } : t)),
     }])))
   }
 
@@ -427,11 +430,10 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   // cambia en Harbiz, ya limpio (ver eleccionLimpia en PropuestasSesion).
   // Solo va al robot si cambia algo; las opciones "manuales" (cambio de
   // ejercicio, hablarlo) se guardan sin más.
-  const responderPropuesta = (clienteNombre, propuesta, estado, motivo = '', eleccion = null) => {
-    if (typeof setPropuestasProgresion !== 'function') return
+  const construirRespuesta = (clienteNombre, propuesta, estado, motivo = '', eleccion = null) => {
     const cambia = Boolean(eleccion && (eleccion.nota || eleccion.objetivo || eleccion.series))
     const harbizClienteId = estado === 'aplicada' && cambia ? vaAHarbiz(clienteNombre, propuesta) : null
-    const r = {
+    return {
       id: propuesta.id,
       clienteNombre,
       semana: semanaRegistro,
@@ -452,16 +454,28 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
       harbizDetalle: '',
       harbizEn: null,
     }
-    setPropuestasProgresion((prev) => [...(prev || []).filter((x) => x.id !== r.id), r])
-    upsertRespuestaPropuestaRemote(r)
-    // ¿Era la última sin responder de su sesión? Entonces la sesión queda
-    // revisada sola (ver marcarSesionRevisadaAuto).
-    if (propuesta.sesionId) {
-      const respondidas = new Set([...(propuestasProgresion || []).map((x) => x.id), r.id])
-      const deLaSesion = (propuestasRegistro.get(clienteNombre) || []).filter((p) => p.sesionId === propuesta.sesionId && esRespondible(p))
-      if (deLaSesion.every((p) => respondidas.has(p.id))) marcarSesionRevisadaAuto(clienteNombre, propuesta.sesionId)
-    }
   }
+  // Varias respuestas a la vez (una sola, o "✅ Aceptar las recomendadas").
+  // `items` = [{ propuesta, estado, motivo, eleccion }]. Van juntas para que
+  // el check automático de la sesión vea TODAS las nuevas: con llamadas
+  // sueltas, cada una vería el estado de antes de las otras.
+  const responderPropuestas = (clienteNombre, items) => {
+    if (typeof setPropuestasProgresion !== 'function' || !items.length) return
+    const nuevas = items.map((x) => construirRespuesta(clienteNombre, x.propuesta, x.estado, x.motivo, x.eleccion))
+    const ids = new Set(nuevas.map((r) => r.id))
+    setPropuestasProgresion((prev) => [...(prev || []).filter((x) => !ids.has(x.id)), ...nuevas])
+    nuevas.forEach((r) => upsertRespuestaPropuestaRemote(r))
+    // ¿Quedan sesiones con todas sus propuestas respondidas? Entonces se
+    // marcan revisadas solas (ver marcarSesionRevisadaAuto).
+    const respondidas = new Set([...(propuestasProgresion || []).map((x) => x.id), ...ids])
+    const sesiones = [...new Set(items.map((x) => x.propuesta.sesionId).filter(Boolean))]
+    const completas = sesiones.filter((sesionId) => (propuestasRegistro.get(clienteNombre) || [])
+      .filter((p) => p.sesionId === sesionId && esRespondible(p))
+      .every((p) => respondidas.has(p.id)))
+    if (completas.length) marcarSesionRevisadaAuto(clienteNombre, completas)
+  }
+  const responderPropuesta = (clienteNombre, propuesta, estado, motivo = '', eleccion = null) =>
+    responderPropuestas(clienteNombre, [{ propuesta, estado, motivo, eleccion }])
   // Apagar/encender las 🤖 Propuestas de un cliente (migración 75): para los
   // que cambian de rutina cada semana. Se toca el estado de App (la lista de
   // clientes es suya) y la ficha en Supabase.
@@ -545,7 +559,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
     if (!esAdmin) return []
     return misClientes
       .map((c) => ({
-        ...pendientesDeCliente(c, { seguimientos, revisionesSemanales, contactos: contactosSemanales, problemas, semanaActual }),
+        ...pendientesDeCliente(c, { seguimientos, revisionesSemanales, contactos: contactosSemanales, problemas, semanaActual, extra: pendientesHarbizDeCliente(c.Nombre, propuestasProgresion, semanaActual) }),
         responsables: trabajadoresDe(c),
       }))
       .filter((p) => p.items.length > 0)
@@ -556,7 +570,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
         if (a.items.length !== b.items.length) return b.items.length - a.items.length
         return (a.cliente.Nombre || '').localeCompare(b.cliente.Nombre || '')
       })
-  }, [esAdmin, misClientes, seguimientos, revisionesSemanales, contactosSemanales, problemas, semanaActual])
+  }, [esAdmin, misClientes, seguimientos, revisionesSemanales, contactosSemanales, problemas, semanaActual, propuestasProgresion])
 
   // El badge de la pestaña solo cuenta lo ATRASADO (semanas ya terminadas):
   // si contara también lo de la semana en curso marcaría a casi todo el mundo
@@ -944,6 +958,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                           respuestas={propuestasProgresion}
                                           aHarbiz={(p) => Boolean(vaAHarbiz(cliente.Nombre, p))}
                                           onResponder={(p, estado, motivo, eleccion) => responderPropuesta(cliente.Nombre, p, estado, motivo, eleccion)}
+                                          onResponderVarias={(items) => responderPropuestas(cliente.Nombre, items)}
                                           onDeshacer={deshacerPropuesta}
                                           onMarcarEnHarbiz={marcarEnHarbiz}
                                         />

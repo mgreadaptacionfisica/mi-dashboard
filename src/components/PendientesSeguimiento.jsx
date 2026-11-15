@@ -23,6 +23,7 @@ const ICONO_TIPO = {
   contacto: '🤝',
   'sin-registro': '📭',
   problema: '🚨',
+  harbiz: '📲',
 }
 
 const AYUDA_TIPO = {
@@ -32,6 +33,7 @@ const AYUDA_TIPO = {
   contacto: 'Abre la pestaña de contacto semanal (si el contacto es de una semana pasada, retrocede allí con "← Semana anterior")',
   'sin-registro': 'Lleva la rejilla de registro a esa semana para añadir las sesiones',
   problema: 'Abre la ficha de problemas del cliente para ver qué le pasa y apuntar qué habéis hecho',
+  harbiz: 'Lleva la rejilla de registro a esa semana: debajo de la sesión (🤖) está el cambio que hay que pasar a Harbiz y el botón «Ya está en Harbiz»',
 }
 
 export default function PendientesSeguimiento({ pendientes = [], totalClientes = 0, onAbrirSeguimiento, onAbrirProblemas, onIrRegistro, onIrContacto }) {
@@ -52,7 +54,7 @@ export default function PendientesSeguimiento({ pendientes = [], totalClientes =
       onIrContacto?.(item.semana)
       return
     }
-    if (item.tipo === 'sesiones' || item.tipo === 'sin-registro') {
+    if (item.tipo === 'sesiones' || item.tipo === 'sin-registro' || item.tipo === 'harbiz') {
       onIrRegistro?.(item.semana)
       return
     }
@@ -105,6 +107,10 @@ export default function PendientesSeguimiento({ pendientes = [], totalClientes =
         <div className={`pendientes-kpi${resumen.problemas > 0 ? ' pendientes-kpi-alerta' : ''}`}>
           <span className="pendientes-kpi-valor">{resumen.problemas}</span>
           <span className="pendientes-kpi-label">problemas parados</span>
+        </div>
+        <div className={`pendientes-kpi${resumen.harbiz > 0 ? ' pendientes-kpi-alerta' : ''}`}>
+          <span className="pendientes-kpi-valor">{resumen.harbiz}</span>
+          <span className="pendientes-kpi-label">cambios por pasar a Harbiz</span>
         </div>
       </div>
 

@@ -37,6 +37,13 @@ import { TIPOS, OPCIONES, esRespondible, estadoEnHarbiz, falloEnHarbiz } from '.
 // aceptado que cambia algo se queda ⏳ hasta que la rutina lo escribe (y
 // entonces ✅ solo) o, si hay que pasarlo a mano, con "☐ Ya está en Harbiz".
 // Hasta entonces el 🤖 no se pone en ✓. Ver estadoEnHarbiz() en progresion.js.
+//
+// ⚡ Aceptar las recomendadas (2026-11-15): para cuando todo va bien, un
+// botón acepta de golpe la PRIMERA opción (la recomendada) de cada
+// propuesta sin responder, tal cual la propone el panel. Nunca entran las
+// de dolor o molestia (son de criterio), las que no tienen opciones
+// (movilidad, comentario general) ni aquellas cuya recomendada es "una
+// indicación mía" (hay que escribirla): esas se siguen respondiendo una a una.
 const ESTADO_HARBIZ = {
   pendiente: { clase: 'pendiente', texto: () => '⏳ Esperando a Harbiz: se escribe sola en la próxima pasada (7:30 o 20:30) y entonces queda ✅' },
   // "escrita" es también lo marcado a mano ("✍️ pasado a mano por …").
@@ -99,7 +106,7 @@ function quedaEnHarbiz(r, eleccion) {
   return quedan
 }
 
-export default function PropuestasSesion({ propuestas = [], respuestas = [], onResponder, onDeshacer, onMarcarEnHarbiz, aHarbiz = () => false }) {
+export default function PropuestasSesion({ propuestas = [], respuestas = [], onResponder, onResponderVarias, onDeshacer, onMarcarEnHarbiz, aHarbiz = () => false }) {
   const [abierto, setAbierto] = useState(false)
   const [descartando, setDescartando] = useState(null)
   const [motivo, setMotivo] = useState('')
@@ -125,6 +132,23 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
     pendientes === 0 && aMano === 0 ? (esperando > 0 ? '🤖 ⏳' : '🤖 ✓') : '',
   ].filter(Boolean).join(' · ')
   const todoHecho = pendientes === 0 && aMano === 0 && esperando === 0
+  // ⚡ Las que se pueden aceptar de golpe (ver arriba).
+  const recomendables = lista.filter((p) => !respuestaDe(p.id)
+    && !['dolor', 'molestia'].includes(p.tipo)
+    && p.opciones?.length > 0
+    && !p.opciones[0].libre)
+  const aceptarRecomendadas = () => {
+    const resumen = recomendables.map((p) => `· ${p.ejercicio}: ${p.opciones[0].emoji} ${p.opciones[0].titulo}`).join('\n')
+    const harbiz = recomendables.some((p) => aHarbiz(p)) ? '\n\n📲 Lo que cambie algo se escribirá solo en Harbiz.' : ''
+    if (!window.confirm(`¿Aceptar la opción recomendada de ${recomendables.length} propuestas?\n\n${resumen}${harbiz}`)) return
+    const items = recomendables.map((p) => {
+      const o = p.opciones[0]
+      return { propuesta: p, estado: 'aplicada', motivo: '', eleccion: eleccionLimpia(o, valoresIniciales(o, null)) }
+    })
+    if (onResponderVarias) onResponderVarias(items)
+    else items.forEach((x) => onResponder(x.propuesta, x.estado, x.motivo, x.eleccion))
+    setEligiendo(null)
+  }
 
   return (
     <div className="propuestas-sesion">
@@ -140,6 +164,11 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
       >
         {etiqueta} {abierto ? '▾' : '▸'}
       </button>
+      {abierto && recomendables.length >= 2 && (
+        <button type="button" className="propuesta-btn propuesta-btn-ok propuestas-aceptar-todas" onClick={aceptarRecomendadas} title="Acepta la primera opción de cada una tal cual. Las de dolor, molestia o sin opciones se responden aparte.">
+          ⚡ Aceptar las {recomendables.length} recomendadas
+        </button>
+      )}
       {abierto && (
         <ul className="propuestas-sesion-lista">
           {lista.map((p) => {

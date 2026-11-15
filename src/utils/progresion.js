@@ -576,6 +576,37 @@ export function falloEnHarbiz(r) {
   return estadoEnHarbiz(r) === 'a_mano' && (r.harbizEstado === 'error' || r.harbizEstado === 'sin_sesion')
 }
 
+// 🚨 Lo de Harbiz que falta, como pendientes de 🚨 Pendientes y del
+// Dashboard (Raúl, 2026-11-15). Vive aquí y no en seguimientoHelpers para
+// no hacer un círculo de imports (progresion → sesionesHarbiz →
+// seguimientoHelpers). Devuelve items con la misma forma que
+// pendientesDeCliente(), que los mezcla con los suyos (`extra`):
+//   - ⚠️ lo que la rutina intentó y no pudo → atrasado (ya ha fallado)
+//   - ✍️ lo aceptado para pasar a mano: atrasado si es de una semana ya
+//     terminada (sus sesiones ya han empezado), si no, de esta semana
+// `semana` es la de las sesiones de las que salió la propuesta.
+export function pendientesHarbizDeCliente(clienteNombre, respuestas, semanaActual) {
+  const porSemana = new Map()
+  ;(respuestas || []).forEach((r) => {
+    if (r.clienteNombre !== clienteNombre || estadoEnHarbiz(r) !== 'a_mano') return
+    const x = porSemana.get(r.semana) || { fallos: 0, aMano: 0 }
+    if (falloEnHarbiz(r)) x.fallos += 1
+    else x.aMano += 1
+    porSemana.set(r.semana, x)
+  })
+  const items = []
+  const plural = (n) => (n === 1 ? 'cambio' : 'cambios')
+  porSemana.forEach(({ fallos, aMano }, semana) => {
+    if (fallos > 0) {
+      items.push({ tipo: 'harbiz', nivel: 'atrasado', semana, cantidad: fallos, texto: `⚠️ ${fallos} ${plural(fallos)} que la rutina no pudo pasar a Harbiz: pásalos a mano` })
+    }
+    if (aMano > 0) {
+      items.push({ tipo: 'harbiz', nivel: semana < semanaActual ? 'atrasado' : 'semana', semana, cantidad: aMano, texto: `✍️ ${aMano} ${plural(aMano)} aceptado${aMano === 1 ? '' : 's'} por pasar a Harbiz a mano` })
+    }
+  })
+  return items
+}
+
 // Una propuesta está "pendiente" si nadie le ha respondido todavía. Las
 // notas del cliente son informativas: no se responden.
 export function esRespondible(propuesta) {

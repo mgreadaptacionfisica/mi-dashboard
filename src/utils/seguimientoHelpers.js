@@ -183,7 +183,7 @@ export function semanasPreviasISO(semanaISO, n = SEMANAS_PENDIENTES_ATRAS) {
 // Todo lo pendiente de UN cliente. Devuelve { cliente, items, atrasado }.
 // Cada item es { tipo, nivel, semana, cantidad, texto }, y el tipo es lo que
 // decide a dónde te lleva al pulsarlo en el panel.
-export function pendientesDeCliente(cliente, { seguimientos = [], revisionesSemanales = [], contactos = [], problemas = [], semanaActual, semanasAtras = SEMANAS_PENDIENTES_ATRAS }) {
+export function pendientesDeCliente(cliente, { seguimientos = [], revisionesSemanales = [], contactos = [], problemas = [], semanaActual, semanasAtras = SEMANAS_PENDIENTES_ATRAS, extra = [] }) {
   const nombre = cliente.Nombre
   const items = []
 
@@ -279,13 +279,17 @@ export function pendientesDeCliente(cliente, { seguimientos = [], revisionesSema
     })
   })
 
+  // 5) Lo que viene de fuera ya calculado (p. ej. los cambios aceptados que
+  // faltan en Harbiz: pendientesHarbizDeCliente() en progresion.js).
+  items.push(...extra)
+
   return { cliente, items, atrasado: items.some((i) => i.nivel === 'atrasado') }
 }
 
 // Totales del panel: lo de arriba del todo, para saber el tamaño del problema
 // antes de mirar cliente por cliente.
 export function resumenPendientes(pendientes = []) {
-  const total = { clientes: pendientes.length, clientesAtrasados: 0, semanasSinCerrar: 0, sesiones: 0, cambios: 0, contactos: 0, problemas: 0 }
+  const total = { clientes: pendientes.length, clientesAtrasados: 0, semanasSinCerrar: 0, sesiones: 0, cambios: 0, contactos: 0, problemas: 0, harbiz: 0 }
   for (const p of pendientes) {
     if (p.atrasado) total.clientesAtrasados += 1
     for (const item of p.items) {
@@ -294,6 +298,7 @@ export function resumenPendientes(pendientes = []) {
       if (item.tipo === 'cambios') total.cambios += item.cantidad
       if (item.tipo === 'contacto') total.contactos += item.cantidad
       if (item.tipo === 'problema') total.problemas += item.cantidad
+      if (item.tipo === 'harbiz') total.harbiz += item.cantidad
     }
   }
   return total

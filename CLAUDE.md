@@ -271,7 +271,15 @@ las páginas del cliente son públicas), Operaciones
     **Check automático de la sesión** (2026-11-15, `marcarSesionRevisadaAuto`
     en ClientesEquipo): al responder la ÚLTIMA propuesta de una sesión, esa
     sesión queda revisada sola (`revisadoAuto: true`). Solo marca, nunca
-    desmarca; las sesiones sin propuestas se siguen marcando a mano. **El conector de Harbiz no deja editar
+    desmarca; las sesiones sin propuestas se siguen marcando a mano.
+    **⚡ Aceptar las recomendadas** (botón de la sesión, ≥2): acepta la
+    PRIMERA opción de cada propuesta sin responder, salvo dolor, molestia,
+    sin opciones o cuando la recomendada es "indicación mía". Va por
+    `responderPropuestas()` (varias de golpe) para que el check automático
+    vea todas. **Lo que falta en Harbiz** sale en 🚨 Pendientes y en el
+    Dashboard (`pendientesHarbizDeCliente()` en progresion.js, que se pasa
+    a `pendientesDeCliente()` como `extra` para no hacer un círculo de
+    imports). **El conector de Harbiz no deja editar
     ejercicios dentro de una superserie**: esos siempre van a mano.
     La pestaña 🤖 Propuestas es solo un **índice** de lo
     que queda sin responder (no responde, como 🚨 Pendientes). Desde ahí se

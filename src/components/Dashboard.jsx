@@ -4,6 +4,7 @@ import CalendarioAvisos from './CalendarioAvisos'
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { calcularEmbudo, filtrarPorPeriodo, rangoPeriodo, semaforo } from '../utils/embudoVentas'
 import { estadoOnboarding, pendientesDeContactar } from '../utils/onboardingEstado'
+import { pendientesHarbizDeCliente } from '../utils/progresion'
 import {
   semanaActualISO, mondayOf, toISO, pendientesDeCliente, progresoContacto, progresoSemana,
 } from '../utils/seguimientoHelpers'
@@ -64,7 +65,7 @@ function inicioDeSemanaISO() {
 
 export default function Dashboard({
   clientes = [], ventas = [], recontactos = [], tareasPersonales = [], onboardingProgreso = [], contratos = [], cuestionarios = [],
-  seguimientos = [], contactosSemanales = [], revisionesSemanales = [], onNavigate,
+  seguimientos = [], contactosSemanales = [], revisionesSemanales = [], propuestasProgresion = [], onNavigate,
 }) {
   const hoy = todayISO()
   const semanaActual = semanaActualISO()
@@ -110,6 +111,13 @@ export default function Dashboard({
   const seguimiento = useMemo(() => {
     const pendientes = activos.map((c) => pendientesDeCliente(c, {
       seguimientos, revisionesSemanales, contactos: contactosSemanales, semanaActual,
+      extra: pendientesHarbizDeCliente(c.Nombre, propuestasProgresion, semanaActual),
+    }))
+    // 📲 Cambios aceptados que aún no están en Harbiz (⚠️ fallos aparte).
+    const harbiz = { total: 0, fallos: 0 }
+    pendientes.forEach((p) => p.items.filter((i) => i.tipo === 'harbiz').forEach((i) => {
+      harbiz.total += i.cantidad
+      if (i.texto.startsWith('⚠️')) harbiz.fallos += i.cantidad
     }))
     const atrasados = pendientes.filter((p) => p.atrasado)
     let contactoHechos = 0
@@ -130,8 +138,9 @@ export default function Dashboard({
       contactoTotal: activos.length * 3,
       sesionesSinMarcar,
       sinSesiones,
+      harbiz,
     }
-  }, [activos, seguimientos, contactosSemanales, revisionesSemanales, semanaActual])
+  }, [activos, seguimientos, contactosSemanales, revisionesSemanales, semanaActual, propuestasProgresion])
 
   // ————— Clientes: pausas, renovaciones y cobros —————
   const pausasAviso = useMemo(() => clientes
@@ -197,6 +206,7 @@ export default function Dashboard({
     if (llamadas.sinMarcar > 0) items.push({ icono: '❓', texto: `${llamadas.sinMarcar} llamada${llamadas.sinMarcar === 1 ? '' : 's'} ya pasada${llamadas.sinMarcar === 1 ? '' : 's'} sin marcar el resultado`, seccion: 'ventas', tono: 'alerta' })
     if (recontactosVencidos > 0) items.push({ icono: '🔁', texto: `${recontactosVencidos} recontacto${recontactosVencidos === 1 ? '' : 's'} con la fecha cumplida`, seccion: 'ventas', tono: 'alerta' })
     if (seguimiento.atrasados > 0) items.push({ icono: '🚨', texto: `${seguimiento.atrasados} cliente${seguimiento.atrasados === 1 ? '' : 's'} con seguimiento atrasado (semanas sin cerrar)`, seccion: 'clientes-equipo', tono: 'alerta' })
+    if (seguimiento.harbiz.total > 0) items.push({ icono: seguimiento.harbiz.fallos > 0 ? '⚠️' : '📲', texto: `${seguimiento.harbiz.total} cambio${seguimiento.harbiz.total === 1 ? '' : 's'} de las propuestas por pasar a Harbiz a mano${seguimiento.harbiz.fallos > 0 ? ` (${seguimiento.harbiz.fallos} porque la rutina no pudo)` : ''}`, seccion: 'clientes-equipo', tono: seguimiento.harbiz.fallos > 0 ? 'alerta' : 'info' })
     if (seguimiento.sinSesiones > 0) items.push({ icono: '📋', texto: `${seguimiento.sinSesiones} cliente${seguimiento.sinSesiones === 1 ? '' : 's'} sin ninguna sesión registrada esta semana`, seccion: 'clientes-equipo', tono: 'info' })
     if (cobrosVencidos.total > 0) items.push({ icono: '💸', texto: `${cobrosVencidos.total} plazo${cobrosVencidos.total === 1 ? '' : 's'} vencido${cobrosVencidos.total === 1 ? '' : 's'} sin cobrar · ${euro(cobrosVencidos.importe)}`, seccion: 'clientes', tono: 'alerta' })
     if (renuevanPronto > 0) items.push({ icono: '🔄', texto: `${renuevanPronto} cliente${renuevanPronto === 1 ? '' : 's'} renueva${renuevanPronto === 1 ? '' : 'n'} en 30 días o menos`, seccion: 'clientes', tono: 'info' })
