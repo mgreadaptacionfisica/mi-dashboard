@@ -7038,6 +7038,13 @@ button.onb-chip { cursor: pointer; }
 
 .propuestas-indice-nombre { font-weight: 700; }
 
+/* ⏸️ Clientes con las propuestas apagadas (migración 75): al final del
+   índice, más apagados, con su botón para volver a activarlas. */
+.propuestas-apagadas { padding: 4px 20px 20px; }
+.propuestas-apagadas .card-subtitle { margin-bottom: 6px; }
+.propuestas-apagadas .propuestas-indice { padding: 0; }
+.propuestas-apagadas .propuestas-indice-fila { opacity: 0.7; }
+
 .propuestas-indice-detalle {
   color: var(--color-text-secondary);
   white-space: pre;

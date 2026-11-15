@@ -24,6 +24,7 @@ import {
 import { parseFechaFlexible, formatFechaISO } from '../utils/fechasEsp'
 import { crearProblema, problemaDeSesion, contarAbiertos, esAbierto } from '../utils/problemasCliente'
 import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
+import { updateClienteRemote } from '../lib/queries/clientes'
 import { descartarSesionHarbizRemote } from '../lib/queries/sesionesHarbiz'
 import { horaSesionHarbiz } from '../utils/sesionesHarbiz'
 import DetalleHarbiz from './DetalleHarbiz'
@@ -65,7 +66,7 @@ const SIN_ASIGNAR = '__sin_asignar__'
 // eran datos de CONSULTA que el técnico tenía delante todos los días sin
 // usarlos, y ahora viven en la cabecera del modal de Seguimiento, que es
 // donde se miran cuando hacen falta.
-export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, problemas = [], setProblemas, sesionesHarbiz = [], setSesionesHarbiz, propuestasProgresion = [], setPropuestasProgresion, onRefrescar, refrescando, onNavigate }) {
+export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [], team, miEmail, rol, seguimientos = [], setSeguimientos, valoraciones = [], setValoraciones, objetivosClienteFase = [], setObjetivosClienteFase, revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], setContactosSemanales, problemas = [], setProblemas, sesionesHarbiz = [], setSesionesHarbiz, propuestasProgresion = [], setPropuestasProgresion, setClientes, onRefrescar, refrescando, onNavigate }) {
   const [search, setSearch] = useState('')
   // Se entra directamente al registro de sesiones: es lo que el técnico
   // hace todos los días. El contacto semanal es la otra pestaña.
@@ -380,6 +381,8 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
   const propuestasRegistro = useMemo(() => {
     const mapa = new Map()
     misClientes.forEach((c) => {
+      // Cliente con las propuestas apagadas (migración 75): ni se calculan.
+      if (c['Sin propuestas']) return
       const sesiones = sesionesHarbizDeCliente(c, sesionesHarbiz, clientes)
       if (sesiones.length > 0) mapa.set(c.Nombre, propuestasCliente(c.Nombre, sesiones, semanaRegistro).propuestas)
     })
@@ -433,6 +436,15 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
     }
     setPropuestasProgresion((prev) => [...(prev || []).filter((x) => x.id !== r.id), r])
     upsertRespuestaPropuestaRemote(r)
+  }
+  // Apagar/encender las 🤖 Propuestas de un cliente (migración 75): para los
+  // que cambian de rutina cada semana. Se toca el estado de App (la lista de
+  // clientes es suya) y la ficha en Supabase.
+  const cambiarPropuestasCliente = (cliente, apagar) => {
+    if (typeof setClientes === 'function') {
+      setClientes((prev) => (prev || []).map((c) => (c.id === cliente.id ? { ...c, 'Sin propuestas': apagar } : c)))
+    }
+    updateClienteRemote(cliente.id, { 'Sin propuestas': apagar })
   }
   const deshacerPropuesta = (id) => {
     if (typeof setPropuestasProgresion !== 'function') return
@@ -1032,6 +1044,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
             todosLosClientes={clientes}
             sesionesHarbiz={sesionesHarbiz}
             respuestas={propuestasProgresion}
+            onCambiarPropuestasCliente={cambiarPropuestasCliente}
             onIrSesiones={(cliente, offset) => {
               // Lleva a la rejilla, en esa semana y con el cliente buscado,
               // que es donde se responden.

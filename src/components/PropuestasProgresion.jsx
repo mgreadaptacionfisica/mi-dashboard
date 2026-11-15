@@ -29,7 +29,7 @@ function lunesDeHoyMas(semanas) {
   return semanaYDiaDeFecha(local).semana
 }
 
-export default function PropuestasProgresion({ clientes, todosLosClientes, sesionesHarbiz, respuestas, onIrSesiones }) {
+export default function PropuestasProgresion({ clientes, todosLosClientes, sesionesHarbiz, respuestas, onIrSesiones, onCambiarPropuestasCliente }) {
   const [offset, setOffset] = useState(0)
   const [verTodos, setVerTodos] = useState(false)
   const semana = lunesDeHoyMas(offset)
@@ -37,6 +37,7 @@ export default function PropuestasProgresion({ clientes, todosLosClientes, sesio
   const filas = useMemo(() => {
     const respondidas = new Set((respuestas || []).map((r) => r.id))
     return (clientes || [])
+      .filter((cliente) => !cliente['Sin propuestas'])
       .map((cliente) => {
         const sesiones = sesionesHarbizDeCliente(cliente, sesionesHarbiz, todosLosClientes)
         const { nivel, propuestas } = propuestasCliente(cliente.Nombre, sesiones, semana)
@@ -52,6 +53,13 @@ export default function PropuestasProgresion({ clientes, todosLosClientes, sesio
         || NIVELES[a.nivel].orden - NIVELES[b.nivel].orden
         || a.cliente.Nombre.localeCompare(b.cliente.Nombre))
   }, [clientes, todosLosClientes, sesionesHarbiz, respuestas, semana])
+
+  // Los que tienen las propuestas apagadas (migración 75), aparte y al
+  // final, para poder volver a encenderlas.
+  const apagados = useMemo(
+    () => (clientes || []).filter((c) => c['Sin propuestas']).sort((a, b) => a.Nombre.localeCompare(b.Nombre)),
+    [clientes]
+  )
 
   const totalPendientes = filas.reduce((n, f) => n + f.pendientes, 0)
   const conPendientes = filas.filter((f) => f.pendientes > 0).length
@@ -101,9 +109,37 @@ export default function PropuestasProgresion({ clientes, todosLosClientes, sesio
             {onIrSesiones && (
               <button type="button" className="propuesta-ver-semana" onClick={() => onIrSesiones(f.cliente, offset)}>Ir a sus sesiones →</button>
             )}
+            {onCambiarPropuestasCliente && (
+              <button
+                type="button"
+                className="propuesta-btn-deshacer"
+                title="Para clientes a los que se les cambia la rutina cada semana: deja de proponer y de escribir en Harbiz"
+                onClick={() => {
+                  if (window.confirm(`¿Desactivar las propuestas de ${f.cliente.Nombre}? No le saldrán ni en ⚡ Registro ni aquí, y no se escribirá nada en Harbiz. Se pueden volver a activar abajo.`)) onCambiarPropuestasCliente(f.cliente, true)
+                }}
+              >
+                ⏸️ Desactivar
+              </button>
+            )}
           </li>
         ))}
       </ul>
+
+      {apagados.length > 0 && (
+        <div className="propuestas-apagadas">
+          <div className="card-subtitle">⏸️ Sin propuestas ({apagados.length}): se les cambia la rutina a mano.</div>
+          <ul className="propuestas-indice">
+            {apagados.map((c) => (
+              <li key={c.Nombre} className="propuestas-indice-fila">
+                <span className="propuestas-indice-nombre">⏸️ {c.Nombre}</span>
+                {onCambiarPropuestasCliente && (
+                  <button type="button" className="propuesta-ver-semana" onClick={() => onCambiarPropuestasCliente(c, false)}>▶️ Activar</button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

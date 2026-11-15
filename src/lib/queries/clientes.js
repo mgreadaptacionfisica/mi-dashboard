@@ -20,6 +20,10 @@ function fromRow(row) {
     // cliente y por qué está parado. Vacíos en cualquier otro estado.
     'Fecha fin de pausa': row.pausa_hasta || '',
     'Motivo de la pausa': row.pausa_motivo || '',
+    // 🤖 Propuestas apagadas para este cliente (migración 75). Solo se pone
+    // la clave si viene la columna: así, antes de correr la migración, el
+    // guardado de la ficha entera no manda una columna que no existe.
+    ...(row.sin_propuestas !== undefined ? { 'Sin propuestas': Boolean(row.sin_propuestas) } : {}),
     'Fecha inicio': row.fecha_inicio || '',
     'Fecha fin': row.fecha_fin || '',
     'Fecha primer pago': row.fecha_primer_pago || '',
@@ -55,6 +59,7 @@ const CAMPO_A_COLUMNA = {
   'Estado del cliente': 'estado',
   'Fecha fin de pausa': 'pausa_hasta',
   'Motivo de la pausa': 'pausa_motivo',
+  'Sin propuestas': 'sin_propuestas',
   'Fecha inicio': 'fecha_inicio',
   'Fecha fin': 'fecha_fin',
   'Fecha primer pago': 'fecha_primer_pago',

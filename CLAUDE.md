@@ -45,7 +45,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 74; la siguiente sería la 75). Deben ser **idempotentes**
+  (la última es la 75; la siguiente sería la 76). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -260,7 +260,11 @@ las páginas del cliente son públicas), Operaciones
     la reescribe). Por eso `toRow` manda SIEMPRE las columnas de opción y de
     Harbiz, vacías si no hay: si no, quedarían las de la respuesta anterior.
     La pestaña 🤖 Propuestas es solo un **índice** de lo
-    que queda sin responder (no responde, como 🚨 Pendientes). Existe porque decidir la
+    que queda sin responder (no responde, como 🚨 Pendientes). Desde ahí se
+    **apagan por cliente** (⏸️ Desactivar / ▶️ Activar, columna
+    `clientes.sin_propuestas`, migración 75, clave JS `'Sin propuestas'`)
+    para los que cambian de rutina cada semana: no se calculan ni van a
+    Harbiz; la lectura de sesiones sigue igual. Existe porque decidir la
     progresión/regresión es lo que más tiempo le cuesta al equipo. Reparto:
     el **robot** de Harbiz solo lee y traduce (manda en `detalle.registro`
     reps, kg, objetivo y, leyendo el comentario entero, una `valoracion`
