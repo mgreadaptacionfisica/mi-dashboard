@@ -567,6 +567,13 @@ export function estadoEnHarbiz(r) {
   return 'a_mano'
 }
 
+// ⚠️ La rutina INTENTÓ escribirla y no pudo (superserie, sin sesión, error).
+// Es un 'a_mano' más, pero se avisa en naranja (Raúl, 2026-11-15, caso de
+// Rubén Guirado): no es lo mismo "esto va a mano" que "esto ha fallado".
+export function falloEnHarbiz(r) {
+  return estadoEnHarbiz(r) === 'a_mano' && (r.harbizEstado === 'error' || r.harbizEstado === 'sin_sesion')
+}
+
 // Una propuesta está "pendiente" si nadie le ha respondido todavía. Las
 // notas del cliente son informativas: no se responden.
 export function esRespondible(propuesta) {

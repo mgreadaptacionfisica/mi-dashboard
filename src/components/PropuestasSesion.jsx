@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TIPOS, OPCIONES, esRespondible, estadoEnHarbiz } from '../utils/progresion'
+import { TIPOS, OPCIONES, esRespondible, estadoEnHarbiz, falloEnHarbiz } from '../utils/progresion'
 
 // 🤖 Propuestas de UNA sesión, debajo de su chip en ⚡ Registro de sesiones.
 //
@@ -115,19 +115,25 @@ export default function PropuestasSesion({ propuestas = [], respuestas = [], onR
   const enHarbiz = lista.map((p) => estadoEnHarbiz(respuestaDe(p.id)))
   const aMano = enHarbiz.filter((e) => e === 'a_mano').length
   const esperando = enHarbiz.filter((e) => e === 'esperando').length
-  const etiqueta = pendientes > 0
-    ? `${hayDolor ? '🔴' : '🤖'} ${pendientes} propuesta${pendientes === 1 ? '' : 's'}`
-    : aMano > 0 ? `✍️ ${aMano} a Harbiz`
-      : esperando > 0 ? '🤖 ⏳' : '🤖 ✓'
+  const fallos = lista.filter((p) => falloEnHarbiz(respuestaDe(p.id))).length
+  // Lo que falló en Harbiz se avisa SIEMPRE, aunque queden otras sin
+  // responder: es lo que más fácil se pasa por alto.
+  const etiqueta = [
+    pendientes > 0 ? `${hayDolor ? '🔴' : '🤖'} ${pendientes} propuesta${pendientes === 1 ? '' : 's'}` : '',
+    fallos > 0 ? `⚠️ ${fallos} no pasó a Harbiz` : '',
+    pendientes === 0 && aMano > fallos ? `✍️ ${aMano - fallos} a Harbiz` : '',
+    pendientes === 0 && aMano === 0 ? (esperando > 0 ? '🤖 ⏳' : '🤖 ✓') : '',
+  ].filter(Boolean).join(' · ')
   const todoHecho = pendientes === 0 && aMano === 0 && esperando === 0
 
   return (
     <div className="propuestas-sesion">
       <button
         type="button"
-        className={`propuestas-sesion-toggle${hayDolor ? ' propuestas-sesion-dolor' : ''}${todoHecho ? ' propuestas-sesion-hecho' : ''}`}
+        className={`propuestas-sesion-toggle${hayDolor ? ' propuestas-sesion-dolor' : fallos > 0 ? ' propuestas-sesion-fallo' : ''}${todoHecho ? ' propuestas-sesion-hecho' : ''}`}
         onClick={() => setAbierto((v) => !v)}
-        title={pendientes > 0 ? 'Qué cambiar la semana que viene según lo que apuntó el cliente'
+        title={fallos > 0 ? 'La rutina no pudo pasar algún cambio a Harbiz: ábrelo para ver por qué, pásalo a mano y márcalo'
+          : pendientes > 0 ? 'Qué cambiar la semana que viene según lo que apuntó el cliente'
           : aMano > 0 ? 'Respondidas, pero hay cambios que pasar a Harbiz a mano: márcalos al hacerlo'
             : esperando > 0 ? 'Respondidas: falta que la rutina las escriba en Harbiz (7:30 o 20:30)'
               : 'Propuestas para la semana que viene: todas respondidas y en Harbiz'}

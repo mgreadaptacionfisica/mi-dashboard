@@ -7,7 +7,7 @@ import PendientesSeguimiento from './PendientesSeguimiento'
 import ResumenesSemanales from './ResumenesSemanales'
 import PropuestasProgresion from './PropuestasProgresion'
 import PropuestasSesion from './PropuestasSesion'
-import { propuestasCliente, sesionesHarbizDeCliente, HARBIZ_PRUEBA_TRABAJADORES, estadoEnHarbiz } from '../utils/progresion'
+import { propuestasCliente, sesionesHarbizDeCliente, HARBIZ_PRUEBA_TRABAJADORES, estadoEnHarbiz, falloEnHarbiz } from '../utils/progresion'
 import { upsertRespuestaPropuestaRemote, deleteRespuestaPropuestaRemote, marcarEnHarbizRemote } from '../lib/queries/propuestasProgresion'
 import {
   semanaActualISO,
@@ -467,6 +467,10 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
     const ids = new Set((propuestasRegistro.get(clienteNombre) || []).map((p) => p.id))
     return (propuestasProgresion || []).filter((r) => ids.has(r.id) && estadoEnHarbiz(r) === 'a_mano').length
   }
+  const fallosPropuestas = (clienteNombre) => {
+    const ids = new Set((propuestasRegistro.get(clienteNombre) || []).map((p) => p.id))
+    return (propuestasProgresion || []).filter((r) => ids.has(r.id) && falloEnHarbiz(r)).length
+  }
 
   // Abre un problema a partir de una sesión. Se guarda una foto del origen
   // (semana, día y texto de la sesión) para poder decir después "salió en la
@@ -804,11 +808,15 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                                 🤖 {pendientesPropuestas(cliente.Nombre)}
                               </span>
                             )}
-                            {aManoPropuestas(cliente.Nombre) > 0 && (
+                            {aManoPropuestas(cliente.Nombre) > 0 && (fallosPropuestas(cliente.Nombre) > 0 ? (
+                              <span className="propuestas-pendientes-badge propuestas-fallo-badge" title="La rutina no pudo pasar algún cambio aceptado a Harbiz (superserie, sin sesión…): mira el ⚠️ debajo de la sesión, pásalo a mano y márcalo">
+                                ⚠️ {aManoPropuestas(cliente.Nombre)}
+                              </span>
+                            ) : (
                               <span className="propuestas-pendientes-badge propuestas-amano-badge" title="Propuestas aceptadas que hay que pasar a Harbiz a mano (y marcar «Ya está en Harbiz» debajo de la sesión)">
                                 ✍️ {aManoPropuestas(cliente.Nombre)}
                               </span>
-                            )}
+                            ))}
                             {semPend && (
                               <button
                                 type="button"

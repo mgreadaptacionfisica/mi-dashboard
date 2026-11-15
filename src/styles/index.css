@@ -7042,6 +7042,8 @@ button.onb-chip { cursor: pointer; }
 .propuesta-harbiz-amano { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .propuesta-check-harbiz { font-size: 12px; padding: 2px 8px; }
 .propuestas-pendientes-badge.propuestas-amano-badge { background: #fef3c7; color: #92400e; }
+/* ⚠️ La rutina intentó pasarlo a Harbiz y no pudo: naranja, más fuerte. */
+.propuestas-pendientes-badge.propuestas-fallo-badge { background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }
 
 /* ⏸️ Clientes con las propuestas apagadas (migración 75): al final del
    índice, más apagados, con su botón para volver a activarlas. */
@@ -7100,6 +7102,7 @@ button.onb-chip { cursor: pointer; }
 }
 
 .propuestas-sesion-dolor { border-color: #fecaca; background: #fee2e2; color: #991b1b; }
+.propuestas-sesion-fallo { border-color: #fdba74; background: #ffedd5; color: #9a3412; font-weight: 700; }
 .propuestas-sesion-hecho { border-color: var(--color-border); background: #f8fafc; color: var(--color-text-secondary); font-weight: 600; }
 
 .propuestas-sesion-lista {
