@@ -15,7 +15,7 @@ function todayISO() {
 
 // Tabla de contacto semanal (3 checks por cliente: inicio / mitad / fin de semana)
 // para el equipo técnico. Se embebe en el detalle de cada técnico dentro de Equipo.jsx.
-export default function ContactoSemanal({ clientes, contactos, setContactos }) {
+export default function ContactoSemanal({ clientes, contactos, setContactos, seguimientos = [] }) {
   const [weekOffset, setWeekOffset] = useState(0)
 
   const mondayISO = useMemo(() => {
@@ -31,6 +31,22 @@ export default function ContactoSemanal({ clientes, contactos, setContactos }) {
     })
     return map
   }, [clientes, contactos, mondayISO])
+
+  // 📣 Lo que se apuntó al cerrar la semana anterior para explicárselo al
+  // cliente (migración 76). Se enseña aquí porque es en el contacto de
+  // inicio de semana cuando se le cuenta. Misma cuenta de semanas que
+  // mondayISO.
+  const paraClientePorCliente = useMemo(() => {
+    const base = mondayOf(new Date())
+    base.setDate(base.getDate() + (weekOffset - 1) * 7)
+    const anterior = toISO(base)
+    const map = {}
+    clientes.forEach((cliente) => {
+      const texto = (seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === anterior)?.paraCliente || '').trim()
+      if (texto) map[cliente.Nombre] = texto
+    })
+    return map
+  }, [clientes, seguimientos, weekOffset])
 
   const resumenSemana = useMemo(() => {
     let hechos = 0
@@ -96,7 +112,15 @@ export default function ContactoSemanal({ clientes, contactos, setContactos }) {
           const registro = registrosPorCliente[cliente.Nombre]
           return (
             <div className="contacto-semanal-row" key={cliente.Nombre}>
-              <span className="contacto-semanal-nombre">{cliente.Nombre}</span>
+              <span className="contacto-semanal-nombre">
+                {cliente.Nombre}
+                {paraClientePorCliente[cliente.Nombre] && (
+                  <details className="contacto-para-cliente">
+                    <summary>📣 Para explicarle</summary>
+                    <div className="seguimiento-para-cliente-texto">{paraClientePorCliente[cliente.Nombre]}</div>
+                  </details>
+                )}
+              </span>
               {PUNTOS_CONTACTO.map((p) => {
                 const punto = registro?.[p.id]
                 return (

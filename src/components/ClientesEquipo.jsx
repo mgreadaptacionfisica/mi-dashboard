@@ -1144,6 +1144,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
                   clientes={misClientes}
                   contactos={contactosSemanales}
                   setContactos={setContactosSemanales}
+                  seguimientos={seguimientos}
                 />
               )}
             </div>
@@ -1163,6 +1164,7 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
           contactosSemanales={contactosSemanales}
           problemas={problemas}
           setProblemas={setProblemas}
+          propuestasProgresion={propuestasProgresion}
           miEmail={miEmail}
           miNombre={miIdentidad}
           weekOffsetInicial={seguimientoOffset}

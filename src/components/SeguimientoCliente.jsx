@@ -32,7 +32,7 @@ function formatDate(value) {
   return iso ? formatFechaISO(iso) : value
 }
 
-export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], problemas = [], setProblemas, miEmail, miNombre = '', weekOffsetInicial = 0, vistaInicial = 'semana', onClose }) {
+export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], problemas = [], setProblemas, propuestasProgresion = [], miEmail, miNombre = '', weekOffsetInicial = 0, vistaInicial = 'semana', onClose }) {
   // weekOffsetInicial: 0 = semana actual (por defecto), -1 = abre en la
   // semana anterior (cuando se entra desde el aviso "semana pasada sin
   // cerrar" para terminarla tal cual quedó).
@@ -65,6 +65,15 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
   const registro = useMemo(() => {
     return seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === mondayISO)
   }, [seguimientos, cliente, mondayISO])
+
+  // 📣 Lo que se apuntó al cerrar la semana ANTERIOR para explicárselo al
+  // cliente en esta (migración 76). Misma cuenta de semanas que mondayISO.
+  const paraClienteDeAntes = useMemo(() => {
+    const base = mondayOf(new Date())
+    base.setDate(base.getDate() + (weekOffset - 1) * 7)
+    const anterior = toISO(base)
+    return (seguimientos.find((s) => s.clienteNombre === cliente.Nombre && s.semana === anterior)?.paraCliente || '').trim()
+  }, [seguimientos, cliente, weekOffset])
 
   const diasActuales = registro?.dias || semanaVacia()
   const cambiosPendientes = registro?.cambiosPendientes || []
@@ -125,6 +134,54 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
   const guardarComentario = () => {
     if (comentarioDraft === comentarioGuardado) return
     actualizarSemana({ comentarios: comentarioDraft })
+  }
+
+  // 📣 Qué explicar al cliente la semana que viene (Raúl, 2026-11-15,
+  // migración 76): los cambios de la rutina y por qué. Se escribe al cerrar
+  // esta semana y sale en la siguiente (🤝 contacto de inicio y arriba de
+  // esta ficha). Borrador local y guardado al salir, como el comentario.
+  const paraClienteGuardado = registro?.paraCliente || ''
+  const [paraClienteDraft, setParaClienteDraft] = useState(paraClienteGuardado)
+  useEffect(() => { setParaClienteDraft(paraClienteGuardado) }, [mondayISO, paraClienteGuardado])
+  const guardarParaCliente = (texto = paraClienteDraft) => {
+    if (texto === paraClienteGuardado) return
+    actualizarSemana({ paraCliente: texto })
+  }
+  // Atajo: los cambios aceptados en 🤖 Propuestas de esta semana, con la
+  // nota que se le escribió en Harbiz, para retocarlos en vez de partir de
+  // cero. Solo los que cambian algo. Agrupados por la SESIÓN donde está el
+  // ejercicio (Raúl: que se sepa en qué sesión es cada cambio), sacada de
+  // las sesiones de Harbiz de esta semana que lo traen en su registro.
+  const cambiosAceptados = propuestasProgresion
+    .filter((r) => r.clienteNombre === cliente.Nombre && r.semana === mondayISO && r.estado === 'aplicada' && (r.notaHarbiz || r.objetivoHarbiz || r.seriesHarbiz))
+  const sesionesDeEjercicio = useMemo(() => {
+    const mapa = new Map()
+    Object.values(diasActuales).forEach((d) => (d?.tareas || []).forEach((t) => {
+      ;(t.harbizDetalle?.registro || []).forEach((e) => {
+        const clave = String(e?.nombre || '').trim().toLowerCase()
+        const titulo = String(t.texto || '').trim()
+        if (!clave || !titulo) return
+        if (!mapa.has(clave)) mapa.set(clave, [])
+        if (!mapa.get(clave).includes(titulo)) mapa.get(clave).push(titulo)
+      })
+    }))
+    return mapa
+  }, [diasActuales])
+  const textoCambiosAceptados = () => {
+    const grupos = new Map()
+    cambiosAceptados.forEach((r) => {
+      const sesiones = sesionesDeEjercicio.get(String(r.ejercicio || '').trim().toLowerCase()) || []
+      const grupo = sesiones.length ? sesiones.join(' y ') : 'Otros cambios'
+      const linea = `• ${r.ejercicio}: ${[r.notaHarbiz, r.objetivoHarbiz && `objetivo ${r.objetivoHarbiz}`, r.seriesHarbiz && `${r.seriesHarbiz} series`].filter(Boolean).join(' · ')}`
+      if (!grupos.has(grupo)) grupos.set(grupo, [])
+      grupos.get(grupo).push(linea)
+    })
+    return [...grupos.entries()].map(([grupo, lineas]) => `${grupo}:\n${lineas.join('\n')}`).join('\n\n')
+  }
+  const rellenarConCambios = () => {
+    const texto = [paraClienteDraft.trim(), textoCambiosAceptados()].filter(Boolean).join('\n\n')
+    setParaClienteDraft(texto)
+    guardarParaCliente(texto)
   }
 
   // Lo que falta para poder cerrar la semana. Se calcula con el borrador del
@@ -258,6 +315,13 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
           <button type="button" className="secondary-action" onClick={() => setWeekOffset((w) => w + 1)}>Semana siguiente →</button>
         </div>
 
+        {paraClienteDeAntes && (
+          <div className="seguimiento-para-cliente-aviso">
+            <strong>📣 Para explicarle esta semana</strong> <span className="valoracion-referencia">(apuntado al cerrar la anterior)</span>
+            <div className="seguimiento-para-cliente-texto">{paraClienteDeAntes}</div>
+          </div>
+        )}
+
         {avisarCerrarSemana && (
           <div className="seguimiento-cerrar-antes-banner">
             ⚠️ <strong>Esta semana quedó sin cerrar.</strong> Revísala, haz los cambios que falten y márcala como
@@ -347,6 +411,24 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
               ✔️ Nada que comentar
             </button>
           )}
+        </div>
+
+        <div className="seguimiento-comentario-semanal seguimiento-para-cliente">
+          <label className="lead-detail-label" htmlFor="para-cliente">📣 Para explicar al cliente la semana que viene</label>
+          <textarea
+            id="para-cliente"
+            rows={3}
+            placeholder="Qué cambia en su rutina y por qué, para contárselo en el contacto del lunes. P. ej.: «Subimos el press a 17 kg porque llegaste a 12 en todas las series»."
+            value={paraClienteDraft}
+            onChange={(e) => setParaClienteDraft(e.target.value)}
+            onBlur={() => guardarParaCliente()}
+          />
+          {cambiosAceptados.length > 0 && (
+            <button type="button" className="secondary-action seguimiento-nada-comentar" onClick={rellenarConCambios} title="Añade al texto los cambios aceptados en 🤖 Propuestas esta semana, con la nota que va a Harbiz, para retocarlos">
+              ✨ Añadir los {cambiosAceptados.length} cambios aceptados en 🤖 Propuestas
+            </button>
+          )}
+          <p className="valoracion-referencia">Sale la semana que viene en el 🤝 contacto de inicio de semana y arriba de su ficha. No es obligatorio para cerrar.</p>
         </div>
 
         <div className="seguimiento-resumen-semanal">

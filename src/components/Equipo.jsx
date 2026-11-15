@@ -804,6 +804,7 @@ export default function Equipo({ team, setTeam, clientes, ventas = [], seguimien
                     clientes={act.clientesAsignados}
                     contactos={contactosSemanales}
                     setContactos={setContactosSemanales}
+                    seguimientos={seguimientos}
                   />
 
                   <h4 className="team-activity-subtitle">Seguimiento semanal por cliente</h4>

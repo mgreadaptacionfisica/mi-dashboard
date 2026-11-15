@@ -45,7 +45,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 75; la siguiente sería la 76). Deben ser **idempotentes**
+  (la última es la 76; la siguiente sería la 77). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben
@@ -147,7 +147,15 @@ las páginas del cliente son públicas), Operaciones
     apuntado, y comentario semanal escrito (una semana sin sesiones
     solo se cierra explicándolo en el comentario). Si no hay nada que
     contar, el botón **✔️ Nada que comentar** deja `NADA_QUE_COMENTAR`
-    (2026-11-15); no vale para la semana sin sesiones. Si falta algo, el check sale
+    (2026-11-15); no vale para la semana sin sesiones.
+  - **📣 Para explicar al cliente** (migración 76, `seguimientos.para_cliente`,
+    clave JS `paraCliente`): en el modal, al cerrar la semana, qué contarle
+    al cliente la semana siguiente (no es obligatorio). Se guarda en la
+    semana que se cierra y se enseña en la SIGUIENTE: arriba del modal y en
+    🤝 Contacto semanal (plegado bajo el nombre). El botón "✨ Añadir los
+    cambios aceptados" lo rellena con las respuestas aplicadas de 🤖
+    Propuestas agrupadas por sesión. `toRow` solo manda la columna si el
+    registro la trae, para no romper el guardado antes de la migración. Si falta algo, el check sale
     deshabilitado y se lista qué falta. Reabrir siempre se puede. Por eso el
     modal necesita `contactosSemanales` en los tres sitios donde se abre
     (ClientesEquipo, ClientesAdmin, Equipo).

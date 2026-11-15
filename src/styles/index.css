@@ -6107,6 +6107,13 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
   white-space: pre-wrap;
 }
 
+/* 📣 Para explicar al cliente (migración 76): el texto que se apuntó al
+   cerrar la semana anterior, arriba de la ficha y en el contacto. */
+.seguimiento-para-cliente-aviso { background: #eef6ff; border: 1px solid #cfe3fb; border-left: 4px solid #2563eb; border-radius: 10px; padding: 10px 14px; margin: 0 0 12px; }
+.seguimiento-para-cliente-texto { white-space: pre-wrap; margin-top: 4px; font-size: 13px; }
+.contacto-para-cliente { margin-top: 4px; font-weight: 400; font-size: 12px; }
+.contacto-para-cliente summary { cursor: pointer; color: #1d4ed8; font-weight: 600; }
+
 /* ✔️ Nada que comentar: debajo del comentario semanal vacío. */
 .seguimiento-nada-comentar { margin-top: 6px; font-size: 12px; }
 
