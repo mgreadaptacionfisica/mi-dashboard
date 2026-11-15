@@ -267,7 +267,11 @@ las páginas del cliente son públicas), Operaciones
     migración). El 🤖 no se pone en ✓ hasta entonces; badge ✍️ en la rejilla
     y contador en el índice. Si la rutina **intentó y no pudo** (`error` /
     `sin_sesion`, `falloEnHarbiz()`), el 🤖 de la sesión sale en naranja
-    "⚠️ N no pasó a Harbiz" y el badge del nombre es ⚠️. **El conector de Harbiz no deja editar
+    "⚠️ N no pasó a Harbiz" y el badge del nombre es ⚠️.
+    **Check automático de la sesión** (2026-11-15, `marcarSesionRevisadaAuto`
+    en ClientesEquipo): al responder la ÚLTIMA propuesta de una sesión, esa
+    sesión queda revisada sola (`revisadoAuto: true`). Solo marca, nunca
+    desmarca; las sesiones sin propuestas se siguen marcando a mano. **El conector de Harbiz no deja editar
     ejercicios dentro de una superserie**: esos siempre van a mano.
     La pestaña 🤖 Propuestas es solo un **índice** de lo
     que queda sin responder (no responde, como 🚨 Pendientes). Desde ahí se

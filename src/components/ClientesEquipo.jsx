@@ -7,7 +7,7 @@ import PendientesSeguimiento from './PendientesSeguimiento'
 import ResumenesSemanales from './ResumenesSemanales'
 import PropuestasProgresion from './PropuestasProgresion'
 import PropuestasSesion from './PropuestasSesion'
-import { propuestasCliente, sesionesHarbizDeCliente, HARBIZ_PRUEBA_TRABAJADORES, estadoEnHarbiz, falloEnHarbiz } from '../utils/progresion'
+import { propuestasCliente, sesionesHarbizDeCliente, HARBIZ_PRUEBA_TRABAJADORES, estadoEnHarbiz, falloEnHarbiz, esRespondible } from '../utils/progresion'
 import { upsertRespuestaPropuestaRemote, deleteRespuestaPropuestaRemote, marcarEnHarbizRemote } from '../lib/queries/propuestasProgresion'
 import {
   semanaActualISO,
@@ -315,6 +315,24 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
     })
   }
 
+  // ✅ Check automático de la sesión (Raúl, 2026-11-15): al responder la
+  // ÚLTIMA propuesta de una sesión de Harbiz, la sesión queda revisada sola
+  // (revisar las propuestas ES revisar la sesión). Solo marca, nunca
+  // desmarca, y va por el mismo camino que el check a mano (la semana
+  // entera con actualizarSeguimientoSemana), buscando la sesión por su
+  // harbizId. Las sesiones sin propuestas (movilidad, cardio, sin datos,
+  // clientes ⏸️) se siguen marcando a mano.
+  const marcarSesionRevisadaAuto = (clienteNombre, harbizId) => {
+    const seg = seguimientos.find((x) => x.clienteNombre === clienteNombre && x.semana === semanaRegistro)
+    const pendiente = Object.values(seg?.dias || {}).some((d) => (d?.tareas || []).some((t) => t.harbizId === harbizId && !t.revisado))
+    if (!pendiente) return
+    const ahora = new Date().toISOString()
+    actualizarSeguimientoSemana(clienteNombre, (dias) => Object.fromEntries(Object.entries(dias).map(([id, d]) => [id, {
+      ...d,
+      tareas: (d?.tareas || []).map((t) => (t.harbizId === harbizId && !t.revisado ? { ...t, revisado: true, revisadoEn: ahora, revisadoAuto: true } : t)),
+    }])))
+  }
+
   const addTareaRapida = (clienteNombre, diaId, texto) => {
     const limpio = (texto || '').trim()
     if (!limpio) return
@@ -436,6 +454,13 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
     }
     setPropuestasProgresion((prev) => [...(prev || []).filter((x) => x.id !== r.id), r])
     upsertRespuestaPropuestaRemote(r)
+    // ¿Era la última sin responder de su sesión? Entonces la sesión queda
+    // revisada sola (ver marcarSesionRevisadaAuto).
+    if (propuesta.sesionId) {
+      const respondidas = new Set([...(propuestasProgresion || []).map((x) => x.id), r.id])
+      const deLaSesion = (propuestasRegistro.get(clienteNombre) || []).filter((p) => p.sesionId === propuesta.sesionId && esRespondible(p))
+      if (deLaSesion.every((p) => respondidas.has(p.id))) marcarSesionRevisadaAuto(clienteNombre, propuesta.sesionId)
+    }
   }
   // Apagar/encender las 🤖 Propuestas de un cliente (migración 75): para los
   // que cambian de rutina cada semana. Se toca el estado de App (la lista de
