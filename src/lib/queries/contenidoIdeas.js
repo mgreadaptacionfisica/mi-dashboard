@@ -12,6 +12,8 @@ function fromRow(row) {
     editores: row.editores || [],
     portadaLista: row.portada_lista,
     estado: row.estado || 'Idea',
+    // Corte (Short + Reel) → id del vídeo largo del que sale (migración 78).
+    origenId: row.origen_id || '',
   }
 }
 
@@ -26,13 +28,14 @@ const CAMPO_A_COLUMNA = {
   editores: 'editores',
   portadaLista: 'portada_lista',
   estado: 'estado',
+  origenId: 'origen_id',
 }
 
 function toColumns(idea) {
   const row = {}
   Object.entries(idea).forEach(([key, value]) => {
     const columna = CAMPO_A_COLUMNA[key]
-    if (columna) row[columna] = value === '' && key === 'fecha' ? null : value
+    if (columna) row[columna] = value === '' && (key === 'fecha' || key === 'origenId') ? null : value
   })
   return row
 }
@@ -52,6 +55,16 @@ export async function insertIdeaRemote(idea) {
   const row = { id: idea.id, ...toColumns(idea) }
   const { error } = await supabase.from('contenido_ideas').insert(row)
   if (error) avisaErrorGuardado('[contenidoIdeas] insert error:', error)
+}
+
+// Varias ideas nuevas de una vez (reparto automático y cortes de un vídeo
+// largo). Upsert por id: los cortes e historias tienen id determinista, así que
+// repetir la operación no duplica.
+export async function insertIdeasRemote(ideas = []) {
+  if (!supabase || ideas.length === 0) return
+  const rows = ideas.map((idea) => ({ id: idea.id, ...toColumns(idea) }))
+  const { error } = await supabase.from('contenido_ideas').upsert(rows, { onConflict: 'id' })
+  if (error) avisaErrorGuardado('[contenidoIdeas] insert (lote) error:', error)
 }
 
 export async function updateIdeaRemote(id, patch) {

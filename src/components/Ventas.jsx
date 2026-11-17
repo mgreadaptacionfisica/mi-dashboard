@@ -4,6 +4,7 @@ import Recontactar from './Recontactar'
 import CalendarioVentas from './CalendarioVentas'
 import ResumenSemanalVentas from './ResumenSemanalVentas'
 import EmbudoVentas from './EmbudoVentas'
+import LeadsLeadmagnet from './LeadsLeadmagnet'
 import { insertLeadRemote, updateLeadRemote, deleteLeadRemote, uploadInformePrellamada, getInformePrellamadaUrl } from '../lib/queries/ventas'
 import { insertClienteRemote } from '../lib/queries/clientes'
 import { insertFinanzaRemote } from '../lib/queries/finanzas'
@@ -679,6 +680,7 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
             {activeTab === 'calendario' && 'Llamadas agendadas, por mes o por semana'}
             {activeTab === 'resumen' && 'Cómo ha ido la semana: llamadas, cierres y dinero'}
             {activeTab === 'embudo' && 'Dónde se pierde la venta: asistencia, cierre y seguimiento'}
+            {activeTab === 'leadmagnets' && 'Quién ha dejado sus datos en un leadmagnet (aún sin llamada)'}
           </div>
         </div>
         <div className="topbar-right">
@@ -725,6 +727,13 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
           >
             🩺 Embudo
           </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'leadmagnets' ? 'tab-btn-active' : ''}`}
+            onClick={() => setActiveTab('leadmagnets')}
+          >
+            🧲 Leadmagnets
+          </button>
         </div>
 
         {activeTab === 'recontactar' && (
@@ -755,6 +764,19 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
           <EmbudoVentas
             ventas={ventas}
             onAbrirLead={(leadId) => { setActiveTab('pipeline'); setActiveLeadId(leadId) }}
+          />
+        )}
+
+        {activeTab === 'leadmagnets' && (
+          <LeadsLeadmagnet
+            ventas={ventas}
+            // Abre el «＋ Nuevo lead» de siempre con sus datos ya puestos: la
+            // closer solo añade día y hora de la llamada.
+            onPasarAPipeline={(l) => {
+              setLeadForm({ ...initialLeadForm, nombre: l.nombre, telefono: l.telefono, email: l.email })
+              setActiveTab('pipeline')
+              setShowNewLead(true)
+            }}
           />
         )}
 

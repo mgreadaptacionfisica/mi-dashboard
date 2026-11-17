@@ -3,7 +3,8 @@
 //
 // { id, fecha: 'YYYY-MM-DD', titulo: '', descripcion: '',
 //   redes: ['Instagram'],           // subconjunto de REDES_SOCIALES (ver CalendarioContenido.jsx)
-//   formato: 'Reel',                // uno de FORMATOS_CONTENIDO
+//   formato: 'Reel',                // uno de FORMATOS_CONTENIDO, o '' = sin decidir
+//   origenId: '',                   // solo cortes: id del vídeo largo del que salen
 //   editores: ['Nombre editor'],    // nombres de team.contenido
 //   portadaLista: false,            // portada/miniatura ya hecha
 //   estado: 'Idea' }                // Idea | Grabado | En edición | Programado | Publicado

@@ -16,6 +16,14 @@ las páginas del cliente son públicas), Operaciones
 (SOPs + contenido), Mis tareas, Manuales, Enlaces de interés y 🎓 Formación
 (estas dos, solo admin).
 
+Leadmagnets: páginas públicas (/test-recuperacion, /semaforo-dolor,
+/autotest-hombro, /plantilla-manguito) con el contenido en
+`src/data/leadmagnets.js`; guardan por la función `registrar_leadmagnet`
+(migración 80) en `leadmagnet_leads`, que se ve en Ventas → 🧲 Leadmagnets.
+NO entran en `ventas` hasta que agendan (el embudo empieza en «Agendada»).
+Calendario de contenido: ritmo y reparto automático en
+`src/utils/distribuirContenido.js` (migración 78).
+
 ## Stack y despliegue
 - **React + Vite** (frontend). Sin backend propio: el navegador habla directo
   con Supabase.
@@ -45,7 +53,7 @@ las páginas del cliente son públicas), Operaciones
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 77; la siguiente sería la 78). Deben ser **idempotentes**
+  (la última es la 80; la siguiente sería la 81). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben

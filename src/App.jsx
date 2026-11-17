@@ -1,6 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import Onboarding from './components/Onboarding'
 import CuestionarioPrevio from './components/CuestionarioPrevio'
+import LeadMagnet from './components/LeadMagnet'
+import { LEADMAGNETS } from './data/leadmagnets'
 import { ContratoPublico } from './components/ContratoCliente'
 import PanelLogin from './components/PanelLogin'
 import AvisoErrores from './components/AvisoErrores'
@@ -20,6 +22,9 @@ const PUBLIC_PATHS = {
   // Cuestionario previo del cliente, que alimenta la red de determinantes.
   // Le llega por enlace con su nombre dentro: /cuestionario?c=Nombre.
   '/cuestionario': 'cuestionario',
+  // Leadmagnets (test, semáforo del dolor, autotest, plantilla…): una ruta
+  // por cada uno de src/data/leadmagnets.js. Los contactos van a Ventas → 🧲.
+  ...Object.fromEntries(LEADMAGNETS.map((lm) => [lm.ruta, 'leadmagnet'])),
 }
 
 const isPublicRoute = Object.keys(PUBLIC_PATHS).includes(window.location.pathname)
@@ -287,6 +292,7 @@ function PublicPage() {
         {ruta === 'contrato' && <ContratoPublico />}
         {ruta === 'onboarding' && <Onboarding variante="low" />}
         {ruta === 'onboarding-premium' && <Onboarding variante="premium" />}
+        {ruta === 'leadmagnet' && <LeadMagnet ruta={window.location.pathname} />}
       </div>
     </div>
   )
