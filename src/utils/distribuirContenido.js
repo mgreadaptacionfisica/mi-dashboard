@@ -7,7 +7,7 @@
 //   Los cortes salen el día del largo, el siguiente y el otro (+0, +1, +2), así
 //   martes→mar/mié/jue y viernes→vie/sáb/dom: cada día hay Short y Reel. El lunes
 //   queda libre y se rellena con una idea propia de Reel/Short.
-// - Instagram: un bloque de historias cada día.
+// - Instagram: historias cada día, con un objetivo por día (SEMANA_HISTORIAS).
 //
 // Aquí solo hay funciones puras (sin Supabase ni React) para poder razonar el
 // reparto y enseñar una vista previa antes de guardar nada.
@@ -23,16 +23,100 @@ export const NUM_CORTES = 3
 // Formatos que ocupan el hueco del "vídeo vertical del día" (Reel + Short).
 const FORMATOS_VERTICALES = ['Reel', 'Vídeo corto', 'Carrusel', 'Foto', FORMATO_CORTE]
 
-// Temática por defecto de las historias según el día de la semana. Los días de
-// vídeo largo se sustituye por el avance de ese vídeo.
-const TEMAS_HISTORIAS = {
-  1: '❓ Caja de preguntas: ¿qué te duele o qué quieres saber?',
-  2: '⭐ Resultado o testimonio de un cliente',
-  3: '🏋️ Detrás de cámaras: un entreno o una sesión con cliente',
-  4: '💬 Respuestas a la caja de preguntas del lunes',
-  5: '⭐ Resultado o testimonio de un cliente',
-  6: '📊 Encuesta o quiz sobre el tema de la semana',
-  0: '🧠 Reflexión de la semana y recordatorio de los vídeos',
+// Semana de historias (nov 2026). Cada día tiene un OBJETIVO y una forma de
+// repartirlas; la idea concreta la pone Raúl ese día. Criterios, de lo que
+// recomiendan las guías y estudios de 2025-2026 (Social Insider, Dash Social,
+// Shopify, Metricool, Glofox):
+// - 3-5 historias al día: la media aconsejada está en 2-5 y la retención baja
+//   cuantas más pantallas se suben seguidas.
+// - La gente se va sobre todo en la 1.ª y la última pantalla: la 1.ª tiene que
+//   enganchar (vídeo y texto grande), y la última pide algo (sticker o DM).
+// - El vídeo retiene más que la foto.
+// - Episodios fijos por día, «como un canal de TV», y cada día alineado con un
+//   objetivo: conexión, autoridad, tráfico o conversión.
+// - En salud y fitness la decisión se toma por mensaje privado: casi todas
+//   las secuencias terminan invitando a escribir.
+// getDay(): 0 domingo … 6 sábado. `cuantas` = historias de la secuencia.
+export const SEMANA_HISTORIAS = {
+  1: {
+    dia: 'Lunes',
+    objetivo: 'Conexión',
+    para: 'Abrir la semana y recoger dudas (son el material del jueves).',
+    cuantas: '3-4',
+    reparto: [
+      'Por la mañana · 1-2 historias: tú en cámara contando qué vas a hacer esta semana o algo tuyo.',
+      'Mediodía · 1: un dato o una situación con la que tu cliente se identifique.',
+      'Tarde-noche · 1: caja de preguntas («¿qué te duele o qué quieres saber?»).',
+    ],
+  },
+  2: {
+    dia: 'Martes',
+    objetivo: 'Tráfico al vídeo de YouTube',
+    para: 'Llevar gente al vídeo largo que sale hoy.',
+    cuantas: '3',
+    reparto: [
+      'Cuando sale el vídeo · 1: el problema que resuelve, en una frase y en vídeo.',
+      '1: un trozo de 10-15 s del vídeo (lo más potente).',
+      '1: sticker de enlace al vídeo + encuesta («¿te pasa?»).',
+    ],
+  },
+  3: {
+    dia: 'Miércoles',
+    objetivo: 'Autoridad',
+    para: 'Enseñar cómo trabajas y por qué sabes lo que haces.',
+    cuantas: '4',
+    reparto: [
+      'Mañana o mediodía · secuencia de 3 seguidas: detrás de cámaras de una sesión o de cómo decides algo (qué ves → qué haces → por qué).',
+      'Noche · 1: la conclusión + «si te pasa, escríbeme».',
+    ],
+  },
+  4: {
+    dia: 'Jueves',
+    objetivo: 'Educación e interacción',
+    para: 'Responder las dudas del lunes: demuestra que escuchas y resuelve objeciones.',
+    cuantas: '3-5',
+    reparto: [
+      'A lo largo del día · 1 pregunta por historia, respondida en vídeo (2-4 en total).',
+      'Última · 1: «¿te ha quedado alguna duda? Respóndeme aquí».',
+    ],
+  },
+  5: {
+    dia: 'Viernes',
+    objetivo: 'Prueba social + tráfico',
+    para: 'Que vean resultados reales y llevar al vídeo largo de hoy.',
+    cuantas: '4',
+    reparto: [
+      'Mañana · 2: el caso o resultado de un cliente (antes → qué hicimos → ahora), o un mensaje suyo.',
+      'Cuando sale el vídeo · 1: avance del vídeo de hoy.',
+      '1: sticker de enlace al vídeo.',
+    ],
+  },
+  6: {
+    dia: 'Sábado',
+    objetivo: 'Conversión',
+    para: 'Convertir seguidores en contactos con un leadmagnet o en llamadas.',
+    cuantas: '3',
+    reparto: [
+      'Mañana · 1: encuesta sobre un problema («¿te duele el hombro al hacer press?»).',
+      '1: por qué pasa, en 15 s, y que tienes algo que lo explica.',
+      '1: CTA claro, con enlace al test o recurso, o «escríbeme PALABRA y te lo mando».',
+    ],
+  },
+  0: {
+    dia: 'Domingo',
+    objetivo: 'Conexión personal',
+    para: 'Humanizar la cuenta: que te conozcan fuera del trabajo. Día ligero.',
+    cuantas: '2-3',
+    reparto: [
+      'Cuando quieras · 1-2: algo personal (tu entreno, una reflexión de la semana).',
+      'Noche · 1: lo que viene la semana que viene + recordatorio de los vídeos de la semana.',
+    ],
+  },
+}
+
+export function descripcionHistorias(dia) {
+  const h = SEMANA_HISTORIAS[dia]
+  return `Objetivo: ${h.objetivo}. ${h.para}\nCuántas: ${h.cuantas} historias.\n${h.reparto.map((r) => `• ${r}`).join('\n')}`
 }
 
 function pad2(n) {
@@ -98,9 +182,9 @@ export function crearCortes(largo, num = NUM_CORTES) {
   }))
 }
 
-function temaHistorias(fechaIso, largoDelDia) {
-  if (largoDelDia) return `🎬 Avance del vídeo de hoy: «${largoDelDia.titulo}» (con enlace)`
-  return TEMAS_HISTORIAS[isoADate(fechaIso).getDay()]
+function tituloHistorias(fechaIso, largoDelDia) {
+  const h = SEMANA_HISTORIAS[isoADate(fechaIso).getDay()]
+  return `⭕ Historias · ${h.objetivo}${largoDelDia ? ` («${largoDelDia.titulo}»)` : ''}`
 }
 
 // Orden en el que salen las ideas sin fecha: por id, así las nuevas
@@ -188,8 +272,8 @@ export function distribuirIdeas({ ideas = [], desde, semanas = 4, rellenarHistor
         anadir('nuevo', 'historias', {
           id: `historias-${fecha}`,
           fecha,
-          titulo: `⭕ Historias · ${temaHistorias(fecha, occ(fecha).largo)}`,
-          descripcion: '',
+          titulo: tituloHistorias(fecha, occ(fecha).largo),
+          descripcion: descripcionHistorias(isoADate(fecha).getDay()),
           redes: ['Instagram'],
           formato: FORMATO_HISTORIAS,
           editores: [],

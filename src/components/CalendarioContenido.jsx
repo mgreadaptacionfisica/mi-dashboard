@@ -5,6 +5,7 @@ import {
   FORMATO_CORTE,
   FORMATO_HISTORIAS,
   NUM_CORTES,
+  SEMANA_HISTORIAS,
   coberturaDia,
   crearCortes,
   diferenciaDias,
@@ -328,6 +329,9 @@ export default function CalendarioContenido({ ideas = [], setIdeas, equipoConten
         <button type="button" className={`tab-btn ${vista === 'listado' ? 'tab-btn-active' : ''}`} onClick={() => setVista('listado')}>
           📝 Listado de ideas ({ideasSinFecha.length})
         </button>
+        <button type="button" className={`tab-btn ${vista === 'historias' ? 'tab-btn-active' : ''}`} onClick={() => setVista('historias')}>
+          ⭕ Semana de historias
+        </button>
       </div>
 
       {vista === 'calendario' && (
@@ -429,6 +433,42 @@ export default function CalendarioContenido({ ideas = [], setIdeas, equipoConten
             </div>
           </div>
         </>
+      )}
+
+      {vista === 'historias' && (
+        <div className="table-card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Semana de historias</div>
+              <div className="card-subtitle">
+                Qué objetivo tiene cada día y cómo repartir las historias. La idea concreta la pones tú ese día.
+                Al usar «🪄 Distribuir ideas», cada día de historias se crea con esto ya escrito.
+              </div>
+            </div>
+          </div>
+          <div className="semana-historias">
+            {[1, 2, 3, 4, 5, 6, 0].map((d) => {
+              const h = SEMANA_HISTORIAS[d]
+              return (
+                <div key={d} className="semana-historias-dia">
+                  <div className="semana-historias-cab">
+                    <strong>{h.dia}</strong>
+                    <span className="status-pill status-programado">{h.objetivo}</span>
+                  </div>
+                  <p className="semana-historias-para">{h.para}</p>
+                  <p className="semana-historias-cuantas">{h.cuantas} historias</p>
+                  <ul>
+                    {h.reparto.map((r) => <li key={r}>{r}</li>)}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
+          <div className="reparto-explicacion" style={{ marginTop: 14 }}>
+            <strong>Reglas para todos los días:</strong> la 1.ª historia en vídeo y con texto grande (es donde más gente se va);
+            la última siempre pide algo (encuesta, pregunta o «escríbeme»); mejor 3-5 bien hechas que 10 seguidas.
+          </div>
+        </div>
       )}
 
       {vista === 'listado' && (

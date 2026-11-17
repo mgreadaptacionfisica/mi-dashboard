@@ -53,7 +53,7 @@ Calendario de contenido: ritmo y reparto automático en
 ## Convenciones (respétalas)
 - **Comentarios en español**, explicando el "por qué" (hay muchos y son útiles).
 - **Migraciones SQL** en `supabase-sql/NN_nombre.sql`, numeradas en orden
-  (la última es la 80; la siguiente sería la 81). Deben ser **idempotentes**
+  (la última es la 81; la siguiente sería la 82). Deben ser **idempotentes**
   (`add column if not exists`, `create table if not exists`,
   `drop policy if exists` + `create policy`) y terminar con
   `notify pgrst, 'reload schema';`. **Nunca se ejecutan solas**: se escriben

@@ -7460,3 +7460,32 @@ button.onb-chip { cursor: pointer; }
   .cp-pagina { background: #fff !important; }
   .cp-hoja { box-shadow: none !important; border: none !important; padding: 0 !important; max-width: none !important; }
 }
+
+/* Calendario de contenido → ⭕ Semana de historias */
+.semana-historias {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.semana-historias-dia {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.semana-historias-cab {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.semana-historias-para { color: var(--color-text-primary); margin: 0 0 4px; }
+.semana-historias-cuantas { color: #008A41; font-weight: 700; margin: 0 0 4px; }
+.semana-historias-dia ul { margin: 0; padding-left: 16px; color: var(--color-text-secondary); }
+.semana-historias-dia li { margin-bottom: 3px; }
