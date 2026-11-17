@@ -215,16 +215,21 @@ export default function CobrosPendientes({ clientes = [], setClientes, setIngres
     [pendientes]
   )
 
-  const actualizarPlazo = (clienteIndex, numero, patch) => {
+  const actualizarPlazo = (clienteIndex, numero, patch, patchCliente = {}) => {
     const cliente = clientes[clienteIndex]
     const plazosActualizados = (cliente?.Plazos || []).map(p => p.numero === numero ? { ...p, ...patch } : p)
-    setClientes(prev => prev.map((c, i) => i === clienteIndex ? { ...c, Plazos: plazosActualizados } : c))
-    if (cliente?.id) updateClienteRemote(cliente.id, { Plazos: plazosActualizados })
+    const cambios = { Plazos: plazosActualizados, ...patchCliente }
+    setClientes(prev => prev.map((c, i) => i === clienteIndex ? { ...c, ...cambios } : c))
+    if (cliente?.id) updateClienteRemote(cliente.id, cambios)
   }
 
   const marcarCobrado = (plazo) => {
     const hoy = todayISO()
-    actualizarPlazo(plazo.clienteIndex, plazo.numero, { pagado: true, fechaPago: hoy })
+    // Quien solo había pagado la reserva pasa a cliente ACTIVO al cobrarle el
+    // primer pago después de ella (ver ReservasPendientes.jsx).
+    const cliente = clientes[plazo.clienteIndex]
+    const pasaACliente = (cliente?.['Estado del cliente'] || '').toUpperCase() === 'RESERVA' && plazo.concepto !== 'Reserva'
+    actualizarPlazo(plazo.clienteIndex, plazo.numero, { pagado: true, fechaPago: hoy }, pasaACliente ? { 'Estado del cliente': 'ACTIVO' } : {})
     if (typeof setIngresosEmpresa !== 'function' || !plazo.clienteId) return
 
     const idBase = idIngresoPlazo(plazo.clienteId, plazo.numero)

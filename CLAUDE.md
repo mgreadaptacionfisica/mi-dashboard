@@ -72,6 +72,11 @@ las páginas del cliente son públicas), Operaciones
   `'Motivo de la pausa'`) y **no aparece en Seguimiento y Valoración** hasta
   que vuelve a ACTIVO. Todo el código que filtra `=== 'ACTIVO'` ya lo excluye
   solo; ojo al añadir filtros nuevos de estado.
+  Cuarto estado, `RESERVA` (sin migración: `estado` es texto libre): la venta
+  con reserva entra así y no cuenta como cliente (sección 🔖 en Clientes,
+  `ReservasPendientes.jsx`). Pasa a ACTIVO sola al cobrar en Cobros
+  pendientes el primer plazo que no es la «Reserva»; «No pagó» la pasa a NO
+  ACTIVO y borra los plazos sin cobrar.
 - **Modo demo** (`src/lib/demoGuard.js` + `src/utils/modoDemo.js`): interruptor
   admin que enmascara datos personales y **bloquea TODA escritura a Supabase**
   (interceptado en `src/lib/supabaseClient.js`). Útil para grabar/enseñar.

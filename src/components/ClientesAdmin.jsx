@@ -15,6 +15,7 @@ import { estadoOnboarding } from '../utils/onboardingEstado'
 import { contratoDeCliente, imprimirContrato } from '../utils/contrato'
 import { normalizaNombre } from '../utils/cuestionarioPrevio'
 import CobrosPendientes from './CobrosPendientes'
+import ReservasPendientes from './ReservasPendientes'
 import { insertClienteRemote, updateClienteRemote, deleteClienteRemote } from '../lib/queries/clientes'
 import { renombrarClienteEnHistorial } from '../lib/queries/renombrarCliente'
 import { generarPlazosPorNumero, generarPlazosDesdeFecha } from '../lib/plazos'
@@ -34,6 +35,7 @@ const estadoOptions = [
   { value: 'ACTIVO', label: 'Solo ACTIVO' },
   { value: 'EN PAUSA', label: 'Solo EN PAUSA' },
   { value: 'NO ACTIVO', label: 'NO ACTIVO' },
+  { value: 'RESERVA', label: 'Solo RESERVA (sin pagar el resto)' },
   { value: 'Todos', label: 'Todos' },
 ]
 
@@ -116,6 +118,9 @@ function StatusPill({ estado }) {
   const normalized = (estado || '').toLowerCase()
   if (normalized === 'en pausa') {
     return <span className="status-pill status-pausa"><span className="status-pausa-dot" />⏸️ EN PAUSA</span>
+  }
+  if (normalized === 'reserva') {
+    return <span className="status-pill status-pendiente">🔖 RESERVA</span>
   }
   const className = normalized === 'activo' ? 'status-activo' : 'status-inactivo'
   return <span className={`status-pill ${className}`}>{estado || 'Sin estado'}</span>
@@ -480,6 +485,25 @@ export default function ClientesAdmin({ contratos = [], onboardingProgreso = [],
               cambiados.forEach((registro) => upsertSeguimientoRemote(registro))
               setSeguimientos(fusion)
             }
+          }}
+        />
+
+        {/* Reservas sin el resto pagado: no cuentan como clientes hasta que
+            pagan, porque muchas acaban sin pagar o desaparecen. */}
+        <ReservasPendientes
+          clientes={clientes}
+          onPasarACliente={(cliente) => {
+            const patch = { 'Estado del cliente': 'ACTIVO' }
+            setClientes((prev) => prev.map((c) => (c.id === cliente.id ? { ...c, ...patch } : c)))
+            updateClienteRemote(cliente.id, patch)
+          }}
+          onNoPago={(cliente) => {
+            // Fuera los cobros que quedaban: si no, seguirían saliendo como
+            // pendientes. Lo cobrado (la reserva) se queda, y su ingreso en
+            // Finanzas también.
+            const patch = { 'Estado del cliente': 'NO ACTIVO', Trabajadores: [], Plazos: (cliente.Plazos || []).filter((p) => p.pagado) }
+            setClientes((prev) => prev.map((c) => (c.id === cliente.id ? { ...c, ...patch } : c)))
+            updateClienteRemote(cliente.id, patch)
           }}
         />
 
@@ -923,6 +947,7 @@ export default function ClientesAdmin({ contratos = [], onboardingProgreso = [],
                 <option value="ACTIVO">ACTIVO</option>
                 <option value="EN PAUSA">EN PAUSA (aún no empieza / parado temporalmente)</option>
                 <option value="NO ACTIVO">NO ACTIVO</option>
+                <option value="RESERVA">RESERVA (ha pagado la reserva, falta el resto)</option>
               </select>
               {formData.estado === 'EN PAUSA' && (
                 <div className="lead-venta-form">

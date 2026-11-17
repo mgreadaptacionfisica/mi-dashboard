@@ -556,7 +556,10 @@ export default function Ventas({ ventas, setVentas, team, setClientes, setIngres
       Email: activeLead.email,
       'Tipo de cliente': ventaForm.tipoCliente,
       'Servicio contratado': servicioNombre,
-      'Estado del cliente': 'ACTIVO',
+      // Con reserva todavía no es cliente: entra como RESERVA (sección aparte
+      // en Clientes, fuera de Seguimiento y del equipo) y pasa a ACTIVO al
+      // cobrar el primer pago después de la reserva (CobrosPendientes).
+      'Estado del cliente': reservaNum > 0 ? 'RESERVA' : 'ACTIVO',
       'Forma de pago': ventaForm.formaPago,
       Pago: pagoLabel,
       'Primer pago': importePorPlazo,
