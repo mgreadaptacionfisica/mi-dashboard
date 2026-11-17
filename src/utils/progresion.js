@@ -61,7 +61,7 @@ export const TIPOS = {
   dolor: { emoji: '🔴', titulo: 'Al fisio: dolor', ayuda: 'El robot lee dolor en el comentario. No se propone carga: decide el fisio.' },
   molestia: { emoji: '🟡', titulo: 'Misma carga: molestia', ayuda: 'Cualquier molestia → misma carga, y preguntar si sigue.' },
   subir: { emoji: '🟢', titulo: 'Subir carga', ayuda: 'Llega al tope del rango (o lleva 2 semanas cerca) y sin molestias.' },
-  propioPeso: { emoji: '🟢', titulo: 'Propio peso: progresar', ayuda: 'Llega al tope sin carga: subir reps o un ejercicio más difícil (criterio del fisio).' },
+  propioPeso: { emoji: '🟢', titulo: 'Propio peso: progresar', ayuda: 'Llega al tope sin carga: subir reps, añadir peso, pasar a un ejercicio con peso o uno más difícil (criterio del fisio).' },
   reps: { emoji: '🔵', titulo: 'Mantener carga: más reps', ayuda: 'Va dentro del rango (o acaba de subir de peso) y aún no llega al tope: se mantiene el peso y se buscan más reps (doble progresión). Al llegar al tope, sale subir.' },
   igual: { emoji: '⚪', titulo: '2 semanas igual', ayuda: 'Mismas reps y misma carga dos semanas: hablar con la persona. Siempre tiene que haber progresión.' },
   revisar: { emoji: '🔍', titulo: 'Revisar', ayuda: 'Ninguna regla pide cambiar nada (va dentro del rango o faltan datos): el fisio confirma que sigue igual o elige un cambio.' },
@@ -94,6 +94,10 @@ export const OPCIONES = {
   rir: { emoji: '🎯', titulo: 'Más cerca del fallo (baja el RIR)' },
   serie: { emoji: '➕', titulo: 'Añadir una serie' },
   libre: { emoji: '✍️', titulo: 'Mismo ejercicio, con una indicación mía' },
+  // Solo en 🟢 Propio peso (Raúl, 2026-11-17): si ya llega a las reps sin
+  // carga, empezar a meterle peso en el mismo ejercicio o pasar a uno con peso.
+  anadirPeso: { emoji: '🏋️', titulo: 'Añadir peso (mismo ejercicio)' },
+  ejercicioPeso: { emoji: '🔀', titulo: 'Pasar a un ejercicio con peso (lo cambio yo en Harbiz)', manual: true },
   cambio: { emoji: '🔄', titulo: 'Cambio de ejercicio (lo cambio yo en Harbiz)', manual: true },
   hablar: { emoji: '🗣️', titulo: 'Lo hablo con la persona', manual: true },
 }
@@ -224,6 +228,14 @@ function construirOpciones(claves, u, notas = {}) {
       if (!seriesActual) return
       o.series = String(u.series.length + 1)
       o.nota = con('añade una serie')
+    } else if (clave === 'anadirPeso') {
+      // Sin kilos de referencia: la nota pide que elija un peso con el que
+      // llegue justo al rango y lo apunte. Objetivo editable por si se baja.
+      if (kg > 0) return
+      const r = rangoDeObjetivo(objetivoActual)
+      const reps = r ? (r.lo === r.hi ? `${r.hi}` : `${r.lo}-${r.hi}`) : ''
+      o.objetivo = objetivoActual || null
+      o.nota = `Añade peso: coge uno con el que ${reps ? `hagas ${reps} repeticiones` : 'llegues a las repeticiones'} y que las últimas cuesten. Apunta los kg que uses.`
     } else if (clave === 'libre') {
       // Lo escribe el fisio: más lento, más rango de movimiento… El
       // objetivo sale relleno con el de ahora por si también lo quiere tocar.
@@ -445,8 +457,8 @@ export function propuestasCliente(clienteNombre, sesionesDelCliente, semana) {
         propone('subir', `${asistido ? 'Asistencia ' : ''}${fmtKg(u.kgMax)} kg → ${nuevo} (${motivo}: ${hecho})`, '',
           ['peso', 'pesoRango', 'rango', 'rir', 'serie', 'libre', 'cambio'], { peso: nuevo, asistido })
       }
-      else propone('propioPeso', `Sin carga, ${motivo} (${hecho}): subir reps o ejercicio más difícil.`, '',
-        ['rango', 'rir', 'serie', 'libre', 'cambio'])
+      else propone('propioPeso', `Sin carga, ${motivo} (${hecho}): subir reps, añadir peso o un ejercicio con peso o más difícil.`, '',
+        ['rango', 'anadirPeso', 'ejercicioPeso', 'rir', 'serie', 'libre', 'cambio'])
       return
     }
 
