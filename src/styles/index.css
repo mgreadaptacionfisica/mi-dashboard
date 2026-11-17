@@ -5739,6 +5739,17 @@ textarea.cp-input { resize: vertical; min-height: 60px; }
 }
 
 .cq-huerfano-nombre { flex: 1 1 180px; font-weight: 600; }
+.cq-huerfano-eliminar {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 9px;
+  border: 1px solid rgba(220, 38, 38, .35);
+  border-radius: 7px;
+  background: transparent;
+  color: #b91c1c;
+  cursor: pointer;
+}
+.cq-huerfano-eliminar:hover { background: rgba(220, 38, 38, .08); }
 .cq-huerfano-nombre em { font-style: normal; font-weight: 400; color: var(--color-text-secondary); }
 
 .cq-huerfano select {

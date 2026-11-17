@@ -4,7 +4,7 @@ import RENOVACIONES from '../data/renovaciones'
 import SeguimientoCliente from './SeguimientoCliente'
 import ValoracionCliente from './ValoracionCliente'
 import { CuestionariosHuerfanos } from './RespuestasCuestionario'
-import { reasignarCuestionario } from '../lib/queries/cuestionariosPrevios'
+import { reasignarCuestionario, deleteCuestionarioPrevio } from '../lib/queries/cuestionariosPrevios'
 import FasesObjetivos from './FasesObjetivos'
 import ContratosFirmados from './ContratosFirmados'
 import OnboardingClientes from './OnboardingClientes'
@@ -455,6 +455,12 @@ export default function ClientesAdmin({ contratos = [], onboardingProgreso = [],
             reasignarCuestionario(id, nombre)
             if (setCuestionariosPrevios) {
               setCuestionariosPrevios((prev) => prev.map((c) => (c.id === id ? { ...c, clienteNombre: nombre } : c)))
+            }
+          }}
+          onEliminar={(id) => {
+            deleteCuestionarioPrevio(id)
+            if (setCuestionariosPrevios) {
+              setCuestionariosPrevios((prev) => prev.filter((c) => c.id !== id))
             }
           }}
         />

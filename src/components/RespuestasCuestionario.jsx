@@ -193,7 +193,7 @@ export default function RespuestasCuestionario({ cuestionario, onRevisadoChange 
 // el parámetro `c` del enlace y teclea su nombre distinto a como está en el
 // panel; como todo el historial se enlaza por nombre, si no se arregla el
 // cuestionario no se ve en ninguna ficha.
-export function CuestionariosHuerfanos({ cuestionarios, clientes, onReasignar }) {
+export function CuestionariosHuerfanos({ cuestionarios, clientes, onReasignar, onEliminar }) {
   const nombres = new Set((clientes || []).map((c) => c.Nombre))
   const huerfanos = (cuestionarios || []).filter((c) => !c.clienteNombre || !nombres.has(c.clienteNombre))
   if (huerfanos.length === 0) return null
@@ -202,7 +202,8 @@ export function CuestionariosHuerfanos({ cuestionarios, clientes, onReasignar })
     <div className="cq-huerfanos">
       <strong>📋 {huerfanos.length} cuestionario{huerfanos.length === 1 ? '' : 's'} sin cliente asignado</strong>
       <p>
-        Llegaron con un nombre que no coincide con ninguna ficha. Asígnalos para que aparezcan en su valoración.
+        Llegaron con un nombre que no coincide con ninguna ficha. Asígnalos para que aparezcan en su valoración,
+        o elimínalos si esa persona no va a ser cliente.
       </p>
       {huerfanos.map((c) => (
         <div key={c.id} className="cq-huerfano">
@@ -216,6 +217,17 @@ export function CuestionariosHuerfanos({ cuestionarios, clientes, onReasignar })
               <option key={cl.Nombre} value={cl.Nombre}>{cl.Nombre}</option>
             ))}
           </select>
+          {onEliminar && (
+            <button
+              type="button"
+              className="cq-huerfano-eliminar"
+              onClick={() => {
+                if (window.confirm(`¿Eliminar el cuestionario de ${c.clienteNombre || '(sin nombre)'}? No se puede deshacer.`)) onEliminar(c.id)
+              }}
+            >
+              🗑️ Eliminar
+            </button>
+          )}
         </div>
       ))}
     </div>
