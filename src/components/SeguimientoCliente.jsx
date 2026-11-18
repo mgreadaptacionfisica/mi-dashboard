@@ -23,6 +23,7 @@ import { upsertSeguimientoRemote } from '../lib/queries/seguimientos'
 import { upsertRevisionSemanalRemote } from '../lib/queries/revisionesSemanales'
 import { faseAutomatica, faseInfo, faseTopeSpadi, ultimoSpadiCliente } from '../utils/valoracionHelpers'
 import { objetivosDelClienteCompletos } from '../utils/objetivosAutomaticos'
+import { sesionesHarbizDeCliente } from '../utils/progresion'
 
 // Datos "fríos" del cliente (servicio, fecha de inicio, contacto): antes
 // eran columnas de la tabla de clientes de Seguimiento y Valoración, que se
@@ -35,7 +36,7 @@ function formatDate(value) {
   return iso ? formatFechaISO(iso) : value
 }
 
-export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], problemas = [], setProblemas, propuestasProgresion = [], miEmail, miNombre = '', weekOffsetInicial = 0, vistaInicial = 'semana', onClose }) {
+export default function SeguimientoCliente({ cliente, seguimientos, setSeguimientos, objetivosClienteFase = [], valoraciones = [], revisionesSemanales = [], setRevisionesSemanales, contactosSemanales = [], problemas = [], setProblemas, propuestasProgresion = [], sesionesHarbiz = [], clientes = [], miEmail, miNombre = '', weekOffsetInicial = 0, vistaInicial = 'semana', onClose }) {
   // weekOffsetInicial: 0 = semana actual (por defecto), -1 = abre en la
   // semana anterior (cuando se entra desde el aviso "semana pasada sin
   // cerrar" para terminarla tal cual quedó).
@@ -319,7 +320,7 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
             soloLectura={typeof setProblemas !== 'function'}
           />
         ) : vistaModal === 'evolucion' ? (
-          <EvolucionEjercicios clienteNombre={cliente.Nombre} seguimientos={seguimientos} />
+          <EvolucionEjercicios sesiones={sesionesHarbizDeCliente(cliente, sesionesHarbiz, clientes)} />
         ) : vistaModal === 'historial' ? (
           <HistorialCliente
             clienteNombre={cliente.Nombre}

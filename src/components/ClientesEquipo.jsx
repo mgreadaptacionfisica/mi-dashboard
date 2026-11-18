@@ -1157,6 +1157,8 @@ export default function ClientesEquipo({ cuestionariosPrevios = [], clientes = [
         <SeguimientoCliente
           cliente={seguimientoCliente}
           seguimientos={seguimientos}
+          sesionesHarbiz={sesionesHarbiz}
+          clientes={clientes}
           setSeguimientos={setSeguimientos}
           valoraciones={valoraciones}
           objetivosClienteFase={objetivosClienteFase}

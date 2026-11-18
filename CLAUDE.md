@@ -218,8 +218,9 @@ Calendario de contenido: ritmo y reparto automático en
     `seguimientos` y `contactos_semanales` (nada se borra al cambiar de semana).
   - **📈 Evolución** (vista del modal de Seguimiento, `EvolucionEjercicios.jsx`,
     2026-11-18): una gráfica por ejercicio (carga, reps con el rango pautado,
-    series, volumen) con lo de Harbiz. Solo lectura: sale del
-    `harbizDetalle.registro` de las sesiones de `seguimientos` pasado por
+    series, volumen) con lo de Harbiz. Solo lectura: sale de
+    `detalle.registro` de `sesiones_harbiz` (NO de `seguimientos`: el volcado
+    a la rejilla tira el registro) pasado por
     `historialEjercicios()` de progresion.js (lo mismo que usan las 🤖
     Propuestas). SVG a mano, sin librería. En modo demo no sale nada.
   - **Sesiones desde Harbiz** (`utils/sesionesHarbiz.js`, tabla

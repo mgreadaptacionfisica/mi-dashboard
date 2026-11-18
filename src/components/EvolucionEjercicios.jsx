@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react'
-import { DIAS_SEMANA } from '../utils/seguimientoHelpers'
 import { historialEjercicios, claseEjercicio, esAsistido } from '../utils/progresion'
 
 // 📈 Evolución (vista del modal de Seguimiento): una gráfica por ejercicio
 // con lo que el cliente apuntó en Harbiz, sesión a sesión: carga, reps y
-// series. No guarda nada: lee el `harbizDetalle.registro` que el panel ya
-// vuelca en las sesiones de `seguimientos` (llega desde el 2026-10-26; lo
-// anterior no trae reps ni kilos). Usa `historialEjercicios()` de
+// series. No guarda nada: lee `detalle.registro` de las filas de
+// sesiones_harbiz del cliente (OJO: no de `seguimientos`, porque al volcar
+// la sesión a la rejilla `detalleHarbizLimpio()` se queda solo con los
+// comentarios y tira el registro). Usa `historialEjercicios()` de
 // progresion.js, el mismo historial con el que se calculan las 🤖 Propuestas,
 // para que la gráfica y la propuesta cuenten lo mismo.
-// En modo demo `harbizDetalle` llega vacío, así que no sale nada.
+// En modo demo no llegan sesiones de Harbiz, así que no sale nada.
 
 const METRICAS = [
   { id: 'carga', label: '🏋️ Carga', ayuda: 'Kilos de la serie más pesada de cada sesión.' },
@@ -20,29 +20,6 @@ const METRICAS = [
 
 const fmt = (n) => (Math.round(n * 10) / 10).toLocaleString('es-ES')
 const fechaCorta = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
-
-// Sesiones de Harbiz del cliente, sacadas de sus semanas de seguimiento, con
-// la forma que espera historialEjercicios(). La fecha sale de la semana + el
-// día de la rejilla (es donde la volcó el panel).
-function sesionesDeSeguimientos(seguimientos, clienteNombre) {
-  const vistas = new Set()
-  const sesiones = []
-  ;(seguimientos || []).forEach((s) => {
-    if (s.clienteNombre !== clienteNombre || !s.semana) return
-    DIAS_SEMANA.forEach((dia, i) => {
-      ;(s.dias?.[dia.id]?.tareas || []).forEach((t, j) => {
-        if (!Array.isArray(t.harbizDetalle?.registro)) return
-        const id = t.harbizId || `${s.semana}-${dia.id}-${j}`
-        if (vistas.has(id)) return
-        vistas.add(id)
-        const d = new Date(`${s.semana}T12:00:00`)
-        d.setDate(d.getDate() + i)
-        sesiones.push({ id, fecha: d.toISOString().slice(0, 10), hechaEn: t.harbizHechaEn || '', detalle: t.harbizDetalle, titulo: t.texto || '' })
-      })
-    })
-  })
-  return sesiones
-}
 
 function valoresDe(metrica, ap) {
   const reps = ap.series.map((x) => x.reps).filter((r) => r > 0)
@@ -129,18 +106,18 @@ function cambio(apariciones, metrica, unidad) {
   return { texto: `${fmt(a)} → ${fmt(b)} ${unidad}`, pct, sube: b > a, baja: b < a }
 }
 
-export default function EvolucionEjercicios({ clienteNombre, seguimientos }) {
+export default function EvolucionEjercicios({ sesiones = [] }) {
   const [metrica, setMetrica] = useState('carga')
   const [filtro, setFiltro] = useState('fuerza')
   const [busqueda, setBusqueda] = useState('')
 
   const ejercicios = useMemo(() => {
-    const historial = historialEjercicios(sesionesDeSeguimientos(seguimientos, clienteNombre))
+    const historial = historialEjercicios(sesiones)
     return [...historial.values()]
       .map((e) => ({ ...e, clase: claseEjercicio(e.nombre, e.apariciones), asistido: esAsistido(e.nombre), ultima: e.apariciones[e.apariciones.length - 1]?.fecha || '' }))
       // Lo que más se repite y lo más reciente primero: es donde hay evolución que mirar.
       .sort((a, b) => (b.apariciones.length > 1) - (a.apariciones.length > 1) || b.ultima.localeCompare(a.ultima) || b.apariciones.length - a.apariciones.length)
-  }, [seguimientos, clienteNombre])
+  }, [sesiones])
 
   const texto = busqueda.trim().toLowerCase()
   const visibles = ejercicios.filter((e) => (filtro === 'todos' || e.clase === filtro) && (!texto || e.nombre.toLowerCase().includes(texto)))

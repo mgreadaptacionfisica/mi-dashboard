@@ -1088,6 +1088,8 @@ export default function ClientesAdmin({ contratos = [], onboardingProgreso = [],
 
       {seguimientoCliente && typeof setSeguimientos === 'function' && (
         <SeguimientoCliente
+          sesionesHarbiz={sesionesHarbiz}
+          clientes={clientes}
           cliente={seguimientoCliente}
           seguimientos={seguimientos}
           setSeguimientos={setSeguimientos}
