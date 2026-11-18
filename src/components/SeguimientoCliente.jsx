@@ -14,6 +14,7 @@ import {
 import ParaClienteChecklist, { contarExplicados } from './ParaClienteChecklist'
 import ResumenSemanaCliente from './ResumenSemanaCliente'
 import HistorialCliente from './HistorialCliente'
+import EvolucionEjercicios from './EvolucionEjercicios'
 import ProblemasCliente from './ProblemasCliente'
 import DetalleHarbiz from './DetalleHarbiz'
 import { contarAbiertos } from '../utils/problemasCliente'
@@ -41,7 +42,8 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
   const [weekOffset, setWeekOffset] = useState(weekOffsetInicial)
   const [cambioDraft, setCambioDraft] = useState('')
   // 'semana' = trabajar la semana; 'problemas' = los problemas del cliente y
-  // qué hemos hecho por ellos; 'historial' = todo lo apuntado, día a día.
+  // qué hemos hecho por ellos; 'historial' = todo lo apuntado, día a día;
+  // 'evolucion' = gráficas por ejercicio (carga, reps, series) de Harbiz.
   const [vistaModal, setVistaModal] = useState(vistaInicial)
   // Quién firma lo que se apunte en los problemas: el nombre real si se
   // conoce (el técnico logueado), y si no el email, como en el resto del panel.
@@ -305,6 +307,7 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
             {problemasAbiertos > 0 && <span className="tab-btn-badge">{problemasAbiertos}</span>}
           </button>
           <button type="button" className={`tab-btn ${vistaModal === 'historial' ? 'tab-btn-active' : ''}`} onClick={() => setVistaModal('historial')}>📜 Historial</button>
+          <button type="button" className={`tab-btn ${vistaModal === 'evolucion' ? 'tab-btn-active' : ''}`} onClick={() => setVistaModal('evolucion')}>📈 Evolución</button>
         </div>
 
         {vistaModal === 'problemas' ? (
@@ -315,6 +318,8 @@ export default function SeguimientoCliente({ cliente, seguimientos, setSeguimien
             miIdentidad={miIdentidad}
             soloLectura={typeof setProblemas !== 'function'}
           />
+        ) : vistaModal === 'evolucion' ? (
+          <EvolucionEjercicios clienteNombre={cliente.Nombre} seguimientos={seguimientos} />
         ) : vistaModal === 'historial' ? (
           <HistorialCliente
             clienteNombre={cliente.Nombre}

@@ -124,6 +124,13 @@ export const esAsistido = (nombre) => PATRON_ASISTIDO.test(String(nombre || ''))
 // Si el robot no trajo `clase` (sesiones viejas), se deduce del nombre. Es
 // solo un respaldo: en cuanto un ejercicio lleva carga, es de fuerza.
 const PATRON_MOVILIDAD = /estiramiento|movilidad|moviliza|gato|camello|rotaci[oó]n|respira|asistid|isom[eé]tric|anteversi|retroversi|90.?90|expansi[oó]n|estabilidad|^test /i
+// Fuerza o movilidad de un ejercicio del historial (la misma regla que usan
+// las propuestas): con carga es fuerza; si no, lo que dijo el robot o el nombre.
+export function claseEjercicio(nombre, apariciones = []) {
+  if (apariciones.some((a) => a.kgMax > 0)) return 'fuerza'
+  const ultima = apariciones[apariciones.length - 1]
+  return ultima?.clase || (PATRON_MOVILIDAD.test(String(nombre || '')) ? 'movilidad' : 'fuerza')
+}
 
 const num = (v) => {
   const n = Number(String(v ?? '').replace(',', '.'))
